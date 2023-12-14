@@ -1,0 +1,16 @@
+[package]
+name = "bb84"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = { version = "0.8.5" }
+
+QuantumTimeSandwich = { path = "../QuantumTimeSandwich" }
+# QuantumTimeSandwich = "1.4.0" 
+aes = "0.8.3"
+aes-gcm = "0.10.3"
+block-modes = "0.9.1"
+num-bigint = "0.4"  
+num-traits = "0.2"
+sha2 = "0.10.8"

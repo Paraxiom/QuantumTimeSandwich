@@ -1,0 +1,34 @@
+[package]
+name = "QuantumTimeSandwich"
+version = "1.4.0"
+authors = ["Paraxiom <sylvain@paraxiom.org>"]
+description = "Quantum testing environment and simulation"
+repository = "https://github.com/Paraxiom/QuantumTimeSandwich"
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "QuantumTimeSandwich"
+
+[features]
+default = ["parallel"]
+parallel = ["rayon", "QuantumTimeSandwich-iterators/parallel"]
+macros = ["QuantumTimeSandwich-macros"]
+boolean_circuits = ["macros"]
+
+[dependencies]
+num-rational = "^0.4"
+num-traits = "^0.2"
+num-complex = "^0.4"
+rayon = { version = "^1.7", optional = true }
+rand = "^0.8"
+smallvec = "^1.10"
+unit_circle_state_machine = { path = "../unit_circle_state_machine"}
+[dependencies.QuantumTimeSandwich-macros]
+version = "1.0.0"
+path = "../QuantumTimeSandwich-macros"
+optional = true
+
+[dependencies.QuantumTimeSandwich-iterators]
+version = "1.4.0"
+path = "../QuantumTimeSandwich-iterators"

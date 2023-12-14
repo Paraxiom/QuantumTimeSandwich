@@ -1,0 +1,12 @@
+[package]
+name = "QuantumTimeSandwich-macros"
+version = "1.0.0"
+authors = ["Sumner Hearth <sumnernh@gmail.com>"]
+description = "A procedural macro for QIP"
+repository = "https://github.com/Paraxiom/QuantumTimeSandwich"
+license = "MIT"
+edition = "2021"
+
+[lib]
+name = "QuantumTimeSandwich_macros"
+proc-macro = true

@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "bb84",
+    "QuantumTimeSandwich",
+    "QuantumTimeSandwich-iterators",
+    "QuantumTimeSandwich-macros",
+    "unit_circle_state_machine",
+    "visualisation", 
+]
+resolver = "2"

@@ -1,0 +1,11 @@
+
+[package]
+name = "unit_circle_state_machine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+num-complex = "0.4"
+
+[dev-dependencies]
+criterion = "0.5.1"
