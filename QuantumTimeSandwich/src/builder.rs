@@ -9,7 +9,6 @@ use crate::types::Precision;
 use crate::Complex;
 use num_rational::{Ratio, Rational64};
 use num_traits::{One, ToPrimitive, Zero};
-use QuantumTimeSandwich_iterators::matrix_ops::apply_op_overwrite;
 use std::f64::consts::PI;
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroUsize;
@@ -17,6 +16,7 @@ use std::ops::Neg;
 use unit_circle_state_machine::unit_circle_states::GateType;
 use unit_circle_state_machine::unit_circle_states::RotationGate;
 use unit_circle_state_machine::{UnitCircleState, UnitCircleStateMachine};
+use QuantumTimeSandwich_iterators::matrix_ops::apply_op_overwrite;
 
 /// A local circuit builder for constructing circuits out of standard gates.
 /// LocalBuilder breaks complicated multi-register gates, like toffoli, into combinations of simple
@@ -73,10 +73,7 @@ impl<P: Precision> LocalBuilder<P> {
     ///
     /// # Returns
     /// None. This method updates the state of the qubit.
-    pub fn simulate_gate_with_state_machine(
-        &mut self,
-        gate: UnitaryMatrixObject<P>,
-    ) {
+    pub fn simulate_gate_with_state_machine(&mut self, gate: UnitaryMatrixObject<P>) {
         match gate {
             UnitaryMatrixObject::X => {
                 let x_gate = RotationGate::new(Complex::new(PI, 0.0), GateType::PauliX);
@@ -91,7 +88,10 @@ impl<P: Precision> LocalBuilder<P> {
                 self.state_machine.apply_gate(GateType::PauliZ);
             }
             UnitaryMatrixObject::H => {
-                let h_gate = RotationGate::new(Complex::new(PI / std::f64::consts::SQRT_2, 0.0), GateType::Hadamard);
+                let h_gate = RotationGate::new(
+                    Complex::new(PI / std::f64::consts::SQRT_2, 0.0),
+                    GateType::Hadamard,
+                );
                 self.state_machine.apply_gate(GateType::Hadamard);
             }
             UnitaryMatrixObject::CNOT => {

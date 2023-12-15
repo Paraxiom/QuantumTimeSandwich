@@ -300,7 +300,10 @@ pub fn program(input_stream: TokenStream) -> TokenStream {
             replace_qudits_stream.extend(TokenStream::from_str(&format!("let mut {} = _program_builder.split_all_register({}).into_iter().map(|r| Some(r)).collect::<Vec<_>>(); let mut {}_index = 0;", reg_name, reg_name, reg_name)).unwrap());
             for (r, s) in rs.iter().zip(is.iter()) {
                 let s = if let Some(s) = s {
-                    format!("QuantumTimeSandwich::macros::program::QubitIndices::from({})", s)
+                    format!(
+                        "QuantumTimeSandwich::macros::program::QubitIndices::from({})",
+                        s
+                    )
                 } else {
                     format!("0..{}.len()", r)
                 };

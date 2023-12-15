@@ -1,6 +1,6 @@
+use std::num::NonZeroUsize;
 use QuantumTimeSandwich::builder::Qudit;
 use QuantumTimeSandwich::prelude::*;
-use std::num::NonZeroUsize;
 
 /// Encode the two classical bits Alice wants to communicate to Bob.
 ///

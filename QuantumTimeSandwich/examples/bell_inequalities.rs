@@ -1,16 +1,16 @@
+use std::num::NonZeroUsize;
 use QuantumTimeSandwich::builder::StochasticMeasurementHandle;
+#[cfg(feature = "macros")]
+use QuantumTimeSandwich::macros::program_ops::*;
 #[cfg(feature = "macros")]
 use QuantumTimeSandwich::prelude::*;
 #[cfg(feature = "macros")]
 use QuantumTimeSandwich::prelude::{CircuitBuilder, CircuitError};
 #[cfg(feature = "macros")]
 use QuantumTimeSandwich_macros::*;
-#[cfg(feature = "macros")]
-use QuantumTimeSandwich::macros::program_ops::*;
-use std::num::NonZeroUsize;
 
 #[cfg(feature = "macros")]
-fn circuit1() -> &'static [f64]{
+fn circuit1() -> &'static [f64] {
     let mut b = LocalBuilder::<f64>::default();
     let n = NonZeroUsize::new(2).unwrap();
 
@@ -22,7 +22,8 @@ fn circuit1() -> &'static [f64]{
         control not r[0], r[1];
         rz(std::f64::consts::FRAC_PI_3) r[1];
         h r;
-    ).unwrap();
+    )
+    .unwrap();
     let (r, m_handle) = b.measure_stochastic(r);
 
     //run and get probabilities
@@ -33,7 +34,7 @@ fn circuit1() -> &'static [f64]{
 }
 
 #[cfg(feature = "macros")]
-fn circuit2() -> &'static [f64]{
+fn circuit2() -> &'static [f64] {
     let mut b = LocalBuilder::<f64>::default();
     let n = NonZeroUsize::new(2).unwrap();
 
@@ -44,7 +45,8 @@ fn circuit2() -> &'static [f64]{
         control not r[0], r[1];
         rz(2. * std::f64::consts::FRAC_PI_3) r[1];
         h r;
-    ).unwrap();
+    )
+    .unwrap();
     let (r, m_handle) = b.measure_stochastic(r);
 
     // run and get probabilities
@@ -54,7 +56,7 @@ fn circuit2() -> &'static [f64]{
     return stochastic_measurement_probability;
 }
 #[cfg(feature = "macros")]
-fn circuit3() ->  &'static [f64] {
+fn circuit3() -> &'static [f64] {
     let mut b = LocalBuilder::<f64>::default();
     let n = NonZeroUsize::new(2).unwrap();
     let r3 = b.register(n);
@@ -66,18 +68,16 @@ fn circuit3() ->  &'static [f64] {
         rz(std::f64::consts::FRAC_PI_3) r[0];
         rz(2. * std::f64::consts::FRAC_PI_3) r[1];
         h r;
-    ).unwrap();
+    )
+    .unwrap();
     let (r, m_handle) = b.measure_stochastic(r); //returns (Self::Register, Self::StochasticMeasurementHandle)
     let (_, measurements) = b.calculate_state();
     let stochastic_measurement_probability = measurements.get_stochastic_measurement(m_handle);
     return stochastic_measurement_probability;
-    
 }
 
 #[cfg(not(feature = "macros"))]
 fn main() -> () {}
-
-
 
 #[cfg(feature = "macros")]
 fn main() -> Result<(), CircuitError> {
@@ -90,7 +90,7 @@ fn main() -> Result<(), CircuitError> {
     let a_c = circuit2();
     let p_of_a_c = (a_c[0] + a_c[3]) - (a_c[1] + a_c[2]);
     println!("P(a, c) = {:.2}", p_of_a_c);
-    
+
     let b_c = circuit3();
     println!("{:?}", b_c);
     let p_of_b_c = (b_c[0] + b_c[3]) - (b_c[1] + b_c[2]);

@@ -1,8 +1,8 @@
+use std::num::NonZeroUsize;
 use QuantumTimeSandwich::inverter::Invertable;
 use QuantumTimeSandwich::prelude::*;
 #[cfg(feature = "macros")]
 use QuantumTimeSandwich_macros::*;
-use std::num::NonZeroUsize;
 
 #[cfg(feature = "macros")]
 #[invert(gamma_inv)]

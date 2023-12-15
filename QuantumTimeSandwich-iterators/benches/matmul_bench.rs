@@ -11,10 +11,10 @@ mod tests {
     use ndarray::linalg::{general_mat_vec_mul, Dot};
     use ndarray::{Array1, Array2, LinalgScalar};
     use num_traits::{Num, One, Zero};
-    use QuantumTimeSandwich_iterators::iterators::MatrixOp;
-    use QuantumTimeSandwich_iterators::matrix_ops::{apply_op, apply_ops};
     use sprs::{kronecker_product, CsMat, TriMat};
     use test::Bencher;
+    use QuantumTimeSandwich_iterators::iterators::MatrixOp;
+    use QuantumTimeSandwich_iterators::matrix_ops::{apply_op, apply_ops};
 
     #[bench]
     fn bench_ones_QuantumTimeSandwich(b: &mut Bencher) {

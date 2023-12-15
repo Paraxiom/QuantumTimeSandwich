@@ -1,11 +1,11 @@
 use crate::bb84::prelude::CircuitError;
 use crate::bb84_states::{random_bit, BB84State, Basis, MeasurementBasis};
+use rand::Rng;
 use QuantumTimeSandwich::builder_traits::CircuitBuilder;
 use QuantumTimeSandwich::builder_traits::CliffordTBuilder;
 use QuantumTimeSandwich::builder_traits::MeasurementBuilder;
 use QuantumTimeSandwich::prelude::LocalBuilder;
 use QuantumTimeSandwich::*;
-use rand::Rng;
 
 pub fn generate_bb84_state() -> BB84State {
     let _basis = Basis::random(); // Assuming Basis::random() is still relevant

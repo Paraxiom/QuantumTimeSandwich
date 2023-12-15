@@ -4,8 +4,8 @@ use crate::errors::CircuitError;
 use crate::inverter::RecursiveCircuitBuilder;
 use crate::macros::program_ops::*;
 use crate::prelude::*;
-use QuantumTimeSandwich_macros::*;
 use std::num::NonZeroUsize;
+use QuantumTimeSandwich_macros::*;
 
 /// A collection of circuits from chapter 6.4 of "Quantum Computing: A gentle introduction"
 /// by Eleanor Rieffle and Wolfgang Polak.

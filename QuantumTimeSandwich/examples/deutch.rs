@@ -1,11 +1,11 @@
 #[cfg(feature = "macros")]
+use std::num::NonZeroUsize;
+#[cfg(feature = "macros")]
 use QuantumTimeSandwich::builder::Qudit;
 #[cfg(feature = "macros")]
 use QuantumTimeSandwich::builder_traits::UnitaryBuilder;
 #[cfg(feature = "macros")]
 use QuantumTimeSandwich::prelude::*;
-#[cfg(feature = "macros")]
-use std::num::NonZeroUsize;
 
 #[cfg(feature = "macros")]
 fn apply_oracle<F>(
@@ -20,7 +20,8 @@ where
     let (rx, ry) = program!(b, rx, ry, move |input| {
         let fx = f(input == 1);
         (if fx { 1 } else { 0 }, 0.0)
-    }).unwrap();
+    })
+    .unwrap();
     Ok((rx, ry))
 }
 

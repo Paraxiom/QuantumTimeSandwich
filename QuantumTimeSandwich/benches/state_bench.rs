@@ -29,10 +29,10 @@ mod tests {
 
     extern crate test;
 
+    use test::Bencher;
     use QuantumTimeSandwich::state_ops::matrix_ops::{make_control_op, make_matrix_op};
     use QuantumTimeSandwich_iterators::iterators::MatrixOp::{Matrix, SparseMatrix};
     use QuantumTimeSandwich_iterators::matrix_ops::apply_ops;
-    use test::Bencher;
 
     #[bench]
     fn bench_identity(b: &mut Bencher) {

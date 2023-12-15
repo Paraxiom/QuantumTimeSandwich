@@ -1,11 +1,11 @@
 // benches/ucsm_benchmarks.rs
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use unit_circle_state_machine::UnitCircleStateMachine;
-use unit_circle_state_machine::unit_circle_states::GateType;
-use unit_circle_state_machine::UnitCircleState;
 use num_complex::Complex;
 use std::f64::consts::PI;
+use unit_circle_state_machine::unit_circle_states::GateType;
+use unit_circle_state_machine::UnitCircleState;
+use unit_circle_state_machine::UnitCircleStateMachine;
 
 fn benchmark_ucsm_operations(c: &mut Criterion) {
     c.bench_function("ucsm_gate_application", |b| {

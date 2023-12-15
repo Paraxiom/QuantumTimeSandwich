@@ -1,13 +1,13 @@
 #[cfg(feature = "macros")]
+use rand::{thread_rng, Rng};
+#[cfg(feature = "macros")]
+use std::num::NonZeroUsize;
+#[cfg(feature = "macros")]
 use QuantumTimeSandwich::macros::program_ops::*;
 #[cfg(feature = "macros")]
 use QuantumTimeSandwich::prelude::*;
 #[cfg(feature = "macros")]
 use QuantumTimeSandwich_macros::program;
-#[cfg(feature = "macros")]
-use rand::{thread_rng, Rng};
-#[cfg(feature = "macros")]
-use std::num::NonZeroUsize;
 
 #[cfg(feature = "macros")]
 #[cfg(feature = "optimization")]

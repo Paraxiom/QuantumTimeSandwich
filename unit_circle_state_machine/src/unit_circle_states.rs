@@ -17,7 +17,9 @@ pub enum UnitCircleState {
         gate_type: GateType,
         state: Complex<f64>,
     },
-    Measurement { result: Option<bool> },
+    Measurement {
+        result: Option<bool>,
+    },
     Entanglement,
     ErrorCorrection,
     Final,
@@ -67,18 +69,26 @@ impl RotationGate {
         match state {
             UnitCircleState::Initial => {
                 println!("Transition from Initial to GateOperation"); // Debugging
-                UnitCircleState::GateOperation { gate_type: self.gate_type, state: self.angle }
+                UnitCircleState::GateOperation {
+                    gate_type: self.gate_type,
+                    state: self.angle,
+                }
             }
-            UnitCircleState::GateOperation { gate_type, state: existing_state } => {
+            UnitCircleState::GateOperation {
+                gate_type,
+                state: existing_state,
+            } => {
                 let new_state = self.angle * existing_state;
                 println!("Transition in GateOperation. New State: {:?}", new_state); // Debugging
-                UnitCircleState::GateOperation { gate_type: *gate_type, state: new_state }
+                UnitCircleState::GateOperation {
+                    gate_type: *gate_type,
+                    state: new_state,
+                }
             }
             _ => {
                 println!("State unchanged for state: {:?}", state); // Debugging
                 state.clone() // For other states, no change
             }
         }
-        
     }
 }

@@ -1,7 +1,7 @@
+use std::num::NonZeroUsize;
 use QuantumTimeSandwich::builder::Qudit;
 use QuantumTimeSandwich::builder_traits::UnitaryBuilder;
 use QuantumTimeSandwich::prelude::*;
-use std::num::NonZeroUsize;
 //-> Result<(), CircuitError>
 
 fn prepare_state<P: Precision>(n: u64) -> Result<(), CircuitError> {

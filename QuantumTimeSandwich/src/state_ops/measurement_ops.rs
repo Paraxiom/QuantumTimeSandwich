@@ -4,8 +4,8 @@ pub(crate) use rayon::prelude::*;
 use crate::utils::extract_bits;
 use crate::{Complex, Precision};
 use num_traits::Zero;
-use QuantumTimeSandwich_iterators::{into_iter, iter, iter_mut};
 use std::cmp::{max, min};
+use QuantumTimeSandwich_iterators::{into_iter, iter, iter_mut};
 
 /// Get total magnitude of state.
 pub fn prob_magnitude<P: Precision>(input: &[Complex<P>]) -> P {

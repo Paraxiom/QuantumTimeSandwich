@@ -1,5 +1,5 @@
-use QuantumTimeSandwich::prelude::*;
 use std::num::NonZeroUsize;
+use QuantumTimeSandwich::prelude::*;
 
 fn main() -> Result<(), CircuitError> {
     let mut b = LocalBuilder::<f64>::default();
