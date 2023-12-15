@@ -1,9 +1,11 @@
 Running Examples in QuantumTimeSandwich 🥪
 
-Welcome to the practical guide for QuantumTimeSandwich, your gateway to exploring the quantum-cryptographic universe! 🌌
+Welcome to the practical guide for QuantumTimeSandwich  🌌
+
 Overview
 
 QuantumTimeSandwich includes a variety of examples that demonstrate the capabilities of the platform. These examples cover a range of topics from basic quantum simulations to intricate cryptographic protocols.
+
 Getting Started 🚀
 
 Before running the examples, ensure you've cloned the repository and installed the necessary dependencies:
@@ -39,11 +41,6 @@ Currently, the GUI component of QuantumTimeSandwich is under development. Runnin
 Need Help?
 
 If you encounter any issues or need further assistance, feel free to open an issue on our GitHub repository.
-Contribute and Collaborate 🤝
 
-Your contributions make QuantumTimeSandwich better! Whether it's improving the codebase, adding new examples, or sharing ideas, we welcome your involvement.
-License 📜
 
-QuantumTimeSandwich is proudly open-source, licensed under the MIT License. We encourage you to use, adapt, and share our project, keeping the spirit of collaboration alive.
 
-Happy Quantum Computing! 🌌🥪🚀

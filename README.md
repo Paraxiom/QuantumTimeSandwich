@@ -1,8 +1,8 @@
 🌌 QuantumTimeSandwich 🥪
 
-Welcome to QuantumTimeSandwich, where the intriguing worlds of quantum computation and cryptography converge. 🧠
+Welcome to QuantumTimeSandwich
 
-QuantumTimeSandwich serves as a sophisticated simulation platform, integrating the complex realms of quantum algorithms with advanced cryptographic techniques. It's developed in collaboration with Cryptonique, aiming to push the boundaries of quantum computing and encryption.
+QuantumTimeSandwich simulation platform, integrating the complex realms of quantum algorithms with advanced cryptographic techniques. It's developed in collaboration with Cryptonique, aiming to push the boundaries of quantum computing and encryption.
 Core Features 🗝️
 
     Quantum Simulation: Experience the quantum realm with our advanced simulation engine, exploring qubits and superposition.
@@ -12,19 +12,32 @@ Core Features 🗝️
 
 Getting Started 🚀
 
-Embark on your quantum cryptographic journey:
-
     Clone the repository: git clone https://github.com/Paraxiom/QuantumTimeSandwich.git
     Install dependencies: cargo install
     Run simulations: cargo run --example your_choice
 
-Contribution and Collaboration 🤝
+Available example targets:
+    optimizer_example
+    deutch
+    inverse_example
+    bell_inequalities
+    cswap
+    dense_coding
+    simple
+    grovers
+    macro_example
+    basis_selection_demo
+    ring-lwe-demo
+    bb84_aes_integration
+    lwe-demo
+    lattice_crypto_demo
+    main
+    eavesdropping_demo
+    bb84_simulation
+    noise_simulation
 
-As an open-source initiative, QuantumTimeSandwich thrives on community involvement. We invite contributions of code, ideas, and expertise:
-
-    Contribute: Share your improvements through pull requests or open issues for suggestions and discussions.
-    Collaborate: Join our community for lively discussions and collaborations in this rapidly evolving field.
 
 License 📜
 
-QuantumTimeSandwich is released under the MIT License. You are free to use, modify, and distribute the software, provided that proper credit is given.
+QuantumTimeSandwich was written with https://github.com/Renmusxd/RustQIP
+which is released under the MIT License. You are free to use, modify, and distribute the software, provided that proper credit is given.
