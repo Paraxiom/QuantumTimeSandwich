@@ -1,42 +1,45 @@
-Unit Circle State Machine (UCSM) Documentation
-Overview
+# Unit Circle State Machine (UCSM) Documentation
+
+## Overview
 
 The Unit Circle State Machine (UCSM) is a unique component of the QuantumTimeSandwich project. It offers an innovative approach to visualizing and managing quantum states on the unit circle. This model simplifies the representation of complex quantum states and operations, making them more accessible and understandable, especially for educational purposes.
-Goals of UCSM
+
+## Goals of UCSM
 
 The primary goals of the UCSM are:
 
-    Simplification of Quantum Concepts: Translating complex quantum mechanics into a more digestible format, leveraging the unit circle representation.
-    Visualization of State Transitions: Providing a clear visual representation of quantum states and their evolution over time.
-    Interactive Learning Tool: Serving as an interactive platform for users to experiment with quantum states and understand the effects of various quantum operations.
-    Integration with Quantum Simulations: Enhancing the QuantumTimeSandwich's simulation capabilities by providing a novel way to observe and analyze quantum state changes.
+- **Simplification of Quantum Concepts**: Translating complex quantum mechanics into a more digestible format, leveraging the unit circle representation.
+- **Visualization of State Transitions**: Providing a clear visual representation of quantum states and their evolution over time.
+- **Interactive Learning Tool**: Serving as an interactive platform for users to experiment with quantum states and understand the effects of various quantum operations.
+- **Integration with Quantum Simulations**: Enhancing the QuantumTimeSandwich's simulation capabilities by providing a novel way to observe and analyze quantum state changes.
 
-Core Components
-UnitCircleState
+## Core Components
 
-    Represents a quantum state on the unit circle.
-    States include Initial, Measurement, Entanglement, ErrorCorrection, and Final.
+### UnitCircleState
 
-GateType
+- Represents a quantum state on the unit circle.
+- States include Initial, Measurement, Entanglement, ErrorCorrection, and Final.
 
-    Enumerates various quantum gates such as PauliX, PauliY, PauliZ, Hadamard, and CNOT.
-    Used to apply specific quantum gates to the current state.
+### GateType
 
-RotationGate
+- Enumerates various quantum gates such as PauliX, PauliY, PauliZ, Hadamard, and CNOT.
+- Used to apply specific quantum gates to the current state.
 
-    Responsible for applying a rotation to the quantum state on the unit circle.
-    Utilizes complex numbers to represent the rotation.
+### RotationGate
 
-Operations
+- Responsible for applying a rotation to the quantum state on the unit circle.
+- Utilizes complex numbers to represent the rotation.
 
-    Defines a set of quantum operations that can be applied to the state.
-    Includes applying gates, measurements, entanglements, and error corrections.
+### Operations
 
-Functionality
-Initialization
+- Defines a set of quantum operations that can be applied to the state.
+- Includes applying gates, measurements, entanglements, and error corrections.
 
-rust
+## Functionality
 
+### Initialization
+
+```rust
 let mut ucsm = UnitCircleStateMachine::new();
 
 Initializes a new instance of the UCSM with an initial quantum state.
