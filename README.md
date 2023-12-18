@@ -1,8 +1,9 @@
-#QuantumTimeSandwich
-##Overview
+# QuantumTimeSandwich
+## Overview
 
-####QuantumTimeSandwich is a comprehensive simulation platform integrating advanced quantum algorithms with cryptographic techniques. Developed in collaboration with Cryptonique, it aims to advance the fields of quantum computing and encryption.
-###Project Structure
+QuantumTimeSandwich is a comprehensive simulation platform integrating advanced quantum algorithms with cryptographic techniques. Developed in collaboration with Cryptonique, it aims to advance the fields of quantum computing and encryption.
+
+### Project Structure
 
 The QuantumTimeSandwich project consists of multiple subdirectories, each representing a separate crate with its own set of functionalities, examples, tests, and benchmarks.
 1. BB84
