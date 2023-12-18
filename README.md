@@ -14,13 +14,13 @@ cutting-edge simulation platform 🚀 that merges advanced quantum algorithms wi
 
 
 ## Install
-'''
+```
 git clone https://github.com/Paraxiom/QuantumTimeSandwich.git
 cd QuantumTimeSandwich/[subdirectory]
 cargo build
 cargo test
 cargo bench
-'''
+```
 
 
 
