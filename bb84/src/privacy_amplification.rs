@@ -45,7 +45,7 @@ fn toeplitz_hash(shared_key: Vec<bool>, toeplitz_matrix: Vec<Vec<bool>>) -> Vec<
 }
 
 // Usage in privacy amplification
-fn apply_privacy_amplification(shared_key: Vec<bool>) -> Vec<bool> {
+pub fn apply_privacy_amplification(shared_key: Vec<bool>) -> Vec<bool> {
     let toeplitz_matrix = generate_random_toeplitz_matrix(); // Implement this function
     toeplitz_hash(shared_key, toeplitz_matrix)
 }

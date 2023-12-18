@@ -7,43 +7,73 @@ use QuantumTimeSandwich::builder_traits::MeasurementBuilder;
 use QuantumTimeSandwich::prelude::LocalBuilder;
 use QuantumTimeSandwich::*;
 
-pub fn generate_bb84_state() -> BB84State {
-    let _basis = Basis::random(); // Assuming Basis::random() is still relevant
-    let value = random_bit(); // Assuming this returns a boolean
+pub fn generate_bb84_state(bit: bool, basis: MeasurementBasis) -> BB84State {
+    match basis {
+        MeasurementBasis::Basis1 => {
+            // Rectilinear basis (|0> and |1>)
+            if bit {
+                BB84State::QubitOne // Represents the |1> state
+            } else {
+                BB84State::QubitZero // Represents the |0> state
+            }
+        }
+        MeasurementBasis::Basis2 => {
+            // Diagonal basis (|+> and |->)
+            if bit {
+                BB84State::QubitPlus // Represents the |+> state
+            } else {
+                BB84State::QubitMinus // Represents the |-> state
+            }
+        }
+    }
+}
 
-    // Decide which state to return based on the value of 'value'
-    match value {
-        false => BB84State::QubitZero,
-        true => BB84State::QubitOne,
+pub fn generate_bb84_state_with_basis(bit: bool, basis: MeasurementBasis) -> BB84State {
+    match (bit, basis) {
+        (false, MeasurementBasis::Basis1) => BB84State::QubitZero,
+        (true, MeasurementBasis::Basis1) => BB84State::QubitOne,
+        // Add specific logic for Basis2 or other bases if necessary
+        (false, MeasurementBasis::Basis2) => BB84State::QubitZero, // Example logic
+        (true, MeasurementBasis::Basis2) => BB84State::QubitOne,   // Example logic
+        // You can add more cases or a default case here
+        _ => panic!("Invalid bit and basis combination"), // or some default state
     }
 }
 
 pub fn measure_bb84_state(state: BB84State, basis: MeasurementBasis) -> bool {
-    println!("Before measurement: State: {:?}, Basis: {:?}", state, basis);
-
-    match basis {
-        MeasurementBasis::Basis1 => {
-            // In Basis1, we assume deterministic outcomes based on the state
-            match state {
-                BB84State::QubitZero => true,
-                BB84State::QubitOne => false,
-            }
-        }
-        MeasurementBasis::Basis2 => {
-            // In Basis2, outcomes are probabilistic
-            // Simulate this by randomly choosing a measurement outcome
-            let mut rng = rand::thread_rng();
-            rng.gen() // Randomly returns true or false
-        }
+    match (state, basis) {
+        (BB84State::QubitZero, MeasurementBasis::Basis1) => false,
+        (BB84State::QubitOne, MeasurementBasis::Basis1) => true,
+        (BB84State::QubitZero, MeasurementBasis::Basis2) => {
+            // Probabilistic outcome for rectilinear basis states measured in diagonal basis
+            rand::random()
+        },
+        (BB84State::QubitOne, MeasurementBasis::Basis2) => {
+            // Probabilistic outcome for rectilinear basis states measured in diagonal basis
+            rand::random()
+        },
+        (BB84State::QubitPlus, MeasurementBasis::Basis1) => {
+            // Probabilistic outcome for diagonal basis states measured in rectilinear basis
+            rand::random()
+        },
+        (BB84State::QubitMinus, MeasurementBasis::Basis1) => {
+            // Probabilistic outcome for diagonal basis states measured in rectilinear basis
+            rand::random()
+        },
+        (BB84State::QubitPlus, MeasurementBasis::Basis2) => true,
+        (BB84State::QubitMinus, MeasurementBasis::Basis2) => false,
+        _ => panic!("Unexpected state and basis combination"),
     }
 }
 
-// This function simulates the effect of noise flipping the state.
+
+
 pub fn flip_state(state: BB84State) -> BB84State {
-    // Logic to flip the state. Assuming a simple binary flip for demonstration.
     match state {
         BB84State::QubitZero => BB84State::QubitOne,
         BB84State::QubitOne => BB84State::QubitZero,
+        BB84State::QubitPlus => BB84State::QubitMinus,
+        BB84State::QubitMinus => BB84State::QubitPlus,
     }
 }
 
@@ -81,8 +111,8 @@ pub fn bob_step(state: BB84State, alice_message: (bool, MeasurementBasis)) -> bo
 }
 
 pub fn main() -> Result<(), CircuitError> {
-    let alice_state = generate_bb84_state();
-    let bob_state = generate_bb84_state();
+    let alice_state = generate_bb84_state(random_bit(), MeasurementBasis::random());
+    let bob_state = generate_bb84_state(random_bit(), MeasurementBasis::random());
 
     let alice_message = alice_step()?;
     let bob_message = bob_step(bob_state, alice_message);

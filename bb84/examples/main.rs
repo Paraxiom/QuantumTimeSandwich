@@ -6,7 +6,7 @@ fn main() {
     println!("BB84 Protocol Full Demonstration");
 
     // Alice generates a quantum state and chooses a basis
-    let alice_state = generate_bb84_state();
+    let alice_state = generate_bb84_state(random_bit(), MeasurementBasis::random());
     let alice_basis = MeasurementBasis::random();
 
     // Alice performs her step of the protocol

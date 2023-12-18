@@ -7,7 +7,7 @@ fn simulate_noise_effect() {
     println!("BB84 Protocol with Noise Simulation");
 
     // Alice generates a quantum state and chooses a basis to send to Bob
-    let alice_state = generate_bb84_state();
+    let alice_state = generate_bb84_state(random_bit(), MeasurementBasis::random());
     let alice_basis = MeasurementBasis::random();
 
     // Simulate noise affecting the state during transmission

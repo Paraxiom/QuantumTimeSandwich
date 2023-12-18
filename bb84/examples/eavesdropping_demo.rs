@@ -5,7 +5,7 @@ fn simulate_eavesdropping() {
     println!("BB84 Eavesdropping Simulation");
 
     // Alice generates a quantum state and chooses a basis to send to Bob
-    let alice_state = generate_bb84_state();
+    let alice_state = generate_bb84_state(random_bit(), MeasurementBasis::random());
     let alice_basis = MeasurementBasis::random();
 
     // Eavesdropper (Eve) intercepts and measures the quantum state

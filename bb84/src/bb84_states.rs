@@ -6,7 +6,8 @@ use rand::Rng;
 pub enum BB84State {
     QubitZero,
     QubitOne,
-    // ... other states
+    QubitPlus,  // Represents the |+> state
+    QubitMinus, // Represents the |-> state
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
