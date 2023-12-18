@@ -39,48 +39,47 @@ The primary goals of the UCSM are:
 
 ### Initialization
 
-```rust
+```
 let mut ucsm = UnitCircleStateMachine::new();
-
+```
 Initializes a new instance of the UCSM with an initial quantum state.
-Applying Gates
+### Applying Gates
 
-rust
-
+```
 ucsm.apply_gate(GateType::PauliX);
-
-Applies a specified quantum gate to the current state, causing a transformation on the unit circle.
+```
+### Applies a specified quantum gate to the current state, causing a transformation on the unit circle.
 Handling Protocols
 
-rust
 
+```
 ucsm.apply_protocol(&protocol);
+```
 
 Processes a series of gates defined in a protocol, applying each gate to the current state sequentially.
-Measurements and Entanglement
+### Measurements and Entanglement
 
-rust
+```
 
 ucsm.apply_measurement(true);
 ucsm.apply_entanglement();
-
+```
 Handles measurement and entanglement operations, transitioning the state machine to respective states.
-Finalization
+### Finalization
 
-rust
-
+```
 ucsm.finalize();
-
+```
 Transitions the UCSM to its final state, concluding the quantum operations.
-Example Usage
+### Example Usage
 
-In a typical scenario, UCSM can be used to simulate a series of quantum operations:
+#### In a typical scenario, UCSM can be used to simulate a series of quantum operations:
 
     Initialize the state machine.
     Apply various quantum gates and operations.
     Observe the transitions and final state.
     Utilize visualizations to understand the impact of each operation.
 
-Integration with QuantumTimeSandwich
+#### Integration with QuantumTimeSandwich
 
 UCSM is integrated into QuantumTimeSandwich to enhance the quantum simulation experience. It provides a unique perspective on quantum mechanics, making it an invaluable tool for both learners and researchers in the field of quantum computing.
