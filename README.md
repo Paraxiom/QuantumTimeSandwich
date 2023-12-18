@@ -2,7 +2,8 @@
 
 #### QuantumTimeSandwich  
 cutting-edge simulation platform 🚀 that merges advanced quantum algorithms with cryptographic techniques. Developed alongside Cryptonique, its goal is to propel the fields of quantum computing and encryption into new frontiers.
-![tongue](https://github.com/Paraxiom/QuantumTimeSandwich/assets/6019499/44f6af10-d75b-4519-94fd-0f4f74df577d)
+<img src="https://github.com/Paraxiom/QuantumTimeSandwich/assets/6019499/44f6af10-d75b-4519-94fd-0f4f74df577d" width="300">
+
 
 
 #### Delicious
