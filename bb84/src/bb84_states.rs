@@ -10,6 +10,12 @@ pub enum BB84State {
     QubitMinus, // Represents the |-> state
 }
 
+impl Default for BB84State {
+    fn default() -> Self {
+        BB84State::QubitZero // Or any other default state you choose
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum MeasurementBasis {
     Basis1,

@@ -6,6 +6,8 @@ service QuantumEncryptionService {
     rpc GenerateKey(GenerateKeyRequest) returns (GenerateKeyResponse);
     rpc EncryptMessage(EncryptionRequest) returns (EncryptionResponse);
     rpc DecryptMessage(DecryptionRequest) returns (DecryptionResponse);
+    rpc PrepareQuantumState(PrepareStateRequest) returns (PrepareStateResponse);
+    rpc MeasureQuantumState(MeasureStateRequest) returns (MeasureStateResponse);
 }
 
 message GenerateKeyRequest {
@@ -30,4 +32,20 @@ message DecryptionRequest {
 
 message DecryptionResponse {
     string message = 1;
+}
+
+message PrepareStateRequest {
+    // Define the fields needed for the state preparation request
+}
+
+message PrepareStateResponse {
+    // Define the fields for the response (e.g., success status, error message)
+}
+
+message MeasureStateRequest {
+    // Define the fields needed for the state measurement request
+}
+
+message MeasureStateResponse {
+    // Define the fields for the response (e.g., success status, error message)
 }
