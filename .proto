@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package quantumtimesandwich;
+
+// The quantum-resistant encryption service definition.
+service QuantumEncryptionService {
+  // Encrypts a message using a quantum-resistant algorithm.
+  rpc EncryptMessage(EncryptionRequest) returns (EncryptionResponse);
+
+  // Decrypts a message using a quantum-resistant algorithm.
+  rpc DecryptMessage(DecryptionRequest) returns (DecryptionResponse);
+}
+
+// The request message containing the data to be encrypted.
+message EncryptionRequest {
+  string message = 1;
+}
+
+// The response message containing the encrypted data.
+message EncryptionResponse {
+  string encryptedMessage = 1;
+}
+
+// The request message for decryption.
+message DecryptionRequest {
+  string encryptedMessage = 1;
+}
+
+// The response message containing the decrypted data.
+message DecryptionResponse {
+  string message = 1;
+}
+
