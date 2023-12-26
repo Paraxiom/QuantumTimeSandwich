@@ -1,0 +1,6 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "./QuantumTimeSandwich/grpc/Cargo.toml",
+        "./QuantumTimeSandwich/grpc/Cargo.toml"
+    ]
+}

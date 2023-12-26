@@ -7,7 +7,7 @@ pub mod quantumtimesandwich {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = QuantumEncryptionServiceClient::connect("http://[::1]:50051").await?;
+    let mut client = QuantumEncryptionServiceClient::connect("http://127.0.0.1:50051").await?;
 
     // Encrypt a message
     let request = tonic::Request::new(EncryptionRequest {
