@@ -1,6 +1,6 @@
+use log::{error, info};
 use quantumtimesandwich::quantum_encryption_service_client::QuantumEncryptionServiceClient;
-use quantumtimesandwich::{EncryptionRequest, DecryptionRequest};
-
+use quantumtimesandwich::{DecryptionRequest, EncryptionRequest};
 pub mod quantumtimesandwich {
     tonic::include_proto!("quantumtimesandwich");
 }
@@ -14,7 +14,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         message: "Hello, QuantumTimeSandwich!".into(),
     });
     let response = client.encrypt_message(request).await?;
-    println!("Encrypted Message: {:?}", response.into_inner().encrypted_message);
+    println!(
+        "Encrypted Message: {:?}",
+        response.into_inner().encrypted_message
+    );
 
     // Decrypt a message
     let request = tonic::Request::new(DecryptionRequest {
