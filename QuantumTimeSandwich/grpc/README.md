@@ -50,7 +50,7 @@ This will start the server on the default configured port (e.g., `0.0.0.0:50051`
 Contributions to the QuantumTimeSandwich gRPC Server are welcome. Please ensure to follow the project's coding standards and submit pull requests for any new features or bug fixes.
 
 ## License
-Specify the license under which the project is released (e.g., MIT, GPL-3.0).
+ MIT
 
 ## Contact
 - Lead Developer: Sylvain Cormier   
