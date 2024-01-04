@@ -6,6 +6,10 @@
         "./QuantumTimeSandwich/grpc/Cargo.toml",
         "./QuantumTimeSandwich/grpc/Cargo.toml",
         "./QuantumTimeSandwich/grpc/Cargo.toml",
-        "./QuantumTimeSandwich/grpc/Cargo.toml"
+        "./QuantumTimeSandwich/grpc/Cargo.toml",
+        "./QuantumTimeSandwich/Cargo.toml",
+        "./QuantumTimeSandwich/Cargo.toml",
+        "./QuantumTimeSandwich/Cargo.toml",
+        "./QuantumTimeSandwich/Cargo.toml"
     ]
 }
