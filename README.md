@@ -56,6 +56,11 @@ The QuantumTimeSandwich project is organized into multiple subdirectories. Each 
   cargo test
   cargo bench
 
+  - **GRPC:**
+  ```
+   cargo run  --bin quantum_time_sandwich_server
+   ```
+
 #### 2. 🧠 QuantumTimeSandwich Core
 
 - **Location:** `QuantumTimeSandwich/`
