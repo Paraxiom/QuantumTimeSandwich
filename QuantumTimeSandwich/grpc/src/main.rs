@@ -8,7 +8,7 @@ use crate::quantumtimesandwich::GetKeyRequest;
 use bb84::bb84_states::random_bit;
 use bb84::bb84_states::BB84State;
 use bb84::bb84_states::MeasurementBasis;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use oqs::kem::{Algorithm, Kem};
 use quantumtimesandwich::quantum_encryption_service_server::{
     QuantumEncryptionService, QuantumEncryptionServiceServer,
@@ -22,7 +22,10 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use tokio::sync::Mutex;
 use tonic::Code;
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::transport::{Server, Identity, ServerTlsConfig};
+use tonic::{Request, Response, Status};
+
+
 pub mod quantumtimesandwich {
     tonic::include_proto!("quantumtimesandwich");
 }
@@ -70,17 +73,20 @@ impl QuantumStates {
 
 impl MyQuantumEncryptionService {
     async fn generate_key_for_session(&self, session_id: String) -> Result<(), Status> {
+        debug!("Generating key for session: {}", session_id);
         let mut sessions = self.sessions.write().unwrap();
         if let Some(session) = sessions.get_mut(&session_id) {
             if session.alice_ready && session.bob_ready {
-                // Example key generation (replace with actual QKD derived key)
+                debug!("Both Alice and Bob are ready. Generating key.");
                 let key = "example_generated_key".to_string();
                 session.key = Some(key);
                 Ok(())
             } else {
+                error!("Session not found for measuring quantum state: {}", session_id);
                 Err(Status::new(Code::Unavailable, "Both parties are not ready"))
             }
         } else {
+            error!("Session not found: {}", session_id);
             Err(Status::new(Code::NotFound, "Session not found"))
         }
     }
@@ -106,7 +112,9 @@ impl QuantumEncryptionService for MyQuantumEncryptionService {
         request: Request<EncryptionRequest>,
     ) -> Result<Response<EncryptionResponse>, Status> {
         let message = request.into_inner().message;
+        println!("Encrypting message: {}", message);
         info!("Received encryption request: {}", message);
+        println!("Received encryption request");
         // Implement encryption logic here
         let encrypted_message = format!("encrypted_{}", message);
         debug!("Encrypted message: {}", encrypted_message);
@@ -130,7 +138,7 @@ impl QuantumEncryptionService for MyQuantumEncryptionService {
         request: Request<GenerateKeyRequest>,
     ) -> Result<Response<GenerateKeyResponse>, Status> {
         let session_id = request.into_inner().session_id;
-
+        debug!("Generating key for session: {}", session_id);
         let (alice_ready, bob_ready) = {
             let sessions = self.sessions.read().unwrap();
             if let Some(session) = sessions.get(&session_id) {
@@ -181,19 +189,22 @@ impl QuantumEncryptionService for MyQuantumEncryptionService {
         request: Request<MeasureStateRequest>,
     ) -> Result<Response<MeasureStateResponse>, Status> {
         let session_id = request.into_inner().session_id;
-
+        debug!("Measuring quantum state for session: {}", session_id);
         let alice_ready = {
             let mut sessions = self.sessions.write().unwrap();
             if let Some(session) = sessions.get_mut(&session_id) {
                 session.bob_ready = true;
                 session.alice_ready
             } else {
+                error!("Session not found for measuring quantum state: {}", session_id);
                 return Err(Status::new(Code::NotFound, "Session not found"));
             }
         }; // Lock is dropped here
 
         if alice_ready {
-            self.generate_key_for_session(session_id).await?;
+            debug!("Alice is ready for session: {}", session_id);
+            self.generate_key_for_session(session_id.clone()).await?;
+            info!("Key generation initiated for measuring quantum state in session: {}", session_id);
         }
 
         Ok(Response::new(MeasureStateResponse {
@@ -223,21 +234,32 @@ impl QuantumEncryptionService for MyQuantumEncryptionService {
     
 }
 
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Initializing the server...");
+    
     env_logger::init(); // Initialize the logger
-    let addr = "0.0.0.0:50051".parse()?;
+    let cert = tokio::fs::read("newserver.pem").await?;
+    let key = tokio::fs::read("newserver.key").await?;
+    println!("Certificates read successfully");
+
+    
+    let server_identity = tonic::transport::Identity::from_pem(&cert, &key);
+    let tls_config = tonic::transport::ServerTlsConfig::new().identity(server_identity);
+    println!("TLS configuration set");
     let service = MyQuantumEncryptionService::default();
+let addr = "127.0.0.1:50052".parse()?;
 
-    println!("Starting gRPC server on {}", addr);
-    info!("gRPC server starting on {}", addr);
-    if let Err(e) = Server::builder()
-        .add_service(QuantumEncryptionServiceServer::new(service))
-        .serve(addr)
-        .await
-    {
-        error!("Server failed: {}", e);
-    }
+println!("Starting gRPC server with TLS on {}", addr);
 
+Server::builder()
+    .tls_config(tls_config)?
+    .add_service(QuantumEncryptionServiceServer::new(service))
+    .serve(addr)
+    .await?;
+println!("Server shut down");
     Ok(())
+
+
 }

@@ -41,6 +41,11 @@ The QuantumTimeSandwich project is organized into multiple subdirectories. Each 
   cargo run --example [example_name]
   cargo test
   cargo bench
+```
+  - **GRPC:**
+  ```
+   RUST_LOG=debug cargo run  --bin quantum_time_sandwich_server
+   ```
 
 #### 2. 🧠 QuantumTimeSandwich Core
 

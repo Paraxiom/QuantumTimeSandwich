@@ -3,7 +3,8 @@ name = "quantum_time_sandwich_grpc"
 version = "0.1.0"
 edition = "2021"
 [dependencies]
-tonic = "0.10.2"  
+tonic = { version = "0.10.2", features = ["tls"] }
+native-tls = "0.2.11" 
 prost = "0.12.3" 
 tokio = { version = "1.0", features = ["full"] }
 hex = "0.4" 

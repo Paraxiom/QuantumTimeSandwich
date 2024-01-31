@@ -12,6 +12,7 @@ use num_traits::{One, ToPrimitive, Zero};
 use std::f64::consts::PI;
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroUsize;
+
 use std::ops::Neg;
 use unit_circle_state_machine::unit_circle_states::GateType;
 use unit_circle_state_machine::unit_circle_states::RotationGate;
