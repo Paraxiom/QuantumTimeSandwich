@@ -1,9 +1,7 @@
 # 🌌 QuantumTimeSandwich Overview 🥪
 
 
-#### QuantumTimeSandwich  
-cutting-edge simulation platform 🚀 that merges advanced quantum algorithms with cryptographic techniques. Developed alongside Cryptonique, its goal is to propel the fields of quantum computing and encryption into new frontiers.
-
+Simulation platform 🚀 that merges advanced quantum algorithms with cryptographic techniques.
 
 ## Install
 ```
