@@ -1,0 +1,266 @@
+commit c07141222abe583c3179ba1c7349af43ac7bf9b0
+Merge: 5e2d903 2eb9a4b
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Wed Jan 31 12:38:16 2024 -0500
+
+    Merge branch 'bb84_grpc_tls' of github.com:Paraxiom/QuantumTimeSandwich into bb84_grpc_tls
+
+commit 5e2d903bf67e8f018d5dab1f88587b0ee75c8479
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Wed Jan 31 12:37:52 2024 -0500
+
+    merge
+
+commit 8af219740fa541be7b4357a62714defccbe01774
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Wed Jan 31 12:24:29 2024 -0500
+
+    small mods
+
+commit 2eb9a4bf760678dc58f2130aa871d0279f5c9101
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Wed Jan 17 11:30:20 2024 -0500
+
+    TLS
+
+commit bcb77525d2da7c3f5311f9b10790f0aece05729f
+Author: Silvereau <sylvaincormier@protonmail.com>
+Date:   Fri Jan 12 08:10:45 2024 -0500
+
+    Update README.md
+
+commit 2ce7fb80b0007edcd563fac21df5b967719b2b0e
+Author: Silvereau <sylvaincormier@protonmail.com>
+Date:   Fri Jan 12 07:59:23 2024 -0500
+
+    Update README.md
+
+commit 3bce97c1201020202c2618c2a10a46e03b561ce0
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Thu Jan 11 09:14:38 2024 -0500
+
+    basic grpc
+
+commit 3d728e69ea678f849ce3aa39cbc7d04ade2337cf
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Thu Jan 4 07:40:12 2024 -0500
+
+    oqs_kex_rpc
+
+commit 4ebb4484348069bda0afeb00091359805a14f829
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Thu Dec 28 09:57:55 2023 -0500
+
+    doc
+
+commit cc0252c7c4cd5e67c84d5123e91efc41fdb3bf62
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Thu Dec 28 06:52:02 2023 -0500
+
+    README
+
+commit 0add6269bce452faca0c431d76096284891a3a8f
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Wed Dec 27 16:02:48 2023 -0500
+
+    grpc bb84
+
+commit 6dc248efb7e5b312a6d30cbad278fd96d1ceb405
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Tue Dec 26 16:40:04 2023 -0500
+
+    bb84 grpc
+
+commit a47c628b4854e9e68f18454b89e49a26a50de8d5
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Tue Dec 26 12:52:36 2023 -0500
+
+    grpc
+
+commit 2d1e31e13a12363b9051ed1068d68ff1871cf53f
+Merge: 3fa5bba 6b7754e
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Tue Dec 26 08:57:17 2023 -0500
+
+    Merge branch 'main' of github.com:Paraxiom/QuantumTimeSandwich
+
+commit 3fa5bba19aaae3a544ffb042e05e32d8f49fa875
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Tue Dec 26 08:56:56 2023 -0500
+
+    grpc berginnings
+
+commit 6b7754e88aab141aacb9af99019c0f18a4da3455
+Author: Silvereau <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 18:42:38 2023 -0500
+
+    Update README.md
+
+commit 604401f554acb8ea397f13d3e74feb65ca39a70f
+Author: Silvereau <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 18:42:21 2023 -0500
+
+    Update README.md
+
+commit e5dd5ef89251656c6bbac561f08734cec40d5cc7
+Author: Silvereau <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 18:41:57 2023 -0500
+
+    Update README.md
+
+commit da1a7cc765f636195cc7b625dd1ec5a3aad2a461
+Author: Silvereau <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 16:09:27 2023 -0500
+
+    Update README.md
+
+commit 666cabb8480e1c2dfe2deb0e4a1cebc379063ff9
+Author: Silvereau <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 16:08:30 2023 -0500
+
+    Update README.md
+
+commit fce8ec41aeeb2fb1d7cbf65d1a52707857e810dd
+Author: Silvereau <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 16:06:41 2023 -0500
+
+    Update README.md
+
+commit d7bb26b49ba73b472a602ff21221d8b1f323d960
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 15:54:33 2023 -0500
+
+    doc
+
+commit 210f79558ac0f7d043d4a8d64c7906c586f41ded
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 15:48:55 2023 -0500
+
+    doc
+
+commit a39fda44efd81528f86c38d83a2e22ca5bf4ace8
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 15:47:10 2023 -0500
+
+    doc
+
+commit 58035c49e74b0fb82179464df2bd71a4afc97b1e
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 15:45:18 2023 -0500
+
+    doc
+
+commit f7b8e1b3b5faa3b01d2d3592a559d11cf0523b28
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 15:44:18 2023 -0500
+
+    doc
+
+commit 25f701af80c53bd6155189b80385fabb027aab8d
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 15:41:52 2023 -0500
+
+    doc
+
+commit e2eaedd3d3104921a56c70d789043e8a0dfaf872
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 15:40:53 2023 -0500
+
+    doc
+
+commit 78b67d8d26598fc608cd7f2aafd8f5cca855d351
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 15:34:10 2023 -0500
+
+    doc
+
+commit 370cdd3878e25f92e68561229807220802a7d3b1
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 15:26:03 2023 -0500
+
+    doc
+
+commit b50128bbc27e7281dfbe4759ce96af9b029308ac
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 15:24:34 2023 -0500
+
+    doc
+
+commit 9641ad566f9820bd4fa53ccf11e58d57102ade6e
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 15:16:06 2023 -0500
+
+    doc
+
+commit 17a1863d16244ad4dc43ed29b995d4f048a0f2a7
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 14:36:06 2023 -0500
+
+    test
+
+commit cd28c2944c865aada330bc8a5500dc55ca7e836f
+Merge: 47a5a62 409691c
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 07:28:17 2023 -0500
+
+    Merge branch 'main' of github.com:Paraxiom/QuantumTimeSandwich
+
+commit 47a5a62c18dcb478d581df28b3f5e005169a4136
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Mon Dec 18 07:27:21 2023 -0500
+
+    error cortrection and privacy amplification
+
+commit 409691ca898fe28efcf92ea36a03361b4518c4fa
+Author: Silvereau <sylvaincormier@protonmail.com>
+Date:   Sun Dec 17 18:15:39 2023 -0500
+
+    Update UCSM.md
+
+commit c64a6b47c684cdf48fff52a1a3daedddaa9e9bfa
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Sun Dec 17 18:11:08 2023 -0500
+
+    doc
+
+commit e15d171ce24c24290c504425e750ba6818864696
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Fri Dec 15 12:25:34 2023 -0500
+
+    doc
+
+commit c06818dcbba37316014d40c174e6830c523938b6
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Fri Dec 15 11:49:55 2023 -0500
+
+    doc
+
+commit af2b9c9064a17d3892a06f682fe83c24d6d37029
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Fri Dec 15 11:40:03 2023 -0500
+
+    doc
+
+commit 81921e13f09bcd9c09f630f8914099b0c566bea3
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Fri Dec 15 09:09:37 2023 -0500
+
+    UI
+
+commit ad5143e5ee3dc5deda73c57b302021c73affbfcc
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Thu Dec 14 19:43:25 2023 -0500
+
+    doc
+
+commit d8ca45d892c4322f6faab66e71881ffdbaead985
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Thu Dec 14 19:40:30 2023 -0500
+
+    doc
+
+commit 2c177b78d63c2f5d6e0368d8ce19ecba9603da17
+Author: Sylvain Cormier <sylvaincormier@protonmail.com>
+Date:   Thu Dec 14 18:36:49 2023 -0500
+
+    Initial commit
