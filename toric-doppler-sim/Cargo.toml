@@ -8,7 +8,7 @@ description = "Combined Doppler-cooling → toric-code simulation with native eg
 [dependencies]
 toric-code-sim = { path = "../toric-code-sim" }
 tonnetz-coherence-sim = { path = "../tonnetz-coherence-sim" }
-eframe = { version = "0.31", default-features = false, features = ["wgpu"] }
+eframe = { version = "0.31", default-features = false, features = ["wgpu", "default_fonts"] }
 egui_plot = "0.31"
 rand = "0.8"
 crossbeam-channel = "0.5"
