@@ -1,0 +1,16 @@
+[package]
+name = "toric-code-sim"
+version = "0.1.0"
+edition = "2021"
+authors = ["Paraxiom <sylvain@paraxiom.org>"]
+description = "Kitaev toric code simulator — Pauli frame tracking of anyonic excitations and braiding on T²"
+
+[dependencies]
+rand = "0.8"
+
+[dev-dependencies]
+topological-coherence = { version = "0.1", path = "../../topological-coherence" }
+
+[[example]]
+name = "anyon_braiding"
+path = "examples/anyon_braiding.rs"
