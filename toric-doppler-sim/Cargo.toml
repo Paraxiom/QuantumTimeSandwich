@@ -1,0 +1,14 @@
+[package]
+name = "toric-doppler-sim"
+version = "0.2.0"
+edition = "2021"
+authors = ["Sylvain Cormier <sylvain@paraxiom.org>"]
+description = "Combined Doppler-cooling → toric-code simulation with native egui visualization (wgpu/Metal)"
+
+[dependencies]
+toric-code-sim = { path = "../toric-code-sim" }
+tonnetz-coherence-sim = { path = "../tonnetz-coherence-sim" }
+eframe = { version = "0.31", default-features = false, features = ["wgpu"] }
+egui_plot = "0.31"
+rand = "0.8"
+crossbeam-channel = "0.5"
