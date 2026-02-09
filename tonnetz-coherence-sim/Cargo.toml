@@ -1,0 +1,19 @@
+[package]
+name = "tonnetz-coherence-sim"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+authors = ["Sylvain Cormier <sylvain@paraxiom.org>"]
+description = "Toroidal coherence simulation — numerical validation of √N scaling on quantum hardware via Tonnetz topology and QuantumTimeSandwich circuit simulator"
+license = "MIT"
+repository = "https://github.com/Paraxiom/QuantumTimeSandwich"
+documentation = "https://docs.rs/tonnetz-coherence-sim"
+readme = "README.md"
+keywords = ["quantum", "simulation", "tonnetz", "coherence", "topology"]
+categories = ["science", "simulation"]
+
+[dependencies]
+QuantumTimeSandwich = { version = "1.4", path = "../QuantumTimeSandwich" }
+topological-coherence = { version = "0.1", path = "../../topological-coherence" }
+num-complex = "0.4"
+rand = "0.8"

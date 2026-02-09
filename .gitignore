@@ -2,3 +2,5 @@ QuantumTimeSandwich/Cargo.lock
 QuantumTimeSandwich/target/
 bb84/Cargo.lock
 bb84/target/
+tonnetz-coherence-sim/Cargo.lock
+tonnetz-coherence-sim/target/
