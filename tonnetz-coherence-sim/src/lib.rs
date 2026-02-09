@@ -31,10 +31,12 @@ pub mod noise;
 pub mod topology;
 pub mod coherence;
 pub mod simulation;
+pub mod torus;
 
 pub mod prelude {
     pub use crate::noise::*;
     pub use crate::topology::*;
     pub use crate::coherence::*;
     pub use crate::simulation::*;
+    pub use crate::torus::*;
 }
