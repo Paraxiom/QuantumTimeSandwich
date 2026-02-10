@@ -95,6 +95,43 @@ pub fn sweep_threshold(sizes: &[usize], error_rates: &[f64], trials: usize) -> C
     }
 }
 
+/// Recompute syndromes from a snapshot's error arrays (for interactive edits).
+///
+/// Returns (e_particles, m_particles) where:
+/// - e-particle at vertex (r,c) if Z-parity of 4 adjacent edges is odd
+/// - m-particle at plaquette (r,c) if X-parity of 4 boundary edges is odd
+pub fn recompute_syndromes(snap: &LatticeSnapshot) -> (Vec<(usize, usize)>, Vec<(usize, usize)>) {
+    let n = snap.n;
+    let mut e_particles = Vec::new();
+    let mut m_particles = Vec::new();
+
+    for r in 0..n {
+        for c in 0..n {
+            // Vertex syndrome: Z errors on 4 adjacent edges
+            let z = |idx: usize| snap.z_errors.get(idx).copied().unwrap_or(false);
+            let z_count = z(r * n + c) as u8           // h-edge right
+                + z(r * n + (c + n - 1) % n) as u8     // h-edge left
+                + z(n * n + r * n + c) as u8            // v-edge down
+                + z(n * n + ((r + n - 1) % n) * n + c) as u8; // v-edge up
+            if z_count % 2 == 1 {
+                e_particles.push((r, c));
+            }
+
+            // Plaquette syndrome: X errors on 4 boundary edges
+            let x = |idx: usize| snap.x_errors.get(idx).copied().unwrap_or(false);
+            let x_count = x(r * n + c) as u8           // h-edge top
+                + x(((r + 1) % n) * n + c) as u8       // h-edge bottom
+                + x(n * n + r * n + c) as u8            // v-edge left
+                + x(n * n + r * n + (c + 1) % n) as u8; // v-edge right
+            if x_count % 2 == 1 {
+                m_particles.push((r, c));
+            }
+        }
+    }
+
+    (e_particles, m_particles)
+}
+
 /// Quick single-size sweep for responsive UI.
 pub fn quick_sweep(n: usize, p_operating: f64, trials: usize) -> ChartData {
     let rates: Vec<f64> = (1..=20).map(|i| i as f64 * 0.01).collect();
