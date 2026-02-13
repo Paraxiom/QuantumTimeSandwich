@@ -48,3 +48,4 @@ pub mod coherence;
 pub mod toric_code;
 pub mod vacuum;
 pub mod engine;
+pub mod covariant;

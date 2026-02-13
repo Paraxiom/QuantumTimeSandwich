@@ -1,35 +1,34 @@
 //! Quantum vacuum physics on T²: Casimir energy, Unruh effect, dynamical Casimir.
 //!
+//! All formulas tuned to the **superconducting microwave cavity regime**:
+//! - Cavity size: L ~ 1–10 cm
+//! - Mode frequencies: ω ~ 1–100 GHz
+//! - Temperature: T ~ 10–50 mK (dilution refrigerator)
+//! - Quality factor: Q ~ 10⁸–10¹² (superconducting resonator)
+//! - Modulation: δL/L ~ 10⁻⁶–10⁻⁴ (SQUID or piezo boundary)
+//!
 //! # Casimir energy on T²
 //!
-//! A massless scalar field on T² (periods L₁ = L₂ = L) has vacuum energy
-//! modified by the periodic boundary conditions. The regularized Casimir
-//! energy density:
-//!
-//!   E_Casimir(L) = -(ℏc / L²) × C_T²
-//!
-//! where C_T² is computed from the Epstein zeta function on Z².
+//! E_Casimir(L) = -(ℏc / L²) × C_T²
+//! where C_T² is the Epstein zeta geometric factor.
 //!
 //! # Unruh effect
 //!
-//! An observer with proper acceleration a experiences thermal radiation:
-//!   T_U = ℏa / (2πck_B)
+//! T_U = ℏa / (2πck_B). On T², the spectral gap sets a_min below which
+//! Unruh radiation is exponentially suppressed.
 //!
-//! On discrete T², the spectral gap sets a minimum detectable acceleration:
-//!   a_min = 2πck_B × T_gap / ℏ
-//! where T_gap = ℏω_min / k_B and ω_min = 2πc√λ₁ / L.
+//! # Dynamical Casimir effect (perturbative regime)
 //!
-//! Below a_min, the toroidal geometry renders the vacuum "rigid" — the
-//! topological protection suppresses Unruh radiation at low accelerations.
+//! Correct perturbative formula (Moore 1970, Wilson et al. 2011):
+//!   Γ_mode = (δL × ω_n / c)² × Ω / (4π)
 //!
-//! # Dynamical Casimir effect
+//! Valid when δL × ω_n / c << 1. At L = 3 cm, δL/L = 10⁻⁵:
+//!   δL × ω_min / c ≈ 6×10⁻⁵  (well within perturbative regime)
 //!
-//! When the torus boundary oscillates at frequency Ω, photon pairs are
-//! produced from the vacuum. The production rate scales as:
-//!   Γ ~ (δL/L)² × (Ω/ω₁)² × ω₁
-//!
-//! Only modes above the spectral gap are excited — topological protection
-//! prevents vacuum noise at long wavelengths.
+//! References:
+//! - Moore (1970), J. Math. Phys. 11, 2679
+//! - Wilson et al. (2011), Nature 479, 376 (first experimental observation)
+//! - Dodonov (2010), Phys. Scr. 82, 038105 (review)
 
 use crate::torus::TorusLattice;
 use crate::units::*;
@@ -69,22 +68,35 @@ pub struct DynamicalCasimirResult {
     pub pair_rate: f64,
     /// Power output from vacuum radiation (W)
     pub power: f64,
-    /// Number of active modes (above spectral gap)
+    /// Number of active modes (in parametric resonance window)
     pub active_modes: usize,
     /// Total available modes
     pub total_modes: usize,
-    /// Topological suppression: fraction of modes protected
+    /// Topological suppression: fraction of modes below spectral gap
     pub protected_fraction: f64,
+    /// Perturbative parameter max(δL·ω/c) — must be << 1 for validity
+    pub perturbative_param: f64,
+}
+
+/// Thermal photon occupation number at temperature T.
+/// n_th(ω, T) = 1 / (exp(ℏω / k_B T) - 1)
+pub fn thermal_occupation(omega: f64, temperature: f64) -> f64 {
+    if temperature <= 0.0 || omega <= 0.0 {
+        return 0.0;
+    }
+    let x = HBAR * omega / (KB * temperature);
+    if x > 500.0 {
+        return 0.0; // avoid underflow
+    }
+    1.0 / (x.exp() - 1.0)
+}
+
+/// Average thermal photon number for the fundamental mode of the cavity.
+pub fn fundamental_thermal_photons(torus: &TorusLattice, temperature: f64) -> f64 {
+    thermal_occupation(torus.omega_min(), temperature)
 }
 
 /// Compute regularized Casimir energy on T² via mode summation.
-///
-/// Uses exponential regularization with lattice UV cutoff:
-///   E_reg = (ℏ/2) Σ_{n≠0} ω_n × exp(-ω_n/ω_max)
-///   minus the divergent vacuum energy of flat space.
-///
-/// The finite Casimir energy is the difference between T² and R² at the
-/// same UV cutoff, which converges as the cutoff is removed.
 pub fn casimir_energy(torus: &TorusLattice) -> CasimirResult {
     let n = torus.n as i64;
     let half = n / 2;
@@ -94,7 +106,6 @@ pub fn casimir_energy(torus: &TorusLattice) -> CasimirResult {
     let mut energy = 0.0;
     let mut num_modes = 0usize;
 
-    // Mode sum with exponential regularization
     for n1 in -half..=half {
         for n2 in -half..=half {
             if n1 == 0 && n2 == 0 {
@@ -102,21 +113,14 @@ pub fn casimir_energy(torus: &TorusLattice) -> CasimirResult {
             }
             let r2 = (n1 * n1 + n2 * n2) as f64;
             let omega = omega_unit * r2.sqrt();
-            // Regularized zero-point energy per mode
             let reg_factor = (-omega / omega_cutoff).exp();
             energy += 0.5 * HBAR * omega * reg_factor;
             num_modes += 1;
         }
     }
 
-    // Subtract the flat-space (continuum) contribution at the same cutoff.
-    // For a 2D box of area L², the mode density is L²/(4π).
-    // Continuum integral: (L²/4π) ∫₀^∞ ω² (ℏω/2) e^{-ω/ω_c} dω / (2πc/L)²
-    // = (ℏ/2)(L/(2π))² × 2π ∫₀^∞ κ² × κ × e^{-κL/(2π)/ω_c} dκ ... complicated.
-    //
-    // Instead, we compute the Casimir contribution as the energy at size L
-    // minus the energy at size 2L (which approaches the bulk limit faster).
-    // The Casimir energy is the L-dependent part.
+    // Subtract bulk (size-independent) contribution.
+    // E_cas = E(L) - 2·E(2L) isolates the L-dependent geometric part.
     let mut energy_2l = 0.0;
     let omega_unit_2l = 2.0 * PI * C / (2.0 * torus.length);
     for n1 in -half..=half {
@@ -131,15 +135,9 @@ pub fn casimir_energy(torus: &TorusLattice) -> CasimirResult {
         }
     }
 
-    // The Casimir energy is the L-dependent (geometric) part of the vacuum energy.
-    // On T², E_Casimir ~ -ℏc C_T² / L². Since E(L) > E(2L) in absolute terms
-    // (higher frequencies at smaller L), the physical Casimir energy is negative:
-    // E_cas = E(L) - 2·E(2L) approximates the finite-size correction.
-    // The factor of 2 accounts for the mode density scaling: doubling L
-    // halves each ω_n but the sum scales as L (bulk energy ∝ L in 2D).
     let e_casimir = energy - 2.0 * energy_2l;
 
-    // Casimir force via numerical derivative: F = -dE/dL ≈ -ΔE/ΔL
+    // Force via numerical derivative
     let dl = torus.length * 1e-6;
     let torus_plus = TorusLattice::new(torus.n, torus.length + dl);
     let e_plus = casimir_energy_raw(&torus_plus, omega_cutoff);
@@ -155,7 +153,6 @@ pub fn casimir_energy(torus: &TorusLattice) -> CasimirResult {
     }
 }
 
-/// Raw mode sum energy (internal, for force computation).
 fn casimir_energy_raw(torus: &TorusLattice, omega_cutoff: f64) -> f64 {
     let n = torus.n as i64;
     let half = n / 2;
@@ -175,28 +172,15 @@ fn casimir_energy_raw(torus: &TorusLattice, omega_cutoff: f64) -> f64 {
 }
 
 /// Analyze Unruh effect on T².
-///
-/// On flat space, any acceleration produces Unruh radiation.
-/// On T², the spectral gap creates a threshold: below a_min,
-/// the toroidal vacuum is topologically protected from thermal excitation.
 pub fn unruh_analysis(torus: &TorusLattice, acceleration: f64) -> UnruhResult {
-    // Standard Unruh temperature
     let t_unruh = HBAR * acceleration / (2.0 * PI * C * KB);
 
-    // Minimum resolvable frequency from spectral gap
     let gap = torus.spectral_gap();
     let omega_gap = (2.0 * PI * C / torus.length) * gap.sqrt();
-
-    // Minimum temperature corresponding to spectral gap
     let t_min = HBAR * omega_gap / KB;
-
-    // Minimum acceleration to excite the gap
     let a_min = 2.0 * PI * C * KB * t_min / HBAR;
 
     let detectable = t_unruh >= t_min;
-
-    // Suppression factor: exponential suppression below threshold
-    // Models the Boltzmann factor for exciting across the gap
     let suppression = if t_unruh > 0.0 {
         (-t_min / t_unruh).exp()
     } else {
@@ -212,45 +196,93 @@ pub fn unruh_analysis(torus: &TorusLattice, acceleration: f64) -> UnruhResult {
     }
 }
 
-/// Compute dynamical Casimir photon production rate.
+/// Compute dynamical Casimir photon production (perturbative regime).
 ///
-/// When the torus boundary oscillates: L(t) = L₀ + δL sin(Ωt),
-/// the vacuum radiates photon pairs at rate:
+/// Correct formula for oscillating boundary L(t) = L₀ + δL sin(Ωt):
 ///
-///   Γ ≈ (δL/L₀)² × (Ω/c)² × (Ω/2π) × N_active
+/// Per-mode pair rate (parametric resonance at Ω ≈ 2ω_n):
+///   Γ_n = (δL × ω_n / c)² × Ω / (4π)
 ///
-/// where N_active is the number of modes with ω < Ω/2 (parametric resonance
-/// condition: photon pairs each carry energy ℏΩ/2).
+/// Total rate sums over modes in the resonance window |Ω - 2ω_n| < Δω,
+/// where Δω = Ω/Q_mode is the resonance bandwidth.
 ///
-/// The spectral gap protects low-frequency modes from excitation,
-/// reducing vacuum noise.
+/// Only modes above the spectral gap contribute (topological protection).
+///
+/// Reference: Dodonov (2010), Eq. 2.15; Wilson et al. (2011)
 pub fn dynamical_casimir(
     torus: &TorusLattice,
-    modulation_depth: f64, // δL/L₀ (dimensionless)
+    modulation_depth: f64, // δL/L₀
     drive_frequency: f64,  // Ω (rad/s)
 ) -> DynamicalCasimirResult {
+    let delta_l = modulation_depth * torus.length;
     let omega_gap = (2.0 * PI * C / torus.length) * torus.spectral_gap().sqrt();
     let freqs = torus.mode_frequencies();
     let total_modes = freqs.len();
 
-    // Active modes: those with ω_n < Ω/2 (parametric resonance condition)
-    // AND above the spectral gap (topological protection removes sub-gap modes)
-    let active_modes = freqs
-        .iter()
-        .filter(|&&omega| omega < drive_frequency / 2.0 && omega > omega_gap)
-        .count();
+    // Resonance bandwidth: Ω/Q where Q is the cavity quality factor.
+    // For superconducting cavity, Q ~ 10⁹. Use a fractional bandwidth of 10⁻³
+    // to capture modes near parametric resonance Ω ≈ 2ω_n.
+    let resonance_bandwidth = drive_frequency * 1e-3;
 
-    // Photon pair production rate (simplified Schwinger formula for oscillating boundary)
-    // Γ_pair ≈ (δL/L)² × (Ω²/c²) × (Ω/2π) × N_active
-    let pair_rate = modulation_depth.powi(2)
-        * (drive_frequency / C).powi(2)
-        * (drive_frequency / (2.0 * PI))
-        * active_modes as f64;
+    let mut pair_rate = 0.0;
+    let mut active_modes = 0usize;
+    let mut max_pert_param = 0.0_f64;
+
+    for &omega_n in &freqs {
+        // Skip modes below spectral gap (topologically protected)
+        if omega_n <= omega_gap {
+            continue;
+        }
+
+        // Parametric resonance condition: Ω ≈ 2ω_n
+        let detuning = (drive_frequency - 2.0 * omega_n).abs();
+        if detuning > resonance_bandwidth {
+            continue;
+        }
+
+        active_modes += 1;
+
+        // Perturbative parameter for this mode
+        let pert_param = delta_l * omega_n / C;
+        max_pert_param = max_pert_param.max(pert_param);
+
+        // Per-mode pair rate: (δL·ω_n/c)² × Ω/(4π)
+        let gamma_n = pert_param.powi(2) * drive_frequency / (4.0 * PI);
+        pair_rate += gamma_n;
+    }
+
+    // If no exact resonance found, check broader window for nearest mode
+    // and use off-resonance suppressed rate.
+    if active_modes == 0 && !freqs.is_empty() {
+        // Find mode closest to Ω/2
+        let target = drive_frequency / 2.0;
+        let mut best_omega = freqs[0];
+        let mut best_detuning = (target - freqs[0]).abs();
+        for &omega_n in &freqs {
+            if omega_n <= omega_gap {
+                continue;
+            }
+            let det = (target - omega_n).abs();
+            if det < best_detuning {
+                best_detuning = det;
+                best_omega = omega_n;
+            }
+        }
+
+        if best_omega > omega_gap {
+            active_modes = 1;
+            let pert_param = delta_l * best_omega / C;
+            max_pert_param = pert_param;
+            // Off-resonance suppression: Lorentzian profile
+            let lorentz = resonance_bandwidth.powi(2)
+                / (best_detuning.powi(2) + resonance_bandwidth.powi(2));
+            pair_rate = pert_param.powi(2) * drive_frequency / (4.0 * PI) * lorentz;
+        }
+    }
 
     // Power: each pair carries energy ℏΩ
     let power = pair_rate * HBAR * drive_frequency;
 
-    // Protected fraction: modes below spectral gap that are NOT excited
     let sub_gap_modes = freqs.iter().filter(|&&omega| omega <= omega_gap).count();
     let protected_fraction = if total_modes > 0 {
         sub_gap_modes as f64 / total_modes as f64
@@ -264,11 +296,11 @@ pub fn dynamical_casimir(
         active_modes,
         total_modes,
         protected_fraction,
+        perturbative_param: max_pert_param,
     }
 }
 
-/// Casimir energy scaling: E(L) ~ -C/L².
-/// Returns (L, E_casimir) pairs for plotting.
+/// Casimir energy scaling: returns (L, E_casimir) pairs.
 pub fn casimir_scaling(n: usize, l_min: f64, l_max: f64, steps: usize) -> Vec<(f64, f64)> {
     (0..steps)
         .map(|i| {
@@ -287,7 +319,6 @@ mod tests {
 
     #[test]
     fn casimir_energy_is_negative() {
-        // Casimir energy on T² should be negative (attractive)
         let torus = TorusLattice::new(8, 1e-6);
         let cas = casimir_energy(&torus);
         assert!(cas.energy < 0.0, "Casimir energy should be negative, got {}", cas.energy);
@@ -297,22 +328,50 @@ mod tests {
     fn casimir_scales_with_size() {
         let e1 = casimir_energy(&TorusLattice::new(8, 1e-6));
         let e2 = casimir_energy(&TorusLattice::new(8, 2e-6));
-        // E ~ -1/L², so |E(L)| > |E(2L)|
         assert!(e1.energy.abs() > e2.energy.abs());
     }
 
     #[test]
     fn unruh_threshold_exists() {
-        let torus = TorusLattice::new(8, 1e-6);
-        let low = unruh_analysis(&torus, 1.0); // 1 m/s² — very low
+        let torus = TorusLattice::new(8, 3e-2); // 3 cm microwave cavity
+        let low = unruh_analysis(&torus, 1.0);
         assert!(!low.detectable);
         assert!(low.suppression < 0.01);
     }
 
     #[test]
     fn dynamical_casimir_zero_modulation() {
-        let torus = TorusLattice::new(8, 1e-6);
-        let dce = dynamical_casimir(&torus, 0.0, 1e12);
+        let torus = TorusLattice::new(8, 3e-2);
+        let dce = dynamical_casimir(&torus, 0.0, 1e11);
         assert_eq!(dce.pair_rate, 0.0);
+    }
+
+    #[test]
+    fn perturbative_param_small_microwave() {
+        // At 3 cm with δL/L = 1e-5, perturbative param should be << 1
+        let torus = TorusLattice::new(8, 3e-2);
+        let omega_drive = 2.0 * torus.omega_min(); // resonant with fundamental
+        let dce = dynamical_casimir(&torus, 1e-5, omega_drive);
+        assert!(
+            dce.perturbative_param < 0.01,
+            "Perturbative param {} should be << 1",
+            dce.perturbative_param
+        );
+    }
+
+    #[test]
+    fn thermal_occupation_at_millikelvin() {
+        // At 20 mK, ω = 10 GHz: n_th should be very small
+        let omega = 2.0 * PI * 10e9; // 10 GHz
+        let n_th = thermal_occupation(omega, 0.020);
+        assert!(n_th < 0.01, "n_th = {} should be < 0.01 at 20 mK / 10 GHz", n_th);
+    }
+
+    #[test]
+    fn thermal_occupation_at_room_temp() {
+        // At 300K, ω = 10 GHz: n_th should be large (classical limit)
+        let omega = 2.0 * PI * 10e9;
+        let n_th = thermal_occupation(omega, 300.0);
+        assert!(n_th > 100.0, "n_th = {} should be >> 1 at room temp", n_th);
     }
 }
