@@ -1375,9 +1375,35 @@ impl QuantumEngineApp {
         dim_label(ui, "Physical layer \u{2192} logical layer bridge");
         ui.add_space(4.0);
 
+        section_heading(ui, "PRESETS");
+        let mut preset_changed = false;
+        ui.horizontal(|ui| {
+            if ui.add(egui::Button::new(egui::RichText::new("Optimal").color(FOREST_GREEN).size(12.0))).clicked() {
+                // Dilution fridge + high laser + strong Tonnetz filter
+                self.cnt_params.temperature = 0.020;
+                self.cnt_params.laser_power = 20.0;
+                self.cnt_params.detuning = -1.0;
+                self.cnt_params.kappa = 0.5;
+                self.cnt_params.piezo_voltage = 5.0;
+                self.cnt_params.tonnetz_grid_size = 12;
+                self.cnt_params.tonnetz_q = 100.0;
+                self.cnt_lattice_n = 6;
+                self.cnt_mc_trials = 500;
+                self.cnt_gate_time_ns = 50.0;
+                preset_changed = true;
+            }
+            if ui.add(egui::Button::new(egui::RichText::new("Room Temp").color(WARN_RED).size(12.0))).clicked() {
+                self.cnt_params = PhysicsParams::default();
+                self.cnt_lattice_n = 6;
+                self.cnt_mc_trials = 500;
+                self.cnt_gate_time_ns = cnt_bridge::DEFAULT_GATE_TIME_NS;
+                preset_changed = true;
+            }
+        });
+
         section_heading(ui, "PHYSICAL LAYER: Doppler Cooling");
         dim_label(ui, "CNT optomechanical resonator cooled by laser.");
-        let mut changed = false;
+        let mut changed = preset_changed;
 
         ui.add_space(4.0);
         ui.label("Temperature (K)");
