@@ -74,8 +74,10 @@ impl PhysicsParams {
 
     /// Derive optomechanical coupling g₀ (Hz) from geometry.
     ///
-    /// g₀ = G × x_zpf where G = ω_c/L_cav (cavity pull parameter)
-    /// and x_zpf = √(ℏ / 2mω_m) is the zero-point motion.
+    /// g₀ = G_eff × x_zpf where G_eff = (ω_c/L_cav) × η_geo.
+    /// η_geo is the geometric mode overlap between CNT vibration and cavity
+    /// field (~10⁻⁵ for typical CNT-in-Fabry-Perot setups). Higher cavity
+    /// finesse improves mode matching: η ∝ √(F/F_ref).
     pub fn g0(&self) -> f64 {
         let l = self.cnt_length_nm * 1e-9;
         let d_outer = self.cnt_diameter_nm * 1e-9;
@@ -86,19 +88,20 @@ impl PhysicsParams {
         let mass = CNT_DENSITY * area * l;
 
         if mass < 1e-30 {
-            return 1e6; // fallback 1 MHz
+            return 1e3; // fallback 1 kHz
         }
 
         let omega = self.omega_m();
         let x_zpf = (HBAR / (2.0 * mass * omega)).sqrt();
 
-        // Cavity pull: G ~ omega_cavity / L_cavity
-        // Use optical cavity wavelength ~ 1064nm, L_cav ~ 100µm
+        // Cavity pull with geometric overlap factor
         let omega_c = 2.0 * std::f64::consts::PI * 2.82e14; // 1064nm laser
-        let l_cav = 100e-6; // 100 µm cavity
-        let g_pull = omega_c / l_cav;
+        let l_cav = 100e-6; // 100 µm microcavity
+        // η_geo ~ 10⁻⁵ baseline, scales with √(finesse/10⁴)
+        let eta_geo = 1e-5 * (self.cavity_finesse / 1e4).sqrt();
+        let g_eff = omega_c / l_cav * eta_geo;
 
-        g_pull * x_zpf
+        g_eff * x_zpf
     }
 
     /// Mechanical quality factor derived from geometry.
