@@ -1,0 +1,13 @@
+[package]
+name = "quantum-engine-sim"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Unified quantum engine simulation: toroidal spectral gaps, coherence protection, analog gravity, and vacuum energy extraction on T²"
+repository = "https://github.com/Paraxiom/QuantumTimeSandwich"
+authors = ["Sylvain Cormier <sylvain@paraxiom.org>"]
+keywords = ["quantum", "torus", "casimir", "coherence", "topological"]
+categories = ["science", "simulation"]
+
+[dependencies]
+rand = "0.8"
