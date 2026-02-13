@@ -8,6 +8,16 @@ repository = "https://github.com/Paraxiom/QuantumTimeSandwich"
 authors = ["Sylvain Cormier <sylvain@paraxiom.org>"]
 keywords = ["quantum", "torus", "casimir", "coherence", "topological"]
 categories = ["science", "simulation"]
+default-run = "quantum-engine-sim"
+
+[[bin]]
+name = "gui"
+path = "src/bin/gui.rs"
 
 [dependencies]
 rand = "0.8"
+eframe = { version = "0.31", default-features = false, features = ["wgpu", "default_fonts"] }
+egui_plot = "0.31"
+crossbeam-channel = "0.5"
+toric-code-sim = { path = "../toric-code-sim" }
+tonnetz-coherence-sim = { path = "../tonnetz-coherence-sim" }

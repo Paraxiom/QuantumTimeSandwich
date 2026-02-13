@@ -95,6 +95,45 @@ impl EngineConfig {
             temperature: 0.020,            // 20 mK
         }
     }
+
+    /// Optical toroidal micro-cavity defaults.
+    ///
+    /// Whispering-gallery-mode (WGM) toroidal resonator:
+    /// - Silica microtoroid, ~50 μm diameter
+    /// - Q ~ 10⁸ (demonstrated by Vahala group, Caltech)
+    /// - Piezo/electro-optic modulation for DCE
+    /// - Room temperature or cryogenic
+    pub fn optical() -> Self {
+        Self {
+            n: 8,
+            l_max: 5.0e-5,                // 50 μm
+            l_min: 4.9e-5,                // 49 μm (small compression)
+            drive_frequency: 0.0,          // auto = 2 × ω_min ≈ 2×3.8 PHz
+            modulation_depth: 1e-6,        // δL/L = 10⁻⁶ (electro-optic)
+            extraction_cycles: 1_000_000,
+            decoherence_rate: 1e6,         // 1 MHz (Q ≈ 10⁸ at optical)
+            temperature: 4.0,              // 4 K (liquid helium, or 300 K)
+        }
+    }
+
+    /// Mid-infrared photonic crystal cavity.
+    ///
+    /// Photonic crystal toroidal cavity:
+    /// - ~10 μm scale (mid-IR, CO₂ laser wavelength)
+    /// - Q ~ 10⁶
+    /// - MEMS-actuated boundary modulation
+    pub fn mid_infrared() -> Self {
+        Self {
+            n: 8,
+            l_max: 1.0e-5,                // 10 μm
+            l_min: 9.8e-6,                // 9.8 μm
+            drive_frequency: 0.0,
+            modulation_depth: 1e-5,        // MEMS modulation
+            extraction_cycles: 1_000_000,
+            decoherence_rate: 1e8,         // 100 MHz (Q ≈ 10⁶)
+            temperature: 300.0,            // room temperature
+        }
+    }
 }
 
 impl Default for EngineConfig {
