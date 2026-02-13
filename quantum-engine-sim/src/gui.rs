@@ -140,6 +140,49 @@ fn depth_alpha(z: f32) -> u8 {
     (25.0 + 170.0 * t) as u8
 }
 
+// ─── Torus knot drawing ─────────────────────────────────────────────────────
+
+/// Draw a (p,q) torus knot on the torus surface.
+/// p = windings around hole, q = windings through tube.
+/// The curve follows: u(t) = p*t, v(t) = q*t for t ∈ [0, 2π].
+fn draw_torus_knot(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    rot: [f32; 2],
+    r_maj: f32,
+    r_min: f32,
+    p: u32,
+    q: u32,
+    time: f32,
+    color: egui::Color32,
+    width: f32,
+) {
+    let steps = 360;
+    let r_knot = r_min + 0.025;
+    for i in 0..steps {
+        let t0 = 2.0 * PI * i as f32 / steps as f32;
+        let t1 = 2.0 * PI * (i + 1) as f32 / steps as f32;
+        let u0 = p as f32 * t0;
+        let v0 = q as f32 * t0;
+        let u1 = p as f32 * t1;
+        let v1 = q as f32 * t1;
+        let (a, za) = project(torus_pt(r_maj, r_knot, u0, v0), rot, rect);
+        let (b, _) = project(torus_pt(r_maj, r_knot, u1, v1), rot, rect);
+        let al = depth_alpha(za);
+        // Animated pulse along the knot
+        let pulse = 0.6 + 0.4 * (time * 2.0 - t0 * 3.0).sin();
+        let r = (color.r() as f32 * pulse) as u8;
+        let g = (color.g() as f32 * pulse) as u8;
+        let bl = (color.b() as f32 * pulse) as u8;
+        painter.line_segment(
+            [a, b],
+            egui::Stroke::new(width, egui::Color32::from_rgba_unmultiplied(r, g, bl, al)),
+        );
+    }
+}
+
+const KNOT_CYAN: egui::Color32 = egui::Color32::from_rgb(120, 220, 255);
+
 // ─── CNT error color helper ─────────────────────────────────────────────────
 
 fn error_color(has_x: bool, has_z: bool) -> egui::Color32 {
@@ -511,6 +554,9 @@ fn draw_cnt_torus(
             painter.line_segment([sc1, sc2], egui::Stroke::new(2.8, egui::Color32::from_rgb(r, g, bl)));
         }
     }
+
+    // (3,2) torus knot — vibrational mode visualization
+    draw_torus_knot(painter, rect, rot, rm, rn, 3, 2, time, KNOT_CYAN, 2.0);
 
     // Qubit nodes
     for row in 0..grid_n {
@@ -2108,6 +2154,16 @@ impl QuantumEngineApp {
         ui.add_space(2.0);
         dim_label(ui, "Same gap as vacuum + CNT tabs");
 
+        // ── Quantum Advantage ──
+        section_heading(ui, "QUANTUM ADVANTAGE");
+        let n_sq = self.drift_config.grid_n * self.drift_config.grid_n;
+        let gap_t = crate::coherence::spectral_gap(crate::coherence::Topology::Toroidal, n_sq);
+        let gap_l = crate::coherence::spectral_gap(crate::coherence::Topology::Linear, n_sq);
+        let advantage = gap_t / gap_l;
+        ui.colored_label(FOREST_GREEN, format!("T\u{00b2} / chain: {:.1}\u{00d7}", advantage));
+        dim_label(ui, "Toroidal topology protects coherence");
+        dim_label(ui, &format!("{} qubits on T\u{00b2} vs linear chain", n_sq));
+
         // ── Mask Info ──
         section_heading(ui, "MASK CONFIG");
         let mask_name = match self.drift_config.mask_type {
@@ -2325,6 +2381,9 @@ impl QuantumEngineApp {
             }
         }
 
+        // (2,3) torus knot — topological protection path
+        draw_torus_knot(painter, rect, rot, r_maj, r_min, 2, 3, time, KNOT_CYAN, 1.5);
+
         // Draw drift trajectories on the torus surface
         if let Some(dr) = drift_result {
             // Toroidal path — green
@@ -2345,7 +2404,7 @@ impl QuantumEngineApp {
         // Legend
         let legend_y = rect.min.y + 30.0;
         painter.text(egui::pos2(rect.min.x + 10.0, legend_y), egui::Align2::LEFT_TOP,
-            "\u{25cf} Toroidal  \u{25cf} Baseline",
+            "\u{25cf} Toroidal  \u{25cf} Baseline  \u{25cf} Torus Knot",
             egui::FontId::proportional(11.0),
             DIM);
         // Color dots for legend
@@ -2353,6 +2412,8 @@ impl QuantumEngineApp {
             egui::Color32::from_rgb(100, 230, 120));
         painter.circle_filled(egui::pos2(rect.min.x + 80.0, legend_y + 6.0), 3.0,
             egui::Color32::from_rgb(230, 80, 80));
+        painter.circle_filled(egui::pos2(rect.min.x + 160.0, legend_y + 6.0), 3.0,
+            KNOT_CYAN);
     }
 
     fn draw_path_on_torus(
@@ -3069,6 +3130,37 @@ impl QuantumEngineApp {
             let imp = phys.t2_ns - phys.t2_bare_ns;
             let imp_c = if imp > 100.0 { FOREST_GREEN } else { GOLD_EG };
             ui.colored_label(imp_c, format!("\u{0394}T\u{2082}: +{:.0} ns", imp));
+
+            // Quantum advantage summary
+            ui.add_space(6.0);
+            section_heading(ui, "QUANTUM ADVANTAGE");
+
+            let n_qubits = (self.nano_params.tonnetz_grid_size * self.nano_params.tonnetz_grid_size) as usize;
+            let gap_torus = crate::coherence::spectral_gap(crate::coherence::Topology::Toroidal, n_qubits);
+            let gap_linear = crate::coherence::spectral_gap(crate::coherence::Topology::Linear, n_qubits);
+            let topo_advantage = gap_torus / gap_linear;
+
+            ui.colored_label(FOREST_GREEN, format!("T\u{00b2} advantage: {:.1}\u{00d7}", topo_advantage));
+            dim_label(ui, &format!("  \u{03bb}\u{2081}(T\u{00b2})={:.4} vs \u{03bb}\u{2081}(chain)={:.4}", gap_torus, gap_linear));
+
+            // Gate error threshold
+            let p_gate = self.nano_gate_time_ns / phys.t2_ns;
+            let viable = p_gate < 0.01;
+            let tc = if viable { FOREST_GREEN } else { WARN_RED };
+            ui.colored_label(tc, format!("Gate error: {:.2e}", p_gate));
+            if viable {
+                dim_label(ui, "  BELOW 1% toric code threshold");
+            } else {
+                ui.colored_label(WARN_RED, "  ABOVE threshold");
+            }
+
+            // Physical coherence in human-readable units
+            let t2_us = phys.t2_ns / 1e3;
+            if t2_us > 1.0 {
+                ui.colored_label(FOREST_GREEN,
+                    egui::RichText::new(format!("T\u{2082} = {:.1} \u{00b5}s", t2_us)).strong().size(14.0));
+            }
+            dim_label(ui, "  Superconducting qubits: ~10\u{2013}100 \u{00b5}s");
         }
 
         ui.add_space(6.0);
@@ -3245,6 +3337,10 @@ impl QuantumEngineApp {
                 });
                 ui.label(format!("T\u{2082}={:.0}ns  p={:.4}  P_L={:.3}", phys.t2_ns, self.nano_p_error, self.nano_logical_error_rate));
                 dim_label(ui, &format!("NANOTORUS: Q={:.0} +{:.0}ns ({:.0}\u{00d7})", phys.q_mech, phys.t2_ns - phys.t2_bare_ns, phys.tonnetz_enhancement));
+                let n_q = (self.nano_params.tonnetz_grid_size * self.nano_params.tonnetz_grid_size) as usize;
+                let gap_t = crate::coherence::spectral_gap(crate::coherence::Topology::Toroidal, n_q);
+                let gap_l = crate::coherence::spectral_gap(crate::coherence::Topology::Linear, n_q);
+                dim_label(ui, &format!("T\u{00b2} vs chain: {:.1}\u{00d7} spectral advantage", gap_t / gap_l));
                 if let Some(ref cov) = self.nano_descent_cov {
                     let target_name = match self.nano_descent_target {
                         NanoDescentTarget::RingGeometry => "Ring",
