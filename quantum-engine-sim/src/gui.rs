@@ -1675,7 +1675,16 @@ impl QuantumEngineApp {
 
     fn draw_cnt_status(&self, ctx: &egui::Context) {
         if let Some(ref phys) = self.cnt_physics_result {
+            // Primary: error correctability
             let (st, sc) = if self.cnt_p_error < 0.09 { ("CORRECTABLE", FOREST_GREEN) } else { ("TOO NOISY", WARN_RED) };
+            // Secondary: coherence enhancement effectiveness
+            let (coh_st, coh_sc) = if phys.tonnetz_enhancement > 5.0 {
+                ("EFFECTIVE", FOREST_GREEN)
+            } else if phys.tonnetz_enhancement > 1.5 {
+                ("MODERATE", GOLD_EG)
+            } else {
+                ("MARGINAL", WARN_RED)
+            };
             let frame = egui::Frame {
                 fill: egui::Color32::from_rgba_unmultiplied(22, 28, 22, 230),
                 corner_radius: egui::CornerRadius::from(6),
@@ -1684,7 +1693,11 @@ impl QuantumEngineApp {
                 ..Default::default()
             };
             egui::Window::new("cnt_status").title_bar(false).resizable(false).movable(false).frame(frame).anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0]).show(ctx, |ui| {
-                ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
+                ui.horizontal(|ui| {
+                    ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
+                    ui.separator();
+                    ui.colored_label(coh_sc, egui::RichText::new(format!("Coherence {}", coh_st)).strong().size(13.0));
+                });
                 ui.label(format!("T\u{2082}={:.0}ns  p={:.4}  P_L={:.3}", phys.t2_ns, self.cnt_p_error, self.cnt_logical_error_rate));
                 dim_label(ui, &format!("Tonnetz: +{:.0}ns ({:.0}\u{00d7})", phys.t2_ns - phys.t2_bare_ns, phys.tonnetz_enhancement));
                 if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
