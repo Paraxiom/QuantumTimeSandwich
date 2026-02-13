@@ -11,7 +11,10 @@ use crate::cnt_bridge::{self, ChartData, LatticeSnapshot};
 use crate::cnt_physics::{PhysicsParams, PhysicsResult};
 use crate::covariant::{DescentResult, DescentStep, TorusPoint};
 use crate::engine::{EngineConfig, EngineResult};
+use crate::logit_drift::{self, DriftConfig, DriftResult, MaskHeatmap as DriftHeatmap,
+    DriftAnalysisResult, MaskAnalysisResult};
 use crate::sim_worker::{ScalingEntry, SimRequest, SimResponse, SimWorker};
+use topological_coherence::MaskType;
 
 // ─── Colors ──────────────────────────────────────────────────────────────────
 
@@ -40,6 +43,14 @@ const E_PARTICLE_ORANGE: egui::Color32 = egui::Color32::from_rgb(255, 170, 30);
 enum Tab {
     VacuumEngine,
     CntDoppler,
+    HallucinationReduction,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DriftVizMode {
+    Overview,
+    DriftAnalysis,
+    MaskAnalysis,
 }
 
 // ─── Visuals ─────────────────────────────────────────────────────────────────
@@ -694,6 +705,20 @@ pub struct QuantumEngineApp {
     cnt_chart_data: Option<ChartData>,
     cnt_hovered_node: Option<(usize, usize)>,
 
+    // Hallucination reduction params
+    drift_config: DriftConfig,
+    drift_viz_mode: DriftVizMode,
+    // Hallucination reduction results
+    drift_result: Option<DriftResult>,
+    drift_heatmap: Option<DriftHeatmap>,
+    drift_analysis: Option<DriftAnalysisResult>,
+    mask_analysis: Option<MaskAnalysisResult>,
+    // Hallucination reduction worker flags
+    needs_drift_mc: bool,
+    needs_drift_heatmap: bool,
+    needs_drift_analysis: bool,
+    needs_mask_analysis: bool,
+
     // Visualization state (shared)
     time: f32,
     rotation: [f32; 2],
@@ -758,6 +783,17 @@ impl QuantumEngineApp {
             cnt_snapshot: None,
             cnt_chart_data: None,
             cnt_hovered_node: None,
+
+            drift_config: DriftConfig::default(),
+            drift_viz_mode: DriftVizMode::Overview,
+            drift_result: None,
+            drift_heatmap: None,
+            drift_analysis: None,
+            mask_analysis: None,
+            needs_drift_mc: true,
+            needs_drift_heatmap: true,
+            needs_drift_analysis: true,
+            needs_mask_analysis: true,
 
             time: 0.0,
             rotation: [0.3, 0.15],
@@ -846,6 +882,34 @@ impl QuantumEngineApp {
         self.needs_cnt_sweep = false;
         self.cnt_sweep_pending = true;
     }
+
+    fn send_drift_mc(&mut self) {
+        self.worker.send(SimRequest::RunDriftMC { config: self.drift_config.clone() });
+        self.needs_drift_mc = false;
+    }
+
+    fn send_drift_heatmap(&mut self) {
+        let center = self.drift_config.grid_n / 2;
+        self.worker.send(SimRequest::RunMaskHeatmap {
+            config: self.drift_config.clone(),
+            ref_pos: (center, center),
+        });
+        self.needs_drift_heatmap = false;
+    }
+
+    fn send_drift_analysis(&mut self) {
+        self.worker.send(SimRequest::RunDriftAnalysis {
+            config: self.drift_config.clone(),
+        });
+        self.needs_drift_analysis = false;
+    }
+
+    fn send_mask_analysis(&mut self) {
+        self.worker.send(SimRequest::RunMaskAnalysis {
+            config: self.drift_config.clone(),
+        });
+        self.needs_mask_analysis = false;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -896,6 +960,30 @@ impl eframe::App for QuantumEngineApp {
                     self.cnt_chart_data = Some(chart);
                     self.cnt_sweep_pending = false;
                 }
+                SimResponse::DriftMC(result) => {
+                    self.drift_result = Some(result);
+                }
+                SimResponse::MaskHeatmap(heatmap) => {
+                    self.drift_heatmap = Some(heatmap);
+                }
+                SimResponse::DriftAnalysis(result) => {
+                    self.drift_analysis = Some(result);
+                }
+                SimResponse::MaskAnalysis(result) => {
+                    self.mask_analysis = Some(result);
+                }
+            }
+        }
+
+        // Fire drift simulations when needed and tab is active
+        if self.active_tab == Tab::HallucinationReduction {
+            if self.needs_drift_mc { self.send_drift_mc(); }
+            if self.needs_drift_heatmap { self.send_drift_heatmap(); }
+            if self.needs_drift_analysis && self.drift_viz_mode == DriftVizMode::DriftAnalysis {
+                self.send_drift_analysis();
+            }
+            if self.needs_mask_analysis && self.drift_viz_mode == DriftVizMode::MaskAnalysis {
+                self.send_mask_analysis();
             }
         }
 
@@ -918,6 +1006,7 @@ impl eframe::App for QuantumEngineApp {
                     ui.horizontal(|ui| {
                         ui.selectable_value(&mut self.active_tab, Tab::VacuumEngine, egui::RichText::new("Vacuum Engine").strong());
                         ui.selectable_value(&mut self.active_tab, Tab::CntDoppler, egui::RichText::new("CNT Doppler").strong());
+                        ui.selectable_value(&mut self.active_tab, Tab::HallucinationReduction, egui::RichText::new("Hallucination").strong());
                     });
                     ui.separator();
 
@@ -934,6 +1023,7 @@ impl eframe::App for QuantumEngineApp {
                     match self.active_tab {
                         Tab::VacuumEngine => self.draw_engine_controls(ui),
                         Tab::CntDoppler => self.draw_cnt_controls(ui),
+                        Tab::HallucinationReduction => self.draw_drift_controls(ui),
                     }
                 });
             });
@@ -947,6 +1037,7 @@ impl eframe::App for QuantumEngineApp {
                     match self.active_tab {
                         Tab::VacuumEngine => self.draw_engine_results(ui),
                         Tab::CntDoppler => self.draw_cnt_results(ui),
+                        Tab::HallucinationReduction => self.draw_drift_results(ui),
                     }
                 });
             });
@@ -958,6 +1049,7 @@ impl eframe::App for QuantumEngineApp {
                 match self.active_tab {
                     Tab::VacuumEngine => self.draw_engine_central(ui),
                     Tab::CntDoppler => self.draw_cnt_central(ui, ctx),
+                    Tab::HallucinationReduction => self.draw_drift_central(ui),
                 }
             });
 
@@ -965,6 +1057,7 @@ impl eframe::App for QuantumEngineApp {
         match self.active_tab {
             Tab::VacuumEngine => self.draw_engine_status(ctx),
             Tab::CntDoppler => self.draw_cnt_status(ctx),
+            Tab::HallucinationReduction => self.draw_drift_status(ctx),
         }
 
         ctx.request_repaint();
@@ -1594,6 +1687,738 @@ impl QuantumEngineApp {
                 ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
                 ui.label(format!("T\u{2082}={:.0}ns  p={:.4}  P_L={:.3}", phys.t2_ns, self.cnt_p_error, self.cnt_logical_error_rate));
                 dim_label(ui, &format!("Tonnetz: +{:.0}ns ({:.0}\u{00d7})", phys.t2_ns - phys.t2_bare_ns, phys.tonnetz_enhancement));
+                if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
+            });
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Hallucination Reduction tab methods
+// ═══════════════════════════════════════════════════════════════════════════════
+
+impl QuantumEngineApp {
+    fn draw_drift_controls(&mut self, ui: &mut egui::Ui) {
+        ui.colored_label(GOLD_EG, egui::RichText::new("HALLUCINATION REDUCTION").strong().size(13.0));
+        dim_label(ui, "Toroidal logit bias on T\u{00b2}");
+        ui.add_space(4.0);
+
+        let mut changed = false;
+
+        // ── Tonnetz Parameters ──
+        section_heading(ui, "TONNETZ PARAMETERS");
+
+        ui.label("Grid Size N");
+        let mut n_f = self.drift_config.grid_n as f64;
+        if ui.add(egui::Slider::new(&mut n_f, 4.0..=24.0).step_by(1.0).suffix("")).changed() {
+            self.drift_config.grid_n = n_f as usize;
+            changed = true;
+        }
+
+        ui.label("Walk Steps");
+        let mut steps_f = self.drift_config.num_steps as f64;
+        if ui.add(egui::Slider::new(&mut steps_f, 100.0..=5000.0).logarithmic(true).suffix("")).changed() {
+            self.drift_config.num_steps = steps_f as usize;
+            changed = true;
+        }
+
+        // ── Attention Mask ──
+        section_heading(ui, "ATTENTION MASK");
+
+        ui.label("Mask Type");
+        ui.horizontal(|ui| {
+            if ui.selectable_label(self.drift_config.mask_type == MaskType::HardCutoff, "Hard").clicked() {
+                self.drift_config.mask_type = MaskType::HardCutoff;
+                changed = true;
+            }
+            if ui.selectable_label(self.drift_config.mask_type == MaskType::SoftExponential, "Soft").clicked() {
+                self.drift_config.mask_type = MaskType::SoftExponential;
+                changed = true;
+            }
+            if ui.selectable_label(self.drift_config.mask_type == MaskType::Hybrid, "Hybrid").clicked() {
+                self.drift_config.mask_type = MaskType::Hybrid;
+                changed = true;
+            }
+        });
+
+        ui.label("Radius r");
+        if ui.add(egui::Slider::new(&mut self.drift_config.radius, 1.0..=8.0).step_by(0.5)).changed() {
+            changed = true;
+        }
+
+        ui.label("Decay \u{03b1}");
+        if ui.add(egui::Slider::new(&mut self.drift_config.alpha, 0.1..=2.0).step_by(0.1)).changed() {
+            changed = true;
+        }
+
+        // ── Drift Metric ──
+        section_heading(ui, "DRIFT METRIC");
+
+        ui.label("Drift Threshold");
+        let mut thresh_f = self.drift_config.drift_threshold as f64;
+        if ui.add(egui::Slider::new(&mut thresh_f, 1.0..=8.0).step_by(1.0)).changed() {
+            self.drift_config.drift_threshold = thresh_f as usize;
+            changed = true;
+        }
+
+        // ── Visualization Mode ──
+        section_heading(ui, "VISUALIZATION");
+        ui.horizontal(|ui| {
+            if ui.selectable_label(self.drift_viz_mode == DriftVizMode::Overview, "Overview").clicked() {
+                self.drift_viz_mode = DriftVizMode::Overview;
+            }
+            if ui.selectable_label(self.drift_viz_mode == DriftVizMode::DriftAnalysis, "Drift").clicked() {
+                self.drift_viz_mode = DriftVizMode::DriftAnalysis;
+                if self.needs_drift_analysis { /* will fire in update */ }
+            }
+            if ui.selectable_label(self.drift_viz_mode == DriftVizMode::MaskAnalysis, "Mask").clicked() {
+                self.drift_viz_mode = DriftVizMode::MaskAnalysis;
+                if self.needs_mask_analysis { /* will fire in update */ }
+            }
+        });
+
+        if changed {
+            self.needs_drift_mc = true;
+            self.needs_drift_heatmap = true;
+            self.needs_drift_analysis = true;
+            self.needs_mask_analysis = true;
+        }
+
+        // ── Mechanism ──
+        ui.add_space(8.0);
+        section_heading(ui, "MECHANISM");
+        dim_label(ui, "The toroidal mask constrains attention");
+        dim_label(ui, "to local neighborhoods on T\u{00b2}, preventing");
+        dim_label(ui, "long-range semantic jumps that cause");
+        dim_label(ui, "hallucination. Spectral gap \u{03bb}\u{2081}");
+        dim_label(ui, "bounds the mixing rate, same as");
+        dim_label(ui, "vacuum + qubit protection.");
+    }
+
+    fn draw_drift_results(&mut self, ui: &mut egui::Ui) {
+        section_heading(ui, "DRIFT RATES");
+
+        if let Some(ref dr) = self.drift_result {
+            ui.horizontal(|ui| {
+                ui.colored_label(FOREST_GREEN, "\u{25cf}");
+                ui.label(format!("Toroidal: {:.3}", dr.toroidal_drift_rate));
+            });
+            ui.horizontal(|ui| {
+                ui.colored_label(WARN_RED, "\u{25cf}");
+                ui.label(format!("Baseline: {:.3}", dr.baseline_drift_rate));
+            });
+            ui.horizontal(|ui| {
+                ui.colored_label(DIM, "\u{25cf}");
+                ui.label(format!("Random:   {:.3}", dr.random_drift_rate));
+            });
+
+            ui.add_space(4.0);
+            let rf_color = if dr.reduction_factor > 1.5 { FOREST_GREEN } else { GOLD_EG };
+            ui.colored_label(rf_color, egui::RichText::new(format!("Reduction: {:.1}\u{00d7}", dr.reduction_factor)).strong());
+        } else {
+            dim_label(ui, "Computing...");
+        }
+
+        // ── Spectral Gap ──
+        section_heading(ui, "SPECTRAL GAP");
+        let gap = logit_drift::spectral_gap_runtime(self.drift_config.grid_n);
+        ui.label(format!("\u{03bb}\u{2081} = {:.4}", gap));
+        dim_label(ui, &format!("N={} Tonnetz torus", self.drift_config.grid_n));
+        ui.add_space(2.0);
+        dim_label(ui, "Same gap as vacuum + CNT tabs");
+
+        // ── Mask Info ──
+        section_heading(ui, "MASK CONFIG");
+        let mask_name = match self.drift_config.mask_type {
+            MaskType::HardCutoff => "Hard Cutoff",
+            MaskType::SoftExponential => "Soft Exponential",
+            MaskType::Hybrid => "Hybrid",
+        };
+        ui.label(format!("Type: {}", mask_name));
+        ui.label(format!("r = {:.1}, \u{03b1} = {:.1}", self.drift_config.radius, self.drift_config.alpha));
+
+        // ── Benchmark ──
+        section_heading(ui, "TRUTHFULQA BENCHMARK");
+        dim_label(ui, "Published results (817 samples):");
+        ui.add_space(2.0);
+        for entry in logit_drift::benchmark_data() {
+            ui.horizontal(|ui| {
+                let color = if entry.delta_pp >= 2.0 { FOREST_GREEN } else { LABEL_CLR };
+                ui.colored_label(color, egui::RichText::new(format!("+{:.1}pp", entry.delta_pp)).strong().size(12.0));
+                ui.label(egui::RichText::new(entry.model).size(11.0));
+            });
+        }
+    }
+
+    fn draw_drift_central(&mut self, ui: &mut egui::Ui) {
+        let total_rect = ui.available_rect_before_wrap();
+        let top_h = total_rect.height() * 0.55;
+        let bottom_h = total_rect.height() - top_h;
+
+        // ═══ TOP: 3D torus with drift trajectories ═══
+        let torus_rect = egui::Rect::from_min_size(total_rect.min, egui::vec2(total_rect.width(), top_h));
+        let painter = ui.painter_at(torus_rect);
+
+        // Draw static torus (reuse CNT-style — no phase modulation)
+        Self::draw_drift_torus(
+            &painter,
+            torus_rect,
+            self.rotation,
+            self.drift_config.grid_n,
+            self.time,
+            self.drift_result.as_ref(),
+        );
+
+        // ═══ BOTTOM: 3 panels (dispatch by viz mode) ═══
+        let bw = total_rect.width() / 3.0;
+        let bot_y = total_rect.min.y + top_h;
+
+        let left_rect = egui::Rect::from_min_size(
+            egui::pos2(total_rect.min.x, bot_y),
+            egui::vec2(bw, bottom_h),
+        );
+        let center_rect = egui::Rect::from_min_size(
+            egui::pos2(total_rect.min.x + bw, bot_y),
+            egui::vec2(bw, bottom_h),
+        );
+        let right_rect = egui::Rect::from_min_size(
+            egui::pos2(total_rect.min.x + 2.0 * bw, bot_y),
+            egui::vec2(bw, bottom_h),
+        );
+
+        match self.drift_viz_mode {
+            DriftVizMode::Overview => {
+                self.draw_mask_heatmap(&painter, left_rect);
+                let mut center_ui = ui.new_child(egui::UiBuilder::new().max_rect(center_rect));
+                self.draw_spectral_decay_chart(&mut center_ui);
+                let mut right_ui = ui.new_child(egui::UiBuilder::new().max_rect(right_rect));
+                self.draw_benchmark_chart(&mut right_ui);
+            }
+            DriftVizMode::DriftAnalysis => {
+                let mut left_ui = ui.new_child(egui::UiBuilder::new().max_rect(left_rect));
+                self.draw_multi_scale_chart(&mut left_ui);
+                let mut center_ui = ui.new_child(egui::UiBuilder::new().max_rect(center_rect));
+                self.draw_phase_transition_chart(&mut center_ui);
+                let mut right_ui = ui.new_child(egui::UiBuilder::new().max_rect(right_rect));
+                self.draw_adjacency_chart(&mut right_ui);
+            }
+            DriftVizMode::MaskAnalysis => {
+                let mut left_ui = ui.new_child(egui::UiBuilder::new().max_rect(left_rect));
+                self.draw_sinkhorn_chart(&mut left_ui);
+                let mut center_ui = ui.new_child(egui::UiBuilder::new().max_rect(center_rect));
+                self.draw_sparsity_chart(&mut center_ui);
+                self.draw_mask_heatmap(&painter, right_rect);
+            }
+        }
+    }
+
+    fn draw_drift_torus(
+        painter: &egui::Painter,
+        rect: egui::Rect,
+        rot: [f32; 2],
+        _grid_n: usize,
+        time: f32,
+        drift_result: Option<&DriftResult>,
+    ) {
+        let r_maj = 1.0f32;
+        let r_min = 0.45f32;
+        let rings = 24;
+        let segs = 48;
+
+        // Surface patches (simplified — wireframe + shading)
+        for i in 0..rings {
+            for j in 0..segs {
+                let u0 = 2.0 * PI * i as f32 / rings as f32;
+                let u1 = 2.0 * PI * (i + 1) as f32 / rings as f32;
+                let v0 = 2.0 * PI * j as f32 / segs as f32;
+                let v1 = 2.0 * PI * (j + 1) as f32 / segs as f32;
+
+                let p00 = torus_pt(r_maj, r_min, u0, v0);
+                let p10 = torus_pt(r_maj, r_min, u1, v0);
+                let p01 = torus_pt(r_maj, r_min, u0, v1);
+                let p11 = torus_pt(r_maj, r_min, u1, v1);
+
+                let (s00, z00) = project(p00, rot, rect);
+                let (s10, _) = project(p10, rot, rect);
+                let (s01, _) = project(p01, rot, rect);
+                let (s11, _) = project(p11, rot, rect);
+
+                // Back-face culling
+                let e1 = egui::vec2(s10.x - s00.x, s10.y - s00.y);
+                let e2 = egui::vec2(s01.x - s00.x, s01.y - s00.y);
+                let cross = e1.x * e2.y - e1.y * e2.x;
+                if cross < 0.0 { continue; }
+
+                let alpha = depth_alpha(z00);
+                let base_g = 40 + (alpha as u16 * 30 / 200) as u8;
+                let fill = egui::Color32::from_rgba_unmultiplied(20, base_g, 25, alpha / 3);
+                painter.add(egui::Shape::convex_polygon(
+                    vec![s00, s10, s11, s01],
+                    fill,
+                    egui::Stroke::NONE,
+                ));
+            }
+        }
+
+        // Wireframe rings
+        for i in 0..=rings {
+            let u = 2.0 * PI * i as f32 / rings as f32;
+            for j in 0..segs {
+                let v0 = 2.0 * PI * j as f32 / segs as f32;
+                let v1 = 2.0 * PI * (j + 1) as f32 / segs as f32;
+                let (a, za) = project(torus_pt(r_maj, r_min, u, v0), rot, rect);
+                let (b, _) = project(torus_pt(r_maj, r_min, u, v1), rot, rect);
+                let al = depth_alpha(za);
+                painter.line_segment([a, b], egui::Stroke::new(0.5, egui::Color32::from_rgba_unmultiplied(60, 125, 85, al / 2)));
+            }
+        }
+        for j in 0..=segs {
+            let v = 2.0 * PI * j as f32 / segs as f32;
+            for i in 0..rings {
+                let u0 = 2.0 * PI * i as f32 / rings as f32;
+                let u1 = 2.0 * PI * (i + 1) as f32 / rings as f32;
+                let (a, za) = project(torus_pt(r_maj, r_min, u0, v), rot, rect);
+                let (b, _) = project(torus_pt(r_maj, r_min, u1, v), rot, rect);
+                let al = depth_alpha(za);
+                painter.line_segment([a, b], egui::Stroke::new(0.5, egui::Color32::from_rgba_unmultiplied(60, 125, 85, al / 2)));
+            }
+        }
+
+        // Non-contractible cycles (gold, pulsing)
+        for &fixed_v in &[0.0f32, PI] {
+            for k in 0..segs {
+                let u0 = 2.0 * PI * k as f32 / segs as f32;
+                let u1 = 2.0 * PI * (k + 1) as f32 / segs as f32;
+                let (a, za) = project(torus_pt(r_maj, r_min, u0, fixed_v), rot, rect);
+                let (b, _) = project(torus_pt(r_maj, r_min, u1, fixed_v), rot, rect);
+                let pulse = 0.5 + 0.5 * (time * 1.5 + u0).sin();
+                let al = (depth_alpha(za) as f32 * pulse) as u8;
+                painter.line_segment([a, b], egui::Stroke::new(1.5, egui::Color32::from_rgba_unmultiplied(212, 175, 55, al)));
+            }
+        }
+        for &fixed_u in &[0.0f32, PI] {
+            for k in 0..segs {
+                let v0 = 2.0 * PI * k as f32 / segs as f32;
+                let v1 = 2.0 * PI * (k + 1) as f32 / segs as f32;
+                let (a, za) = project(torus_pt(r_maj, r_min, fixed_u, v0), rot, rect);
+                let (b, _) = project(torus_pt(r_maj, r_min, fixed_u, v1), rot, rect);
+                let pulse = 0.5 + 0.5 * (time * 1.5 + v0).sin();
+                let al = (depth_alpha(za) as f32 * pulse) as u8;
+                painter.line_segment([a, b], egui::Stroke::new(1.5, egui::Color32::from_rgba_unmultiplied(212, 175, 55, al)));
+            }
+        }
+
+        // Draw drift trajectories on the torus surface
+        if let Some(dr) = drift_result {
+            // Toroidal path — green
+            Self::draw_path_on_torus(painter, rect, rot, r_maj, r_min, &dr.toroidal_path,
+                egui::Color32::from_rgb(100, 230, 120), 2.0);
+            // Baseline path — red
+            Self::draw_path_on_torus(painter, rect, rot, r_maj, r_min, &dr.baseline_path,
+                egui::Color32::from_rgb(230, 80, 80), 1.5);
+        }
+
+        // Title
+        let title_pos = egui::pos2(rect.center().x, rect.min.y + 14.0);
+        painter.text(title_pos, egui::Align2::CENTER_TOP,
+            "Semantic Drift on T\u{00b2}",
+            egui::FontId::proportional(13.0),
+            HEADING_CLR);
+
+        // Legend
+        let legend_y = rect.min.y + 30.0;
+        painter.text(egui::pos2(rect.min.x + 10.0, legend_y), egui::Align2::LEFT_TOP,
+            "\u{25cf} Toroidal  \u{25cf} Baseline",
+            egui::FontId::proportional(11.0),
+            DIM);
+        // Color dots for legend
+        painter.circle_filled(egui::pos2(rect.min.x + 12.0, legend_y + 6.0), 3.0,
+            egui::Color32::from_rgb(100, 230, 120));
+        painter.circle_filled(egui::pos2(rect.min.x + 80.0, legend_y + 6.0), 3.0,
+            egui::Color32::from_rgb(230, 80, 80));
+    }
+
+    fn draw_path_on_torus(
+        painter: &egui::Painter,
+        rect: egui::Rect,
+        rot: [f32; 2],
+        r_maj: f32,
+        r_min: f32,
+        path: &[(f32, f32)],
+        color: egui::Color32,
+        width: f32,
+    ) {
+        if path.len() < 2 { return; }
+        for i in 0..(path.len() - 1) {
+            let (u0, v0) = (path[i].0 * 2.0 * PI, path[i].1 * 2.0 * PI);
+            let (u1, v1) = (path[i + 1].0 * 2.0 * PI, path[i + 1].1 * 2.0 * PI);
+            let (a, za) = project(torus_pt(r_maj, r_min, u0, v0), rot, rect);
+            let (b, _) = project(torus_pt(r_maj, r_min, u1, v1), rot, rect);
+            let al = depth_alpha(za);
+            let c = egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), al);
+            painter.line_segment([a, b], egui::Stroke::new(width, c));
+        }
+        // Start marker
+        let (u0, v0) = (path[0].0 * 2.0 * PI, path[0].1 * 2.0 * PI);
+        let (start, _) = project(torus_pt(r_maj, r_min, u0, v0), rot, rect);
+        painter.circle_filled(start, 4.0, egui::Color32::WHITE);
+        // End marker
+        let last = path.last().unwrap();
+        let (ue, ve) = (last.0 * 2.0 * PI, last.1 * 2.0 * PI);
+        let (end, _) = project(torus_pt(r_maj, r_min, ue, ve), rot, rect);
+        painter.circle_filled(end, 4.0, color);
+    }
+
+    fn draw_mask_heatmap(&self, painter: &egui::Painter, rect: egui::Rect) {
+        // Title
+        let title_y = rect.min.y + 4.0;
+        painter.text(egui::pos2(rect.center().x, title_y), egui::Align2::CENTER_TOP,
+            "Mask Heatmap (center ref)",
+            egui::FontId::proportional(12.0),
+            HEADING_CLR);
+
+        let margin = 24.0;
+        let grid_rect = egui::Rect::from_min_size(
+            egui::pos2(rect.min.x + margin, rect.min.y + margin),
+            egui::vec2(rect.width() - 2.0 * margin, rect.height() - margin - 8.0),
+        );
+
+        if let Some(ref hm) = self.drift_heatmap {
+            let n = hm.grid_n;
+            let cell_w = grid_rect.width() / n as f32;
+            let cell_h = grid_rect.height() / n as f32;
+
+            for row in 0..n {
+                for col in 0..n {
+                    let val = hm.values[row][col];
+                    let x = grid_rect.min.x + col as f32 * cell_w;
+                    let y = grid_rect.min.y + row as f32 * cell_h;
+                    let cell = egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(cell_w, cell_h));
+
+                    // Color: dark blue (0) → forest green (0.5) → gold (1)
+                    let color = if val < 0.5 {
+                        let t = val * 2.0;
+                        egui::Color32::from_rgb(
+                            (15.0 + 71.0 * t) as u8,
+                            (25.0 + 141.0 * t) as u8,
+                            (60.0 + 36.0 * t) as u8,
+                        )
+                    } else {
+                        let t = (val - 0.5) * 2.0;
+                        egui::Color32::from_rgb(
+                            (86.0 + 126.0 * t) as u8,
+                            (166.0 + 9.0 * t) as u8,
+                            (96.0 - 41.0 * t) as u8,
+                        )
+                    };
+                    painter.rect_filled(cell, 0.0, color);
+
+                    // Highlight ref position
+                    if row == hm.ref_pos.0 && col == hm.ref_pos.1 {
+                        painter.rect_stroke(cell, 0.0, egui::Stroke::new(2.0, egui::Color32::WHITE), egui::epaint::StrokeKind::Outside);
+                    }
+                }
+            }
+        } else {
+            painter.text(grid_rect.center(), egui::Align2::CENTER_CENTER,
+                "Computing...",
+                egui::FontId::proportional(12.0),
+                DIM);
+        }
+    }
+
+    fn draw_spectral_decay_chart(&self, ui: &mut egui::Ui) {
+        ui.colored_label(HEADING_CLR, egui::RichText::new("Spectral Decay e^(-\u{03bb}\u{2081}t)").size(12.0));
+
+        let curves = logit_drift::spectral_decay_curves(&[8, 12, 16, 24], 5.0, 100);
+        let colors = [FOREST_GREEN, GOLD_EG, egui::Color32::from_rgb(200, 200, 190), COMPRESS_BLUE];
+
+        let plot = Plot::new("spectral_decay")
+            .height(ui.available_height() - 20.0)
+            .width(ui.available_width())
+            .legend(Legend::default().position(Corner::RightTop))
+            .x_axis_label("t")
+            .y_axis_label("amplitude")
+            .include_x(0.0)
+            .include_x(5.0)
+            .include_y(0.0)
+            .include_y(1.0);
+
+        plot.show(ui, |plot_ui| {
+            for (i, (n, pts)) in curves.iter().enumerate() {
+                let line_pts: PlotPoints = pts.iter().copied().collect();
+                plot_ui.line(
+                    Line::new(line_pts)
+                        .color(colors[i % colors.len()])
+                        .width(2.0)
+                        .name(format!("N={}", n)),
+                );
+            }
+        });
+    }
+
+    fn draw_benchmark_chart(&self, ui: &mut egui::Ui) {
+        ui.colored_label(HEADING_CLR, egui::RichText::new("TruthfulQA T&I (pp improvement)").size(12.0));
+
+        let entries = logit_drift::benchmark_data();
+
+        let plot = Plot::new("benchmark_bars")
+            .height(ui.available_height() - 20.0)
+            .width(ui.available_width())
+            .include_y(0.0)
+            .include_y(3.5)
+            .legend(Legend::default().position(Corner::RightTop));
+
+        plot.show(ui, |plot_ui| {
+            let bars: Vec<Bar> = entries.iter().enumerate().map(|(i, e)| {
+                let color = if e.delta_pp >= 2.0 { FOREST_GREEN } else { GOLD_EG };
+                Bar::new(i as f64, e.delta_pp as f64)
+                    .width(0.6)
+                    .fill(color)
+                    .name(e.model)
+            }).collect();
+            plot_ui.bar_chart(BarChart::new(bars).name("Improvement (pp)"));
+        });
+    }
+
+    // ─── 5 new advanced simulation charts ──────────────────────────────────
+
+    fn draw_multi_scale_chart(&self, ui: &mut egui::Ui) {
+        ui.colored_label(HEADING_CLR, egui::RichText::new("Multi-Scale Drift Comparison").size(12.0));
+
+        if let Some(ref da) = self.drift_analysis {
+            let plot = Plot::new("multi_scale_drift")
+                .height(ui.available_height() - 20.0)
+                .width(ui.available_width())
+                .legend(Legend::default().position(Corner::RightTop))
+                .include_y(0.0);
+
+            plot.show(ui, |plot_ui| {
+                let mut toroidal_bars = Vec::new();
+                let mut baseline_bars = Vec::new();
+                for (i, entry) in da.multi_scale.iter().enumerate() {
+                    toroidal_bars.push(
+                        Bar::new(i as f64 - 0.15, entry.toroidal_rate as f64)
+                            .width(0.3)
+                            .fill(FOREST_GREEN),
+                    );
+                    baseline_bars.push(
+                        Bar::new(i as f64 + 0.15, entry.baseline_rate as f64)
+                            .width(0.3)
+                            .fill(WARN_RED),
+                    );
+                }
+                plot_ui.bar_chart(BarChart::new(toroidal_bars).name("Toroidal"));
+                plot_ui.bar_chart(BarChart::new(baseline_bars).name("Baseline"));
+
+                // Spectral gap annotations
+                for (i, entry) in da.multi_scale.iter().enumerate() {
+                    let text = PlotText::new(
+                        PlotPoint::new(i as f64, entry.baseline_rate as f64 + 0.02),
+                        format!("\u{03bb}\u{2081}={:.3}", entry.spectral_gap),
+                    ).color(GOLD_EG);
+                    plot_ui.text(text);
+                }
+            });
+        } else {
+            dim_label(ui, "Computing...");
+        }
+    }
+
+    fn draw_phase_transition_chart(&self, ui: &mut egui::Ui) {
+        ui.colored_label(HEADING_CLR, egui::RichText::new("Phase Transition (Drift vs Radius)").size(12.0));
+
+        if let Some(ref da) = self.drift_analysis {
+            let plot = Plot::new("phase_transition")
+                .height(ui.available_height() - 20.0)
+                .width(ui.available_width())
+                .x_axis_label("radius")
+                .y_axis_label("drift rate")
+                .include_y(0.0);
+
+            let pts: Vec<[f64; 2]> = da.phase_transition.iter()
+                .map(|e| [e.radius as f64, e.drift_rate as f64])
+                .collect();
+
+            // Find critical radius (steepest descent)
+            let mut critical_r = da.phase_transition.first().map_or(1.0, |e| e.radius);
+            let mut max_drop = 0.0f32;
+            for w in da.phase_transition.windows(2) {
+                let drop = w[0].drift_rate - w[1].drift_rate;
+                if drop > max_drop {
+                    max_drop = drop;
+                    critical_r = (w[0].radius + w[1].radius) / 2.0;
+                }
+            }
+
+            plot.show(ui, |plot_ui| {
+                plot_ui.line(
+                    Line::new(PlotPoints::from(pts))
+                        .color(FOREST_GREEN)
+                        .width(2.0)
+                        .name("Drift Rate"),
+                );
+                plot_ui.vline(
+                    VLine::new(critical_r as f64)
+                        .color(GOLD_EG)
+                        .width(1.5)
+                        .name(format!("Critical r={:.1}", critical_r)),
+                );
+            });
+        } else {
+            dim_label(ui, "Computing...");
+        }
+    }
+
+    fn draw_adjacency_chart(&self, ui: &mut egui::Ui) {
+        ui.colored_label(HEADING_CLR, egui::RichText::new("Adjacency Loss (Local vs Global)").size(12.0));
+
+        if let Some(ref da) = self.drift_analysis {
+            let plot = Plot::new("adjacency_loss")
+                .height(ui.available_height() - 20.0)
+                .width(ui.available_width())
+                .legend(Legend::default().position(Corner::RightTop))
+                .x_axis_label("radius")
+                .include_y(0.0);
+
+            let pos_pts: Vec<[f64; 2]> = da.adjacency.iter()
+                .map(|e| [e.radius as f64, e.pos_mean_dist as f64])
+                .collect();
+            let neg_pts: Vec<[f64; 2]> = da.adjacency.iter()
+                .map(|e| [e.radius as f64, e.neg_mean_dist as f64])
+                .collect();
+            let loss_pts: Vec<[f64; 2]> = da.adjacency.iter()
+                .map(|e| [e.radius as f64, e.loss as f64])
+                .collect();
+
+            plot.show(ui, |plot_ui| {
+                plot_ui.line(
+                    Line::new(PlotPoints::from(pos_pts))
+                        .color(FOREST_GREEN)
+                        .width(2.0)
+                        .name("Positive (local)"),
+                );
+                plot_ui.line(
+                    Line::new(PlotPoints::from(neg_pts))
+                        .color(WARN_RED)
+                        .width(2.0)
+                        .name("Negative (random)"),
+                );
+                plot_ui.line(
+                    Line::new(PlotPoints::from(loss_pts))
+                        .color(GOLD_EG)
+                        .width(1.5)
+                        .style(egui_plot::LineStyle::dashed_dense())
+                        .name("Loss"),
+                );
+            });
+        } else {
+            dim_label(ui, "Computing...");
+        }
+    }
+
+    fn draw_sinkhorn_chart(&self, ui: &mut egui::Ui) {
+        ui.colored_label(HEADING_CLR, egui::RichText::new("Sinkhorn-Knopp Convergence").size(12.0));
+
+        if let Some(ref ma) = self.mask_analysis {
+            let plot = Plot::new("sinkhorn_convergence")
+                .height(ui.available_height() - 20.0)
+                .width(ui.available_width())
+                .x_axis_label("iteration")
+                .y_axis_label("max error")
+                .include_x(0.0)
+                .include_x(50.0)
+                .include_y(0.0);
+
+            // Use log scale by transforming y values for display
+            let pts: Vec<[f64; 2]> = ma.sinkhorn.points.iter()
+                .map(|p| [p[0], p[1]])
+                .collect();
+
+            plot.show(ui, |plot_ui| {
+                plot_ui.line(
+                    Line::new(PlotPoints::from(pts))
+                        .color(FOREST_GREEN)
+                        .width(2.0)
+                        .name("Max Error"),
+                );
+                // Convergence threshold line
+                plot_ui.hline(
+                    egui_plot::HLine::new(0.01)
+                        .color(GOLD_EG)
+                        .width(1.0)
+                        .name("Threshold (0.01)"),
+                );
+                // Mark convergence point
+                if ma.sinkhorn.converged_at < 50 {
+                    let conv_y = ma.sinkhorn.points.get(ma.sinkhorn.converged_at.saturating_sub(1))
+                        .map_or(0.01, |p| p[1]);
+                    plot_ui.points(
+                        Points::new(vec![[ma.sinkhorn.converged_at as f64, conv_y]])
+                            .radius(6.0)
+                            .color(GOLD_EG)
+                            .shape(MarkerShape::Diamond)
+                            .name(format!("Converged @ {}", ma.sinkhorn.converged_at)),
+                    );
+                }
+            });
+        } else {
+            dim_label(ui, "Computing...");
+        }
+    }
+
+    fn draw_sparsity_chart(&self, ui: &mut egui::Ui) {
+        ui.colored_label(HEADING_CLR, egui::RichText::new("Sparsity vs Threshold").size(12.0));
+
+        if let Some(ref ma) = self.mask_analysis {
+            let plot = Plot::new("sparsity_sweep")
+                .height(ui.available_height() - 20.0)
+                .width(ui.available_width())
+                .legend(Legend::default().position(Corner::RightTop))
+                .include_y(0.0)
+                .include_y(1.0);
+
+            plot.show(ui, |plot_ui| {
+                // Sparsity bars
+                let bars: Vec<Bar> = ma.sparsity.iter().enumerate().map(|(i, e)| {
+                    Bar::new(i as f64, e.sparsity as f64)
+                        .width(0.6)
+                        .fill(FOREST_GREEN)
+                        .name(format!("t={:.3}", e.threshold))
+                }).collect();
+                plot_ui.bar_chart(BarChart::new(bars).name("Sparsity"));
+
+                // Memory savings line (normalized to [0,1])
+                let max_dense = ma.sparsity.first().map_or(1, |e| e.dense_memory).max(1);
+                let mem_pts: Vec<[f64; 2]> = ma.sparsity.iter().enumerate().map(|(i, e)| {
+                    [i as f64, e.memory_bytes as f64 / max_dense as f64]
+                }).collect();
+                plot_ui.line(
+                    Line::new(PlotPoints::from(mem_pts))
+                        .color(GOLD_EG)
+                        .width(2.0)
+                        .name("Memory (normalized)"),
+                );
+            });
+        } else {
+            dim_label(ui, "Computing...");
+        }
+    }
+
+    fn draw_drift_status(&self, ctx: &egui::Context) {
+        if let Some(ref dr) = self.drift_result {
+            let (st, sc) = if dr.reduction_factor > 1.5 { ("EFFECTIVE", FOREST_GREEN) } else { ("MARGINAL", GOLD_EG) };
+            let frame = egui::Frame {
+                fill: egui::Color32::from_rgba_unmultiplied(22, 28, 22, 230),
+                corner_radius: egui::CornerRadius::from(6),
+                inner_margin: egui::Margin::same(10),
+                stroke: egui::Stroke::new(2.0, sc),
+                ..Default::default()
+            };
+            egui::Window::new("drift_status").title_bar(false).resizable(false).movable(false).frame(frame).anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0]).show(ctx, |ui| {
+                ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
+                ui.label(format!("{:.1}\u{00d7} reduction  \u{03bb}\u{2081}={:.4}  drift={:.3}",
+                    dr.reduction_factor, dr.spectral_gap, dr.toroidal_drift_rate));
                 if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
             });
         }

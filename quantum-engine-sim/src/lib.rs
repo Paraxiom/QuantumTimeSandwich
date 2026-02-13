@@ -51,5 +51,6 @@ pub mod engine;
 pub mod covariant;
 pub mod cnt_physics;
 pub mod cnt_bridge;
+pub mod logit_drift;
 pub mod sim_worker;
 pub mod gui;

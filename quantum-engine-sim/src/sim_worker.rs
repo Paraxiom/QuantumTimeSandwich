@@ -9,6 +9,7 @@ use crate::cnt_bridge;
 use crate::cnt_physics;
 use crate::covariant::{self, ContinuumLoss, DescentResult, Method, TorusPoint};
 use crate::engine::{self, EngineConfig, EngineResult};
+use crate::logit_drift;
 use crate::torus::TorusLattice;
 use crate::vacuum;
 
@@ -46,6 +47,17 @@ pub enum SimRequest {
         mc_trials: usize,
         operating_p: f64,
     },
+    /// Run drift Monte Carlo simulation.
+    RunDriftMC { config: logit_drift::DriftConfig },
+    /// Generate mask heatmap for visualization.
+    RunMaskHeatmap {
+        config: logit_drift::DriftConfig,
+        ref_pos: (usize, usize),
+    },
+    /// Run drift analysis (multi-scale, phase transition, adjacency).
+    RunDriftAnalysis { config: logit_drift::DriftConfig },
+    /// Run mask analysis (Sinkhorn convergence, sparsity sweep).
+    RunMaskAnalysis { config: logit_drift::DriftConfig },
 }
 
 /// Scaling study entry for one lattice size.
@@ -77,6 +89,14 @@ pub enum SimResponse {
     },
     /// CNT threshold sweep chart data.
     CntSweptChart(cnt_bridge::ChartData),
+    /// Drift Monte Carlo result.
+    DriftMC(logit_drift::DriftResult),
+    /// Mask heatmap result.
+    MaskHeatmap(logit_drift::MaskHeatmap),
+    /// Drift analysis result (multi-scale, phase transition, adjacency).
+    DriftAnalysis(logit_drift::DriftAnalysisResult),
+    /// Mask analysis result (Sinkhorn convergence, sparsity sweep).
+    MaskAnalysis(logit_drift::MaskAnalysisResult),
 }
 
 /// Handle to communicate with the background worker.
@@ -182,6 +202,22 @@ impl SimWorker {
                             cnt_bridge::quick_sweep(lattice_n, operating_p, mc_trials);
                         chart.operating_p = operating_p;
                         let _ = resp_tx.send(SimResponse::CntSweptChart(chart));
+                    }
+                    SimRequest::RunDriftMC { config } => {
+                        let result = logit_drift::simulate_drift(&config);
+                        let _ = resp_tx.send(SimResponse::DriftMC(result));
+                    }
+                    SimRequest::RunMaskHeatmap { config, ref_pos } => {
+                        let heatmap = logit_drift::generate_mask_heatmap(&config, ref_pos);
+                        let _ = resp_tx.send(SimResponse::MaskHeatmap(heatmap));
+                    }
+                    SimRequest::RunDriftAnalysis { config } => {
+                        let result = logit_drift::simulate_drift_analysis(&config);
+                        let _ = resp_tx.send(SimResponse::DriftAnalysis(result));
+                    }
+                    SimRequest::RunMaskAnalysis { config } => {
+                        let result = logit_drift::simulate_mask_analysis(&config);
+                        let _ = resp_tx.send(SimResponse::MaskAnalysis(result));
                     }
                 }
             }

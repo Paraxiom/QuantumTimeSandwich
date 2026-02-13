@@ -1855,6 +1855,7 @@ dependencies = [
  "egui_plot",
  "rand",
  "tonnetz-coherence-sim",
+ "topological-coherence",
  "toric-code-sim",
 ]
 
