@@ -839,6 +839,7 @@ impl QuantumEngineApp {
         self.send_descent();
         self.send_scaling();
         self.send_convergence();
+        self.send_cnt_eval();
     }
 
     fn send_engine(&mut self) {
