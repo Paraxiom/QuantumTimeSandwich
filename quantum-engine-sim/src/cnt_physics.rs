@@ -687,22 +687,42 @@ pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
             * (coupling_weight / n_qubits as f64)
             * (1.0 / spectral_gap);
 
-    // -- Decoherence rates (Bloch-Redfield) --
-    // T₁ from optomechanical damping
-    let gamma_opt = cooperativity * gamma_m;
-    let t1 = piezo_factor / (gamma_m + gamma_opt); // seconds
+    // -- Decoherence rates (geometric thermodynamics picture) --
+    //
+    // Cooperativity C acts as a curvature parameter on the optomechanical state
+    // manifold (cf. McGinty, "Geometric Thermodynamics", 2026). When C → ∞ the
+    // bare-state metric becomes singular — a geometric phase transition to the
+    // dressed-state (strong coupling) regime.
+    //
+    // The qubit is encoded in the Fock states |0⟩,|1⟩ of the *cooled* mechanical
+    // mode.  Optomechanical cooling reduces n_final (beneficial) but the qubit T₁
+    // depends on phonon transition rates in the cooled state, not on the optical
+    // damping rate γ_m(1+C).
+    //
+    // T₁ = 1 / [γ_m × (n_final + 1)]   (downward transition |1⟩→|0⟩ dominates
+    //                                     near ground state)
+    // T_φ = charge + magnetic + thermal dephasing (pure phase noise)
+    // T₂ = 1 / [1/(2T₁) + γ_φ]         (Bloch-Redfield)
+    //
+    // The Tonnetz spectral gap λ₁ (curvature of T²) bounds the dephasing
+    // suppression — the geometric invariant that protects coherence.
 
-    // Dephasing contributions
-    let gamma_thermal = gamma_m * (2.0 * n_final + 1.0);
+    // Qubit T₁: energy relaxation of the cooled mechanical mode
+    let gamma_1 = gamma_m * (n_final + 1.0);
+    let t1 = piezo_factor / gamma_1; // seconds
+
+    // Pure dephasing contributions (phase-randomizing noise channels)
     let gamma_charge = params.material.charge_noise_hz();
     let gamma_magnetic = params.material.magnetic_noise_hz();
+    // Residual thermal dephasing from phonon number fluctuations
+    let gamma_thermal_phi = gamma_m * n_final;
 
-    let gamma_2_bare = 1.0 / (2.0 * t1) + gamma_thermal + gamma_charge + gamma_magnetic;
+    let gamma_phi = gamma_thermal_phi + gamma_charge + gamma_magnetic;
+    let gamma_2_bare = 1.0 / (2.0 * t1) + gamma_phi;
     let t2_bare = 1.0 / gamma_2_bare;
 
-    // Tonnetz filter reduces dephasing (not T₁ relaxation)
-    let gamma_2_filtered =
-        1.0 / (2.0 * t1) + (gamma_thermal + gamma_charge + gamma_magnetic) / tonnetz_enhancement;
+    // Tonnetz filter reduces pure dephasing (not T₁ relaxation)
+    let gamma_2_filtered = 1.0 / (2.0 * t1) + gamma_phi / tonnetz_enhancement;
     let t2 = 1.0 / gamma_2_filtered;
 
     PhysicsResult {
