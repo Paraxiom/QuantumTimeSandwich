@@ -355,6 +355,158 @@ pub fn convergence_validation(sizes: &[usize], learning_rate: f64) -> Vec<(usize
         .collect()
 }
 
+// ─── Physics-based loss functions for covariant descent ────────────────────
+
+use std::sync::Mutex;
+
+/// Nanotorus descent target: which parameter pair to optimize.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NanoDescentTarget {
+    /// Optimize (ring_diameter, tube_diameter) → minimize n_final.
+    RingGeometry,
+    /// Optimize (tonnetz_grid_size, tonnetz_q) → maximize T₂ (minimize -T₂).
+    TonnetzFilter,
+    /// Optimize (temperature, laser_power) → minimize n_final.
+    Cooling,
+}
+
+/// Drift tab descent target: optimize mask shape.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DriftDescentTarget {
+    /// Optimize (mask_radius, decay_alpha) → minimize drift_rate.
+    MaskShape,
+}
+
+/// Denormalize [0,1) → [lo, hi] on log scale.
+pub fn denorm_log(t: f64, lo: f64, hi: f64) -> f64 {
+    (lo.ln() + t * (hi.ln() - lo.ln())).exp()
+}
+
+/// Denormalize [0,1) → [lo, hi] on linear scale.
+pub fn denorm_linear(t: f64, lo: f64, hi: f64) -> f64 {
+    lo + t * (hi - lo)
+}
+
+/// Physics-based loss for nanotorus parameter optimization.
+///
+/// Maps TorusPoint → physical parameters → evaluates CNT physics → returns objective.
+/// Uses `Mutex` for thread-safe best-point tracking (satisfies `Send + Sync`).
+pub struct NanoPhysicsLoss {
+    pub target: NanoDescentTarget,
+    pub base_params: crate::cnt_physics::PhysicsParams,
+    best: Mutex<(TorusPoint, f64)>,
+}
+
+impl NanoPhysicsLoss {
+    pub fn new(target: NanoDescentTarget, base_params: crate::cnt_physics::PhysicsParams) -> Self {
+        Self {
+            target,
+            base_params,
+            best: Mutex::new((TorusPoint::new(0.5, 0.5), f64::INFINITY)),
+        }
+    }
+
+    /// Map TorusPoint to physical params and return the objective value.
+    fn evaluate_at(&self, theta: &TorusPoint) -> f64 {
+        let mut params = self.base_params.clone();
+        match self.target {
+            NanoDescentTarget::RingGeometry => {
+                params.ring_diameter_nm = denorm_log(theta.x, 50.0, 1000.0);
+                params.cnt_diameter_nm = denorm_log(theta.y, 0.5, 50.0);
+            }
+            NanoDescentTarget::TonnetzFilter => {
+                let grid = denorm_linear(theta.x, 3.0, 16.0).round() as usize;
+                params.tonnetz_grid_size = grid.clamp(3, 16);
+                params.tonnetz_q = denorm_log(theta.y, 1.0, 200.0);
+            }
+            NanoDescentTarget::Cooling => {
+                params.temperature = denorm_log(theta.x, 0.01, 300.0);
+                params.laser_power = denorm_log(theta.y, 0.1, 50.0);
+            }
+        }
+        let result = crate::cnt_physics::evaluate(&params);
+        match self.target {
+            NanoDescentTarget::RingGeometry | NanoDescentTarget::Cooling => result.n_final,
+            NanoDescentTarget::TonnetzFilter => -result.t2_ns, // maximize T₂
+        }
+    }
+}
+
+impl TorusLoss for NanoPhysicsLoss {
+    fn loss(&self, theta: &TorusPoint) -> f64 {
+        let val = self.evaluate_at(theta);
+        let mut best = self.best.lock().unwrap();
+        if val < best.1 {
+            *best = (*theta, val);
+        }
+        val
+    }
+
+    fn gradient(&self, theta: &TorusPoint) -> (f64, f64) {
+        let eps = 1e-4;
+        let fx_plus = self.evaluate_at(&TorusPoint::new(theta.x + eps, theta.y));
+        let fx_minus = self.evaluate_at(&TorusPoint::new(theta.x - eps, theta.y));
+        let fy_plus = self.evaluate_at(&TorusPoint::new(theta.x, theta.y + eps));
+        let fy_minus = self.evaluate_at(&TorusPoint::new(theta.x, theta.y - eps));
+        ((fx_plus - fx_minus) / (2.0 * eps), (fy_plus - fy_minus) / (2.0 * eps))
+    }
+
+    fn minimum(&self) -> TorusPoint {
+        self.best.lock().unwrap().0
+    }
+}
+
+/// Physics-based loss for drift mask shape optimization.
+///
+/// Maps TorusPoint → (radius, alpha) → simulates drift → returns drift_rate.
+pub struct DriftPhysicsLoss {
+    pub base_config: crate::logit_drift::DriftConfig,
+    best: Mutex<(TorusPoint, f64)>,
+}
+
+impl DriftPhysicsLoss {
+    pub fn new(base_config: crate::logit_drift::DriftConfig) -> Self {
+        Self {
+            base_config,
+            best: Mutex::new((TorusPoint::new(0.5, 0.5), f64::INFINITY)),
+        }
+    }
+
+    fn evaluate_at(&self, theta: &TorusPoint) -> f64 {
+        let mut config = self.base_config.clone();
+        config.radius = denorm_linear(theta.x, 1.0, 8.0) as f32;
+        config.alpha = denorm_linear(theta.y, 0.1, 2.0) as f32;
+        // Use fewer steps for efficiency during descent
+        config.num_steps = 200;
+        let result = crate::logit_drift::simulate_drift(&config);
+        result.toroidal_drift_rate as f64
+    }
+}
+
+impl TorusLoss for DriftPhysicsLoss {
+    fn loss(&self, theta: &TorusPoint) -> f64 {
+        let val = self.evaluate_at(theta);
+        let mut best = self.best.lock().unwrap();
+        if val < best.1 {
+            *best = (*theta, val);
+        }
+        val
+    }
+
+    fn gradient(&self, theta: &TorusPoint) -> (f64, f64) {
+        let eps = 1e-4;
+        let fx_plus = self.evaluate_at(&TorusPoint::new(theta.x + eps, theta.y));
+        let fx_minus = self.evaluate_at(&TorusPoint::new(theta.x - eps, theta.y));
+        let fy_plus = self.evaluate_at(&TorusPoint::new(theta.x, theta.y + eps));
+        let fy_minus = self.evaluate_at(&TorusPoint::new(theta.x, theta.y - eps));
+        ((fx_plus - fx_minus) / (2.0 * eps), (fy_plus - fy_minus) / (2.0 * eps))
+    }
+
+    fn minimum(&self) -> TorusPoint {
+        self.best.lock().unwrap().0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

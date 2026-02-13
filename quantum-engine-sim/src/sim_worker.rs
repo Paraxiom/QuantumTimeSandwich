@@ -7,7 +7,7 @@ use std::thread;
 
 use crate::cnt_bridge;
 use crate::cnt_physics;
-use crate::covariant::{self, ContinuumLoss, DescentResult, Method, TorusPoint};
+use crate::covariant::{self, ContinuumLoss, DescentResult, DriftPhysicsLoss, Method, NanoDescentTarget, NanoPhysicsLoss, TorusPoint};
 use crate::engine::{self, EngineConfig, EngineResult};
 use crate::logit_drift;
 use crate::torus::TorusLattice;
@@ -58,6 +58,28 @@ pub enum SimRequest {
     RunDriftAnalysis { config: logit_drift::DriftConfig },
     /// Run mask analysis (Sinkhorn convergence, sparsity sweep).
     RunMaskAnalysis { config: logit_drift::DriftConfig },
+    /// Run nanotorus physics evaluation + toric code MC.
+    RunNanoEval {
+        params: cnt_physics::PhysicsParams,
+        lattice_n: usize,
+        gate_time_ns: f64,
+        mc_trials: usize,
+    },
+    /// Run nanotorus covariant descent (physics-based loss).
+    RunNanoDescent {
+        base_params: cnt_physics::PhysicsParams,
+        target: NanoDescentTarget,
+        eta: f64,
+        start: TorusPoint,
+        n_lattice: usize,
+    },
+    /// Run drift covariant descent (mask shape optimization).
+    RunDriftDescent {
+        config: logit_drift::DriftConfig,
+        eta: f64,
+        start: TorusPoint,
+        n_lattice: usize,
+    },
 }
 
 /// Scaling study entry for one lattice size.
@@ -97,6 +119,23 @@ pub enum SimResponse {
     DriftAnalysis(logit_drift::DriftAnalysisResult),
     /// Mask analysis result (Sinkhorn convergence, sparsity sweep).
     MaskAnalysis(logit_drift::MaskAnalysisResult),
+    /// Nanotorus physics + MC result.
+    NanoEvaluated {
+        physics: cnt_physics::PhysicsResult,
+        p_error: f64,
+        mc_result: toric_code_sim::prelude::SimResult,
+        snapshot: cnt_bridge::LatticeSnapshot,
+    },
+    /// Nanotorus covariant descent results.
+    NanoDescent {
+        covariant: DescentResult,
+        euclidean: DescentResult,
+    },
+    /// Drift covariant descent results.
+    DriftDescent {
+        covariant: DescentResult,
+        euclidean: DescentResult,
+    },
 }
 
 /// Handle to communicate with the background worker.
@@ -218,6 +257,60 @@ impl SimWorker {
                     SimRequest::RunMaskAnalysis { config } => {
                         let result = logit_drift::simulate_mask_analysis(&config);
                         let _ = resp_tx.send(SimResponse::MaskAnalysis(result));
+                    }
+                    SimRequest::RunNanoEval {
+                        params,
+                        lattice_n,
+                        gate_time_ns,
+                        mc_trials,
+                    } => {
+                        let physics = cnt_physics::evaluate(&params);
+                        let p_error = cnt_bridge::t2_to_p(physics.t2_ns, gate_time_ns);
+                        let mc_result = cnt_bridge::run_mc(lattice_n, p_error, mc_trials);
+                        let snapshot = cnt_bridge::capture_snapshot(lattice_n, p_error);
+                        let _ = resp_tx.send(SimResponse::NanoEvaluated {
+                            physics,
+                            p_error,
+                            mc_result,
+                            snapshot,
+                        });
+                    }
+                    SimRequest::RunNanoDescent {
+                        base_params,
+                        target,
+                        eta,
+                        start,
+                        n_lattice,
+                    } => {
+                        let loss = NanoPhysicsLoss::new(target, base_params);
+                        let cov = covariant::descent(
+                            &loss, start, Method::Covariant, eta, 200, 0.01, n_lattice,
+                        );
+                        let euc = covariant::descent(
+                            &loss, start, Method::Euclidean, eta, 200, 0.01, n_lattice,
+                        );
+                        let _ = resp_tx.send(SimResponse::NanoDescent {
+                            covariant: cov,
+                            euclidean: euc,
+                        });
+                    }
+                    SimRequest::RunDriftDescent {
+                        config,
+                        eta,
+                        start,
+                        n_lattice,
+                    } => {
+                        let loss = DriftPhysicsLoss::new(config);
+                        let cov = covariant::descent(
+                            &loss, start, Method::Covariant, eta, 100, 0.01, n_lattice,
+                        );
+                        let euc = covariant::descent(
+                            &loss, start, Method::Euclidean, eta, 100, 0.01, n_lattice,
+                        );
+                        let _ = resp_tx.send(SimResponse::DriftDescent {
+                            covariant: cov,
+                            euclidean: euc,
+                        });
                     }
                 }
             }

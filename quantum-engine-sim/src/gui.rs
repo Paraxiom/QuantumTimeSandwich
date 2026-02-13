@@ -8,8 +8,8 @@ use egui_plot::{Bar, BarChart, Corner, Legend, Line, MarkerShape, Plot, PlotPoin
     Points, Polygon, Text as PlotText, VLine};
 
 use crate::cnt_bridge::{self, ChartData, LatticeSnapshot};
-use crate::cnt_physics::{PhysicsParams, PhysicsResult};
-use crate::covariant::{DescentResult, DescentStep, TorusPoint};
+use crate::cnt_physics::{BundleGeometry, Material, PhysicsParams, PhysicsResult, ResonatorType};
+use crate::covariant::{DescentResult, DescentStep, NanoDescentTarget, TorusPoint};
 use crate::engine::{EngineConfig, EngineResult};
 use crate::logit_drift::{self, DriftConfig, DriftResult, MaskHeatmap as DriftHeatmap,
     DriftAnalysisResult, MaskAnalysisResult};
@@ -25,6 +25,7 @@ const GOLD_EG: egui::Color32 = egui::Color32::from_rgb(212, 175, 55);
 const HEADING_CLR: egui::Color32 = egui::Color32::from_rgb(220, 218, 210);
 const LABEL_CLR: egui::Color32 = egui::Color32::from_rgb(230, 228, 218);
 const TORUS_WIRE: egui::Color32 = egui::Color32::from_rgb(60, 125, 85);
+const TORUS_BLUE: egui::Color32 = egui::Color32::from_rgb(80, 160, 255);
 
 const COMPRESS_BLUE: egui::Color32 = egui::Color32::from_rgb(70, 130, 230);
 const EXTRACT_GOLD: egui::Color32 = egui::Color32::from_rgb(255, 200, 50);
@@ -43,6 +44,7 @@ const E_PARTICLE_ORANGE: egui::Color32 = egui::Color32::from_rgb(255, 170, 30);
 enum Tab {
     VacuumEngine,
     CntDoppler,
+    Nanotorus,
     HallucinationReduction,
 }
 
@@ -705,6 +707,29 @@ pub struct QuantumEngineApp {
     cnt_chart_data: Option<ChartData>,
     cnt_hovered_node: Option<(usize, usize)>,
 
+    // Nanotorus tab
+    nano_params: PhysicsParams,
+    nano_lattice_n: usize,
+    nano_mc_trials: usize,
+    nano_gate_time_ns: f64,
+    nano_physics_result: Option<PhysicsResult>,
+    nano_p_error: f64,
+    nano_logical_error_rate: f64,
+    nano_logical_failures: usize,
+    nano_mc_trials_done: usize,
+    nano_snapshot: Option<LatticeSnapshot>,
+    nano_chart_data: Option<ChartData>,
+    nano_descent_target: NanoDescentTarget,
+    nano_descent_eta: f64,
+    nano_descent_start: (f64, f64),
+    nano_show_euclidean: bool,
+    nano_descent_cov: Option<DescentResult>,
+    nano_descent_euc: Option<DescentResult>,
+    needs_nano_eval: bool,
+    needs_nano_sweep: bool,
+    nano_sweep_pending: bool,
+    needs_nano_descent: bool,
+
     // Hallucination reduction params
     drift_config: DriftConfig,
     drift_viz_mode: DriftVizMode,
@@ -718,6 +743,13 @@ pub struct QuantumEngineApp {
     needs_drift_heatmap: bool,
     needs_drift_analysis: bool,
     needs_mask_analysis: bool,
+    // Drift descent
+    drift_descent_eta: f64,
+    drift_descent_start: (f64, f64),
+    drift_show_descent_euc: bool,
+    drift_descent_cov: Option<DescentResult>,
+    drift_descent_euc: Option<DescentResult>,
+    needs_drift_descent: bool,
 
     // Visualization state (shared)
     time: f32,
@@ -784,6 +816,28 @@ impl QuantumEngineApp {
             cnt_chart_data: None,
             cnt_hovered_node: None,
 
+            nano_params: PhysicsParams::nanotorus_default(),
+            nano_lattice_n: 6,
+            nano_mc_trials: 500,
+            nano_gate_time_ns: cnt_bridge::DEFAULT_GATE_TIME_NS,
+            nano_physics_result: None,
+            nano_p_error: 0.0,
+            nano_logical_error_rate: 0.0,
+            nano_logical_failures: 0,
+            nano_mc_trials_done: 0,
+            nano_snapshot: None,
+            nano_chart_data: None,
+            nano_descent_target: NanoDescentTarget::RingGeometry,
+            nano_descent_eta: 0.005,
+            nano_descent_start: (0.3, 0.3),
+            nano_show_euclidean: true,
+            nano_descent_cov: None,
+            nano_descent_euc: None,
+            needs_nano_eval: true,
+            needs_nano_sweep: true,
+            nano_sweep_pending: false,
+            needs_nano_descent: true,
+
             drift_config: DriftConfig::default(),
             drift_viz_mode: DriftVizMode::Overview,
             drift_result: None,
@@ -794,6 +848,12 @@ impl QuantumEngineApp {
             needs_drift_heatmap: true,
             needs_drift_analysis: true,
             needs_mask_analysis: true,
+            drift_descent_eta: 0.005,
+            drift_descent_start: (0.5, 0.5),
+            drift_show_descent_euc: true,
+            drift_descent_cov: None,
+            drift_descent_euc: None,
+            needs_drift_descent: false,
 
             time: 0.0,
             rotation: [0.3, 0.15],
@@ -911,6 +971,49 @@ impl QuantumEngineApp {
         });
         self.needs_mask_analysis = false;
     }
+
+    fn send_nano_eval(&mut self) {
+        self.worker.send(SimRequest::RunNanoEval {
+            params: self.nano_params.clone(),
+            lattice_n: self.nano_lattice_n,
+            gate_time_ns: self.nano_gate_time_ns,
+            mc_trials: self.nano_mc_trials,
+        });
+        self.needs_nano_eval = false;
+    }
+
+    fn send_nano_sweep(&mut self) {
+        self.worker.send(SimRequest::RunCntSweep {
+            lattice_n: self.nano_lattice_n,
+            mc_trials: (self.nano_mc_trials / 5).max(50),
+            operating_p: self.nano_p_error,
+        });
+        self.needs_nano_sweep = false;
+        self.nano_sweep_pending = true;
+    }
+
+    fn send_nano_descent(&mut self) {
+        let start = TorusPoint::new(self.nano_descent_start.0, self.nano_descent_start.1);
+        self.worker.send(SimRequest::RunNanoDescent {
+            base_params: self.nano_params.clone(),
+            target: self.nano_descent_target,
+            eta: self.nano_descent_eta,
+            start,
+            n_lattice: self.nano_lattice_n,
+        });
+        self.needs_nano_descent = false;
+    }
+
+    fn send_drift_descent(&mut self) {
+        let start = TorusPoint::new(self.drift_descent_start.0, self.drift_descent_start.1);
+        self.worker.send(SimRequest::RunDriftDescent {
+            config: self.drift_config.clone(),
+            eta: self.drift_descent_eta,
+            start,
+            n_lattice: self.drift_config.grid_n,
+        });
+        self.needs_drift_descent = false;
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -958,8 +1061,13 @@ impl eframe::App for QuantumEngineApp {
                     if !self.cnt_sweep_pending { self.needs_cnt_sweep = true; }
                 }
                 SimResponse::CntSweptChart(chart) => {
-                    self.cnt_chart_data = Some(chart);
-                    self.cnt_sweep_pending = false;
+                    if self.nano_sweep_pending {
+                        self.nano_chart_data = Some(chart);
+                        self.nano_sweep_pending = false;
+                    } else {
+                        self.cnt_chart_data = Some(chart);
+                        self.cnt_sweep_pending = false;
+                    }
                 }
                 SimResponse::DriftMC(result) => {
                     self.drift_result = Some(result);
@@ -973,7 +1081,31 @@ impl eframe::App for QuantumEngineApp {
                 SimResponse::MaskAnalysis(result) => {
                     self.mask_analysis = Some(result);
                 }
+                SimResponse::NanoEvaluated { physics, p_error, mc_result, snapshot } => {
+                    self.nano_p_error = p_error;
+                    self.nano_logical_error_rate = mc_result.logical_error_rate;
+                    self.nano_logical_failures = mc_result.logical_failures;
+                    self.nano_mc_trials_done = mc_result.trials;
+                    self.nano_physics_result = Some(physics);
+                    self.nano_snapshot = Some(snapshot);
+                    if !self.nano_sweep_pending { self.needs_nano_sweep = true; }
+                }
+                SimResponse::NanoDescent { covariant, euclidean } => {
+                    self.nano_descent_cov = Some(covariant);
+                    self.nano_descent_euc = Some(euclidean);
+                }
+                SimResponse::DriftDescent { covariant, euclidean } => {
+                    self.drift_descent_cov = Some(covariant);
+                    self.drift_descent_euc = Some(euclidean);
+                }
             }
+        }
+
+        // Fire nanotorus simulations when needed and tab is active
+        if self.active_tab == Tab::Nanotorus {
+            if self.needs_nano_eval { self.send_nano_eval(); }
+            if self.needs_nano_sweep && !self.nano_sweep_pending { self.send_nano_sweep(); }
+            if self.needs_nano_descent { self.send_nano_descent(); }
         }
 
         // Fire drift simulations when needed and tab is active
@@ -986,6 +1118,7 @@ impl eframe::App for QuantumEngineApp {
             if self.needs_mask_analysis && self.drift_viz_mode == DriftVizMode::MaskAnalysis {
                 self.send_mask_analysis();
             }
+            if self.needs_drift_descent { self.send_drift_descent(); }
         }
 
         // ═════ LEFT PANEL: Controls (conditional on tab) ═════
@@ -1004,9 +1137,10 @@ impl eframe::App for QuantumEngineApp {
                     ui.add_space(2.0);
 
                     // Tab bar
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.selectable_value(&mut self.active_tab, Tab::VacuumEngine, egui::RichText::new("Vacuum Engine").strong());
                         ui.selectable_value(&mut self.active_tab, Tab::CntDoppler, egui::RichText::new("CNT Doppler").strong());
+                        ui.selectable_value(&mut self.active_tab, Tab::Nanotorus, egui::RichText::new("Nanotorus").strong().color(TORUS_BLUE));
                         ui.selectable_value(&mut self.active_tab, Tab::HallucinationReduction, egui::RichText::new("Hallucination").strong());
                     });
                     ui.separator();
@@ -1024,6 +1158,7 @@ impl eframe::App for QuantumEngineApp {
                     match self.active_tab {
                         Tab::VacuumEngine => self.draw_engine_controls(ui),
                         Tab::CntDoppler => self.draw_cnt_controls(ui),
+                        Tab::Nanotorus => self.draw_nano_controls(ui),
                         Tab::HallucinationReduction => self.draw_drift_controls(ui),
                     }
                 });
@@ -1038,6 +1173,7 @@ impl eframe::App for QuantumEngineApp {
                     match self.active_tab {
                         Tab::VacuumEngine => self.draw_engine_results(ui),
                         Tab::CntDoppler => self.draw_cnt_results(ui),
+                        Tab::Nanotorus => self.draw_nano_results(ui),
                         Tab::HallucinationReduction => self.draw_drift_results(ui),
                     }
                 });
@@ -1050,6 +1186,7 @@ impl eframe::App for QuantumEngineApp {
                 match self.active_tab {
                     Tab::VacuumEngine => self.draw_engine_central(ui),
                     Tab::CntDoppler => self.draw_cnt_central(ui, ctx),
+                    Tab::Nanotorus => self.draw_nano_central(ui),
                     Tab::HallucinationReduction => self.draw_drift_central(ui),
                 }
             });
@@ -1058,6 +1195,7 @@ impl eframe::App for QuantumEngineApp {
         match self.active_tab {
             Tab::VacuumEngine => self.draw_engine_status(ctx),
             Tab::CntDoppler => self.draw_cnt_status(ctx),
+            Tab::Nanotorus => self.draw_nano_status(ctx),
             Tab::HallucinationReduction => self.draw_drift_status(ctx),
         }
 
@@ -1381,6 +1519,8 @@ impl QuantumEngineApp {
         ui.horizontal(|ui| {
             if ui.add(egui::Button::new(egui::RichText::new("Optimal").color(FOREST_GREEN).size(12.0))).clicked() {
                 // Short SWCNT in dilution fridge + high laser + strong Tonnetz
+                self.cnt_params.resonator_type = ResonatorType::Nanotube;
+                self.cnt_params.material = Material::Carbon;
                 self.cnt_params.cnt_length_nm = 300.0;
                 self.cnt_params.cnt_diameter_nm = 1.4;
                 self.cnt_params.num_walls = 1;
@@ -1406,9 +1546,32 @@ impl QuantumEngineApp {
             }
         });
 
-        section_heading(ui, "NANOTUBE GEOMETRY");
-        dim_label(ui, "CNT mechanical resonator properties.");
+        section_heading(ui, "MATERIAL");
         let mut changed = preset_changed;
+        {
+            let prev = self.cnt_params.material;
+            egui::ComboBox::from_id_salt("cnt_material")
+                .selected_text(self.cnt_params.material.label())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.cnt_params.material, Material::Carbon, "Carbon");
+                    ui.selectable_value(&mut self.cnt_params.material, Material::BoronNitride, "Boron Nitride");
+                    ui.selectable_value(&mut self.cnt_params.material, Material::MoS2, "MoS\u{2082}");
+                    ui.selectable_value(&mut self.cnt_params.material, Material::SiliconCarbide, "Silicon Carbide");
+                });
+            if self.cnt_params.material != prev { changed = true; }
+            let desc = match self.cnt_params.material {
+                Material::Carbon => "E=1.0 TPa, \u{03c1}=2200 kg/m\u{00b3}",
+                Material::BoronNitride => "E=0.8 TPa, \u{03c1}=2100, low charge noise",
+                Material::MoS2 => "E=0.27 TPa, \u{03c1}=5060, semiconducting",
+                Material::SiliconCarbide => "E=0.45 TPa, \u{03c1}=3210, excellent thermal",
+            };
+            dim_label(ui, desc);
+        }
+
+        section_heading(ui, "NANOTUBE GEOMETRY");
+
+        // CNT tab always uses Nanotube
+        self.cnt_params.resonator_type = ResonatorType::Nanotube;
 
         ui.add_space(4.0);
         ui.label("Length (nm)");
@@ -1416,7 +1579,7 @@ impl QuantumEngineApp {
         changed |= ui.add(egui::Slider::new(&mut self.cnt_params.cnt_length_nm, 100.0..=5000.0).logarithmic(true)).changed();
 
         ui.add_space(2.0);
-        ui.label("Diameter (nm)");
+        ui.label("Tube Diameter (nm)");
         dim_label(ui, "SWCNT ~1\u{2013}2nm, MWCNT ~5\u{2013}50nm.");
         changed |= ui.add(egui::Slider::new(&mut self.cnt_params.cnt_diameter_nm, 0.5..=50.0).logarithmic(true)).changed();
 
@@ -1512,7 +1675,10 @@ impl QuantumEngineApp {
     }
 
     fn draw_cnt_results(&self, ui: &mut egui::Ui) {
-        section_heading(ui, "CNT RESONATOR");
+        let heading = self.cnt_physics_result.as_ref()
+            .map(|p| p.resonator_label)
+            .unwrap_or("CNT RESONATOR");
+        section_heading(ui, heading);
 
         if let Some(ref phys) = self.cnt_physics_result {
             ui.label(format!("f_m: {:.2} GHz", phys.freq_ghz));
@@ -1522,6 +1688,12 @@ impl QuantumEngineApp {
             let qc = if phys.q_mech > 1e5 { FOREST_GREEN } else { GOLD_EG };
             ui.colored_label(qc, format!("Q: {:.0}", phys.q_mech));
             dim_label(ui, "  Mechanical quality factor");
+            ui.label(format!("\u{0394}\u{03c9}: {:.2}", phys.mech_spectral_gap));
+            dim_label(ui, "  Mechanical spectral gap (\u{03c9}\u{2083}/\u{03c9}\u{2082})");
+            if phys.resonator_label == "NANOTORUS" {
+                dim_label(ui, "  T\u{00b2} modes: winding numbers (m,n). Q enhanced by");
+                dim_label(ui, "  elimination of clamping losses.");
+            }
 
             ui.add_space(6.0);
             section_heading(ui, "COOLING");
@@ -1776,7 +1948,7 @@ impl QuantumEngineApp {
                     ui.colored_label(coh_sc, egui::RichText::new(format!("Coherence {}", coh_st)).strong().size(13.0));
                 });
                 ui.label(format!("T\u{2082}={:.0}ns  p={:.4}  P_L={:.3}", phys.t2_ns, self.cnt_p_error, self.cnt_logical_error_rate));
-                dim_label(ui, &format!("Tonnetz: +{:.0}ns ({:.0}\u{00d7})", phys.t2_ns - phys.t2_bare_ns, phys.tonnetz_enhancement));
+                dim_label(ui, &format!("{}: +{:.0}ns ({:.0}\u{00d7})", phys.resonator_label, phys.t2_ns - phys.t2_bare_ns, phys.tonnetz_enhancement));
                 if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
             });
         }
@@ -1874,6 +2046,25 @@ impl QuantumEngineApp {
             self.needs_mask_analysis = true;
         }
 
+        // ── Covariant Descent ──
+        section_heading(ui, "COVARIANT DESCENT");
+        dim_label(ui, "Optimize mask (r, \u{03b1}) on T\u{00b2}.");
+        let mut descent_changed = false;
+
+        ui.add_space(4.0);
+        ui.label("Learning rate \u{03b7}");
+        descent_changed |= ui.add(egui::Slider::new(&mut self.drift_descent_eta, 0.0001..=0.05).logarithmic(true)).changed();
+        ui.add_space(2.0);
+        ui.label("Start x (radius)");
+        descent_changed |= ui.add(egui::Slider::new(&mut self.drift_descent_start.0, 0.0..=1.0)).changed();
+        ui.add_space(2.0);
+        ui.label("Start y (alpha)");
+        descent_changed |= ui.add(egui::Slider::new(&mut self.drift_descent_start.1, 0.0..=1.0)).changed();
+        ui.add_space(2.0);
+        ui.checkbox(&mut self.drift_show_descent_euc, "Show Euclidean path");
+
+        if descent_changed { self.needs_drift_descent = true; }
+
         // ── Mechanism ──
         ui.add_space(8.0);
         section_heading(ui, "MECHANISM");
@@ -1927,6 +2118,28 @@ impl QuantumEngineApp {
         ui.label(format!("Type: {}", mask_name));
         ui.label(format!("r = {:.1}, \u{03b1} = {:.1}", self.drift_config.radius, self.drift_config.alpha));
 
+        // ── Descent Results ──
+        if self.drift_descent_cov.is_some() || self.drift_descent_euc.is_some() {
+            section_heading(ui, "DESCENT");
+            if let Some(ref cov) = self.drift_descent_cov {
+                let conv_str = match cov.convergence_step { Some(s) => format!("step {}", s), None => "running".to_string() };
+                ui.colored_label(FOREST_GREEN, "Covariant (T\u{00b2}):");
+                ui.label(format!("  Loss: {:.4}", cov.final_loss));
+                ui.label(format!("  Conv: {}", conv_str));
+                ui.label(format!("  Rate: {:.4}", cov.measured_rate));
+                // Decode optimized r and alpha
+                if let Some(last) = cov.steps.last() {
+                    let opt_r = crate::covariant::denorm_linear(last.position.x, 1.0, 8.0);
+                    let opt_a = crate::covariant::denorm_linear(last.position.y, 0.1, 2.0);
+                    dim_label(ui, &format!("  Opt: r={:.1} \u{03b1}={:.2}", opt_r, opt_a));
+                }
+            }
+            if let Some(ref euc) = self.drift_descent_euc {
+                ui.colored_label(WARN_RED, "Euclidean (flat):");
+                ui.label(format!("  Loss: {:.4}", euc.final_loss));
+            }
+        }
+
         // ── Benchmark ──
         section_heading(ui, "TRUTHFULQA BENCHMARK");
         dim_label(ui, "Published results (817 samples):");
@@ -1958,6 +2171,20 @@ impl QuantumEngineApp {
             self.time,
             self.drift_result.as_ref(),
         );
+
+        // Overlay descent paths on drift torus
+        {
+            let rm = 1.0f32;
+            let rn = 0.45f32;
+            if let Some(ref cov) = self.drift_descent_cov {
+                draw_descent_path(&painter, torus_rect, self.rotation, rm, rn, &cov.steps, true, self.time);
+            }
+            if self.drift_show_descent_euc {
+                if let Some(ref euc) = self.drift_descent_euc {
+                    draw_descent_path(&painter, torus_rect, self.rotation, rm, rn, &euc.steps, false, self.time);
+                }
+            }
+        }
 
         // ═══ BOTTOM: 3 panels (dispatch by viz mode) ═══
         let bw = total_rect.width() / 3.0;
@@ -2509,6 +2736,524 @@ impl QuantumEngineApp {
                 ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
                 ui.label(format!("{:.1}\u{00d7} reduction  \u{03bb}\u{2081}={:.4}  drift={:.3}",
                     dr.reduction_factor, dr.spectral_gap, dr.toroidal_drift_rate));
+                if let Some(ref cov) = self.drift_descent_cov {
+                    dim_label(ui, &format!("Descent: {} steps, loss={:.4}", cov.steps.len(), cov.final_loss));
+                }
+                if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
+            });
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Nanotorus tab methods
+// ═══════════════════════════════════════════════════════════════════════════════
+
+impl QuantumEngineApp {
+    fn draw_nano_controls(&mut self, ui: &mut egui::Ui) {
+        ui.colored_label(TORUS_BLUE, egui::RichText::new("NANOTORUS SIMULATOR").strong().size(13.0));
+        dim_label(ui, "Nanotorus (T\u{00b2}) resonator physics");
+        ui.add_space(4.0);
+
+        section_heading(ui, "PRESETS");
+        let mut preset_changed = false;
+        ui.horizontal(|ui| {
+            if ui.add(egui::Button::new(egui::RichText::new("Optimal").color(FOREST_GREEN).size(12.0))).clicked() {
+                self.nano_params = PhysicsParams::nanotorus_default();
+                self.nano_lattice_n = 6;
+                self.nano_mc_trials = 500;
+                self.nano_gate_time_ns = 50.0;
+                preset_changed = true;
+            }
+            if ui.add(egui::Button::new(egui::RichText::new("Large Ring").color(TORUS_BLUE).size(12.0))).clicked() {
+                self.nano_params = PhysicsParams::nanotorus_default();
+                self.nano_params.ring_diameter_nm = 500.0;
+                preset_changed = true;
+            }
+            if ui.add(egui::Button::new(egui::RichText::new("Room Temp").color(WARN_RED).size(12.0))).clicked() {
+                self.nano_params = PhysicsParams::nanotorus_default();
+                self.nano_params.temperature = 300.0;
+                self.nano_params.laser_power = 5.0;
+                preset_changed = true;
+            }
+        });
+        ui.horizontal(|ui| {
+            if ui.add(egui::Button::new(egui::RichText::new("Bundle Chain").color(GOLD_EG).size(12.0))).clicked() {
+                self.nano_params = PhysicsParams::nanotorus_default();
+                self.nano_params.bundle_geometry = BundleGeometry::Chain { count: 4 };
+                self.nano_lattice_n = 6;
+                self.nano_mc_trials = 500;
+                self.nano_gate_time_ns = 50.0;
+                preset_changed = true;
+            }
+            if ui.add(egui::Button::new(egui::RichText::new("BN Torus").color(TORUS_BLUE).size(12.0))).clicked() {
+                self.nano_params = PhysicsParams::nanotorus_default();
+                self.nano_params.material = Material::BoronNitride;
+                preset_changed = true;
+            }
+        });
+
+        section_heading(ui, "MATERIAL");
+        let mut changed = preset_changed;
+        {
+            let prev = self.nano_params.material;
+            egui::ComboBox::from_id_salt("nano_material")
+                .selected_text(self.nano_params.material.label())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut self.nano_params.material, Material::Carbon, "Carbon");
+                    ui.selectable_value(&mut self.nano_params.material, Material::BoronNitride, "Boron Nitride");
+                    ui.selectable_value(&mut self.nano_params.material, Material::MoS2, "MoS\u{2082}");
+                    ui.selectable_value(&mut self.nano_params.material, Material::SiliconCarbide, "Silicon Carbide");
+                });
+            if self.nano_params.material != prev { changed = true; }
+            let desc = match self.nano_params.material {
+                Material::Carbon => "E=1.0 TPa, \u{03c1}=2200 kg/m\u{00b3}",
+                Material::BoronNitride => "E=0.8 TPa, \u{03c1}=2100, low charge noise",
+                Material::MoS2 => "E=0.27 TPa, \u{03c1}=5060, semiconducting",
+                Material::SiliconCarbide => "E=0.45 TPa, \u{03c1}=3210, excellent thermal",
+            };
+            dim_label(ui, desc);
+        }
+
+        section_heading(ui, "BUNDLE GEOMETRY");
+        {
+            let prev_bundle = self.nano_params.bundle_geometry;
+            // Track the selected variant (ignoring inner count)
+            let mut sel = match self.nano_params.bundle_geometry {
+                BundleGeometry::Single => 0u8,
+                BundleGeometry::Chain { .. } => 1,
+                BundleGeometry::RingOfRings { .. } => 2,
+                BundleGeometry::Concentric { .. } => 3,
+                BundleGeometry::HopfLink => 4,
+            };
+            egui::ComboBox::from_id_salt("nano_bundle")
+                .selected_text(self.nano_params.bundle_geometry.label())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(&mut sel, 0, "Single");
+                    ui.selectable_value(&mut sel, 1, "Chain");
+                    ui.selectable_value(&mut sel, 2, "Ring of Rings");
+                    ui.selectable_value(&mut sel, 3, "Concentric");
+                    ui.selectable_value(&mut sel, 4, "Hopf Link");
+                });
+            // Convert variant index back to enum, preserving count
+            let new_bundle = match sel {
+                0 => BundleGeometry::Single,
+                1 => {
+                    let c = match prev_bundle { BundleGeometry::Chain { count } => count, _ => 4 };
+                    BundleGeometry::Chain { count: c }
+                }
+                2 => {
+                    let c = match prev_bundle { BundleGeometry::RingOfRings { count } => count, _ => 4 };
+                    BundleGeometry::RingOfRings { count: c }
+                }
+                3 => {
+                    let c = match prev_bundle { BundleGeometry::Concentric { layers } => layers, _ => 3 };
+                    BundleGeometry::Concentric { layers: c }
+                }
+                4 => BundleGeometry::HopfLink,
+                _ => BundleGeometry::Single,
+            };
+            self.nano_params.bundle_geometry = new_bundle;
+            if self.nano_params.bundle_geometry != prev_bundle { changed = true; }
+
+            // Count slider for variants that need it
+            match &mut self.nano_params.bundle_geometry {
+                BundleGeometry::Chain { count } | BundleGeometry::RingOfRings { count } => {
+                    ui.add_space(2.0);
+                    ui.label("Bundle Count");
+                    let mut c = *count as f64;
+                    if ui.add(egui::Slider::new(&mut c, 2.0..=8.0).step_by(1.0)).changed() {
+                        *count = c as usize;
+                        changed = true;
+                    }
+                }
+                BundleGeometry::Concentric { layers } => {
+                    ui.add_space(2.0);
+                    ui.label("Layers");
+                    let mut c = *layers as f64;
+                    if ui.add(egui::Slider::new(&mut c, 2.0..=8.0).step_by(1.0)).changed() {
+                        *layers = c as usize;
+                        changed = true;
+                    }
+                }
+                _ => {}
+            }
+
+            let bundle_desc = match self.nano_params.bundle_geometry {
+                BundleGeometry::Single => "Single nanotorus",
+                BundleGeometry::Chain { .. } => "Linear chain, end-to-end coupling",
+                BundleGeometry::RingOfRings { .. } => "Ring of rings (T\u{00b2} of T\u{00b2})",
+                BundleGeometry::Concentric { .. } => "Concentric, all-to-all coupling",
+                BundleGeometry::HopfLink => "Hopf link: two interlocked tori",
+            };
+            dim_label(ui, bundle_desc);
+            if self.nano_params.bundle_geometry.n_resonators() > 1 {
+                dim_label(ui, &format!("  {} resonators, Q\u{00d7}{:.1}",
+                    self.nano_params.bundle_geometry.n_resonators(),
+                    self.nano_params.bundle_geometry.cooperative_q_factor()));
+            }
+        }
+
+        section_heading(ui, "RING GEOMETRY");
+
+        // Always nanotorus
+        self.nano_params.resonator_type = ResonatorType::Nanotorus;
+
+        ui.add_space(4.0);
+        ui.label("Ring Diameter (nm)");
+        dim_label(ui, "Major ring diameter. \u{03c9}\u{2082} \u{221d} 1/R\u{00b2}.");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_params.ring_diameter_nm, 50.0..=1000.0).logarithmic(true)).changed();
+
+        ui.add_space(2.0);
+        ui.label("Tube Diameter (nm)");
+        dim_label(ui, "SWCNT ~1\u{2013}2nm, MWCNT ~5\u{2013}50nm.");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_params.cnt_diameter_nm, 0.5..=50.0).logarithmic(true)).changed();
+
+        ui.add_space(2.0);
+        ui.label("Walls");
+        dim_label(ui, "1=SWCNT, 2+=MWCNT. More walls \u{2192} lower Q.");
+        let mut walls_f = self.nano_params.num_walls as f64;
+        if ui.add(egui::Slider::new(&mut walls_f, 1.0..=10.0).step_by(1.0)).changed() {
+            self.nano_params.num_walls = walls_f as usize;
+            changed = true;
+        }
+
+        ui.add_space(2.0);
+        ui.label("Cavity Finesse");
+        dim_label(ui, "Higher \u{2192} narrower linewidth.");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_params.cavity_finesse, 100.0..=100000.0).logarithmic(true)).changed();
+
+        if let Some(ref phys) = self.nano_physics_result {
+            ui.add_space(2.0);
+            dim_label(ui, &format!("  f_m = {:.2} GHz  g\u{2080} = {:.0} kHz  Q = {:.0}",
+                phys.freq_ghz, phys.g0_khz, phys.q_mech));
+        }
+
+        section_heading(ui, "DOPPLER COOLING");
+        dim_label(ui, "Laser cooling of nanotorus mechanical mode.");
+
+        ui.add_space(4.0);
+        ui.label("Temperature (K)");
+        dim_label(ui, "Bath temperature.");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_params.temperature, 0.01..=300.0).logarithmic(true)).changed();
+
+        ui.add_space(2.0);
+        ui.label("Laser Power (mW)");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_params.laser_power, 0.1..=50.0).logarithmic(true)).changed();
+
+        ui.add_space(2.0);
+        ui.label("Detuning (\u{00d7}\u{03c9}_m)");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_params.detuning, -3.0..=0.0)).changed();
+
+        ui.add_space(2.0);
+        ui.label("\u{03ba}/2 (\u{00d7}\u{03c9}_m)");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_params.kappa, 0.01..=2.0).logarithmic(true)).changed();
+
+        ui.add_space(2.0);
+        ui.label("Piezo Voltage (V)");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_params.piezo_voltage, 0.0..=10.0)).changed();
+
+        section_heading(ui, "TONNETZ COHERENCE FILTER");
+        ui.add_space(4.0);
+        ui.label("Grid Size (N)");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_params.tonnetz_grid_size, 3..=16)).changed();
+        ui.add_space(2.0);
+        ui.label("Q Factor");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_params.tonnetz_q, 1.0..=200.0).logarithmic(true)).changed();
+
+        section_heading(ui, "TORIC CODE");
+        ui.add_space(4.0);
+        ui.label("Lattice N");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_lattice_n, 3..=12)).changed();
+        ui.add_space(2.0);
+        ui.label("MC Trials");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_mc_trials, 50..=5000).logarithmic(true)).changed();
+        ui.add_space(2.0);
+        ui.label("Gate Time (ns)");
+        changed |= ui.add(egui::Slider::new(&mut self.nano_gate_time_ns, 10.0..=1000.0).logarithmic(true)).changed();
+
+        section_heading(ui, "COVARIANT DESCENT");
+        dim_label(ui, "Optimize physics parameters on T\u{00b2}.");
+        let mut descent_changed = false;
+
+        ui.add_space(4.0);
+        ui.label("Target");
+        let prev_target = self.nano_descent_target;
+        egui::ComboBox::from_id_salt("nano_descent_target")
+            .selected_text(match self.nano_descent_target {
+                NanoDescentTarget::RingGeometry => "Ring Geometry",
+                NanoDescentTarget::TonnetzFilter => "Tonnetz Filter",
+                NanoDescentTarget::Cooling => "Cooling",
+            })
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut self.nano_descent_target, NanoDescentTarget::RingGeometry, "Ring Geometry");
+                ui.selectable_value(&mut self.nano_descent_target, NanoDescentTarget::TonnetzFilter, "Tonnetz Filter");
+                ui.selectable_value(&mut self.nano_descent_target, NanoDescentTarget::Cooling, "Cooling");
+            });
+        if self.nano_descent_target != prev_target { descent_changed = true; }
+
+        ui.add_space(2.0);
+        ui.label("Learning rate \u{03b7}");
+        descent_changed |= ui.add(egui::Slider::new(&mut self.nano_descent_eta, 0.0001..=0.05).logarithmic(true)).changed();
+        ui.add_space(2.0);
+        ui.label("Start x");
+        descent_changed |= ui.add(egui::Slider::new(&mut self.nano_descent_start.0, 0.0..=1.0)).changed();
+        ui.add_space(2.0);
+        ui.label("Start y");
+        descent_changed |= ui.add(egui::Slider::new(&mut self.nano_descent_start.1, 0.0..=1.0)).changed();
+        ui.add_space(2.0);
+        ui.checkbox(&mut self.nano_show_euclidean, "Show Euclidean path");
+
+        if changed {
+            self.needs_nano_eval = true;
+            self.needs_nano_sweep = true;
+        }
+        if descent_changed { self.needs_nano_descent = true; }
+        if self.needs_nano_eval { self.send_nano_eval(); }
+        if self.needs_nano_sweep && !self.nano_sweep_pending { self.send_nano_sweep(); }
+        if self.needs_nano_descent { self.send_nano_descent(); }
+    }
+
+    fn draw_nano_results(&self, ui: &mut egui::Ui) {
+        let mat_label = self.nano_params.material.label();
+        let bundle_label = self.nano_params.bundle_geometry.label();
+        let heading = if self.nano_params.bundle_geometry.n_resonators() > 1 {
+            format!("NANOTORUS ({} {})", mat_label, bundle_label)
+        } else {
+            format!("NANOTORUS ({})", mat_label)
+        };
+        section_heading(ui, &heading);
+
+        if let Some(ref phys) = self.nano_physics_result {
+            ui.label(format!("f_m: {:.2} GHz", phys.freq_ghz));
+            dim_label(ui, "  Mechanical frequency");
+            ui.label(format!("g\u{2080}: {:.0} kHz", phys.g0_khz));
+            dim_label(ui, "  Optomechanical coupling (WGM)");
+            let qc = if phys.q_mech > 1e6 { FOREST_GREEN } else { GOLD_EG };
+            ui.colored_label(qc, format!("Q: {:.0}", phys.q_mech));
+            dim_label(ui, "  No clamping losses");
+            if self.nano_params.bundle_geometry.n_resonators() > 1 {
+                dim_label(ui, &format!("  Bundle: {} tori, mass {:.1}\u{00d7}, Q\u{00d7}{:.1}",
+                    self.nano_params.bundle_geometry.n_resonators(),
+                    self.nano_params.bundle_geometry.mass_factor(),
+                    self.nano_params.bundle_geometry.cooperative_q_factor()));
+            }
+            ui.label(format!("\u{0394}\u{03c9}: {:.2}", phys.mech_spectral_gap));
+            dim_label(ui, "  Mechanical spectral gap (\u{03c9}\u{2083}/\u{03c9}\u{2082})");
+            dim_label(ui, "  T\u{00b2} modes: winding numbers (m,n)");
+
+            ui.add_space(6.0);
+            section_heading(ui, "COOLING");
+            ui.label(format!("n_th: {:.1}", phys.n_thermal));
+            dim_label(ui, "  Thermal phonon number");
+            ui.label(format!("C: {:.1}", phys.cooperativity));
+            dim_label(ui, "  Cooperativity");
+            ui.label(format!("n_f: {:.4}", phys.n_final));
+            dim_label(ui, "  Final phonon occupation");
+
+            ui.add_space(6.0);
+            section_heading(ui, "TONNETZ FILTER");
+            ui.label(format!("\u{03bb}\u{2081}: {:.4}", phys.spectral_gap));
+            dim_label(ui, "  Spectral gap");
+            ui.label(format!("\u{03a3}w: {:.1}", phys.coupling_weight));
+            dim_label(ui, "  Total coupling weight");
+            let enh_c = if phys.tonnetz_enhancement > 5.0 { FOREST_GREEN } else { GOLD_EG };
+            ui.colored_label(enh_c, format!("Enhancement: {:.1}\u{00d7}", phys.tonnetz_enhancement));
+
+            ui.add_space(6.0);
+            section_heading(ui, "COHERENCE TIMES");
+            ui.label(format!("T\u{2081}: {:.0} ns", phys.t1_ns));
+            let t2c = if phys.t2_ns > self.nano_gate_time_ns * 10.0 { FOREST_GREEN } else { WARN_RED };
+            ui.colored_label(t2c, format!("T\u{2082}: {:.0} ns  (with Tonnetz)", phys.t2_ns));
+            ui.label(format!("T\u{2082} bare: {:.0} ns", phys.t2_bare_ns));
+            let imp = phys.t2_ns - phys.t2_bare_ns;
+            let imp_c = if imp > 100.0 { FOREST_GREEN } else { GOLD_EG };
+            ui.colored_label(imp_c, format!("\u{0394}T\u{2082}: +{:.0} ns", imp));
+        }
+
+        ui.add_space(6.0);
+        section_heading(ui, "ERROR CORRECTION");
+        ui.label(format!("p = {:.4}", self.nano_p_error));
+        let margin = 0.09 - self.nano_p_error;
+        let mc = if margin > 0.0 { FOREST_GREEN } else { WARN_RED };
+        ui.colored_label(mc, format!("Margin: {:.1}%", margin * 100.0));
+        if margin > 0.0 { dim_label(ui, "  BELOW threshold \u{2713}"); } else { ui.colored_label(WARN_RED, "  ABOVE threshold!"); }
+        ui.label(format!("P_L = {:.3}  ({}/{})", self.nano_logical_error_rate, self.nano_logical_failures, self.nano_mc_trials_done));
+
+        // Descent results
+        ui.add_space(6.0);
+        section_heading(ui, "DESCENT");
+        if let Some(ref cov) = self.nano_descent_cov {
+            let conv_str = match cov.convergence_step { Some(s) => format!("step {}", s), None => "not converged".to_string() };
+            ui.colored_label(FOREST_GREEN, "Covariant (T\u{00b2}):");
+            ui.label(format!("  Loss: {:.6}", cov.final_loss));
+            ui.label(format!("  Conv: {}", conv_str));
+            ui.label(format!("  Rate: {:.6}", cov.measured_rate));
+            dim_label(ui, &format!("  Theoretical: {:.6}", cov.theoretical_rate));
+        }
+        if let Some(ref euc) = self.nano_descent_euc {
+            let conv_str = match euc.convergence_step { Some(s) => format!("step {}", s), None => "not converged".to_string() };
+            ui.colored_label(WARN_RED, "Euclidean (flat):");
+            ui.label(format!("  Loss: {:.6}", euc.final_loss));
+            ui.label(format!("  Conv: {}", conv_str));
+        }
+    }
+
+    fn draw_nano_central(&mut self, ui: &mut egui::Ui) {
+        let full = ui.available_rect_before_wrap();
+        let torus_h = (full.height() * 0.55).max(200.0);
+        let torus_rect = egui::Rect::from_min_max(full.min, egui::pos2(full.max.x, full.min.y + torus_h));
+        let chart_area = egui::Rect::from_min_max(egui::pos2(full.min.x, full.min.y + torus_h), full.max);
+        let col_w = chart_area.width() / 2.0;
+        let chart1 = egui::Rect::from_min_max(chart_area.min, egui::pos2(chart_area.min.x + col_w, chart_area.max.y));
+        let chart2 = egui::Rect::from_min_max(egui::pos2(chart_area.min.x + col_w, chart_area.min.y), chart_area.max);
+
+        // Torus interaction
+        let torus_response = ui.allocate_rect(torus_rect, egui::Sense::click_and_drag());
+        if torus_response.dragged() {
+            let delta = torus_response.drag_delta();
+            self.rotation[0] += delta.y * 0.008;
+            self.rotation[1] += delta.x * 0.008;
+            self.auto_rotate = false;
+        }
+        if torus_response.double_clicked() { self.auto_rotate = true; }
+
+        // Draw torus with descent paths
+        {
+            let painter = ui.painter();
+            let bundle_tag = if self.nano_params.bundle_geometry.n_resonators() > 1 {
+                format!("  [{} \u{00d7}{}]", self.nano_params.bundle_geometry.label(),
+                    self.nano_params.bundle_geometry.n_resonators())
+            } else {
+                String::new()
+            };
+            let grid_n = self.nano_params.tonnetz_grid_size;
+            painter.text(torus_rect.center_top() + egui::vec2(0.0, 12.0), egui::Align2::CENTER_TOP,
+                format!("{} NANOTORUS (T\u{00b2})  \u{2014}  Tonnetz {}\u{00d7}{}{}",
+                    self.nano_params.material.label(), grid_n, grid_n, bundle_tag),
+                egui::FontId::proportional(13.0), TORUS_BLUE);
+
+            let cov_steps = self.nano_descent_cov.as_ref().map(|d| d.steps.as_slice());
+            let euc_steps = self.nano_descent_euc.as_ref().map(|d| d.steps.as_slice());
+            draw_cnt_torus(painter, torus_rect, self.rotation, self.nano_params.tonnetz_grid_size, self.nano_snapshot.as_ref(), self.time);
+
+            // Overlay descent paths
+            let rm = 1.2_f32;
+            let rn = 0.45_f32;
+            if let Some(steps) = cov_steps {
+                draw_descent_path(painter, torus_rect, self.rotation, rm, rn, steps, true, self.time);
+            }
+            if self.nano_show_euclidean {
+                if let Some(steps) = euc_steps {
+                    draw_descent_path(painter, torus_rect, self.rotation, rm, rn, steps, false, self.time);
+                }
+            }
+
+            // Chart titles
+            painter.text(chart1.center_top() + egui::vec2(0.0, 4.0), egui::Align2::CENTER_TOP, "THRESHOLD CURVE", egui::FontId::proportional(11.0), HEADING_CLR);
+            painter.text(chart2.center_top() + egui::vec2(0.0, 4.0), egui::Align2::CENTER_TOP, "DESCENT CONVERGENCE", egui::FontId::proportional(11.0), HEADING_CLR);
+        }
+
+        // Chart 1: Threshold sweep
+        let chart1_inner = egui::Rect::from_min_max(chart1.min + egui::vec2(10.0, 22.0), chart1.max - egui::vec2(10.0, 5.0));
+        let p_error = self.nano_p_error;
+        let logical_error_rate = self.nano_logical_error_rate;
+
+        ui.allocate_new_ui(egui::UiBuilder::new().max_rect(chart1_inner), |ui| {
+            let plot = Plot::new("nano_threshold_chart")
+                .width(chart1_inner.width()).height(chart1_inner.height())
+                .x_axis_label("p").y_axis_label("P_L")
+                .include_x(0.0).include_x(0.2).include_y(0.0).include_y(1.0)
+                .show_axes(true).allow_zoom(true).allow_drag(true)
+                .legend(Legend::default().position(Corner::LeftTop));
+
+            plot.show(ui, |plot_ui| {
+                let zone_pts: PlotPoints = vec![[0.0, 0.0], [0.09, 0.0], [0.09, 1.0], [0.0, 1.0]].into_iter().collect();
+                plot_ui.polygon(Polygon::new(zone_pts).fill_color(egui::Color32::from_rgba_unmultiplied(86, 166, 96, 20)).stroke(egui::Stroke::NONE).name("Correctable zone"));
+
+                let colors = [FOREST_GREEN, GOLD_EG, egui::Color32::from_rgb(200, 200, 190), X_ERROR_RED];
+                let markers = [MarkerShape::Circle, MarkerShape::Diamond, MarkerShape::Square, MarkerShape::Up];
+
+                if let Some(ref cd) = self.nano_chart_data {
+                    for (i, curve) in cd.curves.iter().enumerate() {
+                        let pts: PlotPoints = curve.points.iter().map(|&(p, pl)| [p, pl]).collect();
+                        let scatter_pts: PlotPoints = curve.points.iter().map(|&(p, pl)| [p, pl]).collect();
+                        let color = colors[i % colors.len()];
+                        let marker = markers[i % markers.len()];
+                        let name = format!("N={}", curve.n);
+                        plot_ui.line(Line::new(pts).color(color).width(2.0).name(&name));
+                        plot_ui.points(Points::new(scatter_pts).color(color).shape(marker).radius(3.5).name(&name));
+                    }
+                }
+
+                if p_error > 0.0 {
+                    plot_ui.vline(VLine::new(p_error).color(egui::Color32::WHITE).width(1.5).name("Operating point"));
+                    plot_ui.text(PlotText::new(PlotPoint::new(p_error, logical_error_rate.max(0.05)), egui::RichText::new(format!("p={:.4}", p_error)).size(10.0).color(egui::Color32::WHITE)).anchor(egui::Align2::LEFT_BOTTOM));
+                }
+                plot_ui.vline(VLine::new(0.09).color(egui::Color32::from_rgba_unmultiplied(230, 70, 70, 120)).width(1.0).name("Threshold ~9%"));
+            });
+        });
+
+        // Chart 2: Descent convergence (loss vs iteration)
+        let chart2_inner = egui::Rect::from_min_max(chart2.min + egui::vec2(10.0, 22.0), chart2.max - egui::vec2(10.0, 5.0));
+        ui.allocate_new_ui(egui::UiBuilder::new().max_rect(chart2_inner), |ui| {
+            let plot = Plot::new("nano_descent_chart")
+                .width(chart2_inner.width()).height(chart2_inner.height())
+                .x_axis_label("iteration").y_axis_label("loss")
+                .show_axes(true).allow_zoom(true).allow_drag(true)
+                .legend(Legend::default().position(Corner::RightTop));
+
+            plot.show(ui, |plot_ui| {
+                if let Some(ref cov) = self.nano_descent_cov {
+                    let pts: PlotPoints = cov.steps.iter().map(|s| [s.iteration as f64, s.loss]).collect();
+                    plot_ui.line(Line::new(pts).color(FOREST_GREEN).width(2.0).name("Covariant (T\u{00b2})"));
+                }
+                if self.nano_show_euclidean {
+                    if let Some(ref euc) = self.nano_descent_euc {
+                        let pts: PlotPoints = euc.steps.iter().map(|s| [s.iteration as f64, s.loss]).collect();
+                        plot_ui.line(Line::new(pts).color(WARN_RED).width(1.5).name("Euclidean (flat)"));
+                    }
+                }
+            });
+        });
+    }
+
+    fn draw_nano_status(&self, ctx: &egui::Context) {
+        if let Some(ref phys) = self.nano_physics_result {
+            let (st, sc) = if self.nano_p_error < 0.09 { ("CORRECTABLE", FOREST_GREEN) } else { ("TOO NOISY", WARN_RED) };
+            let (coh_st, coh_sc) = if phys.t2_ns < 1.0 {
+                ("NEGLIGIBLE", WARN_RED)
+            } else if phys.tonnetz_enhancement > 5.0 && phys.t2_ns > self.nano_gate_time_ns {
+                ("EFFECTIVE", FOREST_GREEN)
+            } else if phys.tonnetz_enhancement > 1.5 {
+                ("MODERATE", GOLD_EG)
+            } else {
+                ("MARGINAL", WARN_RED)
+            };
+            let frame = egui::Frame {
+                fill: egui::Color32::from_rgba_unmultiplied(22, 28, 22, 230),
+                corner_radius: egui::CornerRadius::from(6),
+                inner_margin: egui::Margin::same(10),
+                stroke: egui::Stroke::new(2.0, sc),
+                ..Default::default()
+            };
+            egui::Window::new("nano_status").title_bar(false).resizable(false).movable(false).frame(frame).anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0]).show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
+                    ui.separator();
+                    ui.colored_label(coh_sc, egui::RichText::new(format!("Coherence {}", coh_st)).strong().size(13.0));
+                });
+                ui.label(format!("T\u{2082}={:.0}ns  p={:.4}  P_L={:.3}", phys.t2_ns, self.nano_p_error, self.nano_logical_error_rate));
+                dim_label(ui, &format!("NANOTORUS: Q={:.0} +{:.0}ns ({:.0}\u{00d7})", phys.q_mech, phys.t2_ns - phys.t2_bare_ns, phys.tonnetz_enhancement));
+                if let Some(ref cov) = self.nano_descent_cov {
+                    let target_name = match self.nano_descent_target {
+                        NanoDescentTarget::RingGeometry => "Ring",
+                        NanoDescentTarget::TonnetzFilter => "Tonnetz",
+                        NanoDescentTarget::Cooling => "Cooling",
+                    };
+                    let conv = if cov.converged { "converged" } else { "running" };
+                    dim_label(ui, &format!("Descent ({}): {} rate={:.4}", target_name, conv, cov.measured_rate));
+                }
                 if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
             });
         }

@@ -1,6 +1,13 @@
 //! Doppler cooling physics + Tonnetz coherence filter.
 //!
 //! Ports the CNT optomechanical model from the toric-doppler-sim crate.
+//! Supports two resonator geometries:
+//!
+//! - **Nanotube**: clamped-clamped beam (Euler-Bernoulli theory).
+//! - **Nanotorus**: toroidal ring with T² topology (Timoshenko ring theory).
+//!   First observed by Martel et al. (1997). No clamping losses → Q ~ 10⁷–10⁸.
+//!   Modes indexed by winding numbers (m,n) on T².
+//!
 //! Uses Tonnetz spectral-gap enhancement for dephasing suppression.
 
 use tonnetz_coherence_sim::coherence::theoretical_decay_rate;
@@ -9,6 +16,202 @@ use tonnetz_coherence_sim::topology::{build_coupling_map, CouplingTopology};
 /// Physical constants.
 const HBAR: f64 = 1.054571817e-34; // J·s
 const K_B: f64 = 1.380649e-23; // J/K
+
+/// Resonator geometry type.
+///
+/// - `Nanotube`: A clamped-clamped carbon nanotube modeled as an Euler-Bernoulli
+///   beam. Clamping at both ends introduces anchor losses that limit Q ~ 10⁵–10⁶.
+/// - `Nanotorus`: A carbon nanotube bent into a ring (T² topology). Eliminates
+///   clamping losses entirely, achieving Q ~ 10⁷–10⁸. Vibration modes are indexed
+///   by winding numbers (m,n) on the torus, and the ring naturally couples to
+///   whispering-gallery-mode (WGM) optical cavities with ~50× better geometric
+///   overlap than tube-in-Fabry-Perot configurations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ResonatorType {
+    /// Clamped-clamped nanotube (Euler-Bernoulli beam).
+    Nanotube,
+    /// Toroidal nanotorus ring (Timoshenko ring theory, T² topology).
+    Nanotorus,
+}
+
+/// Material type for the nanotube/nanotorus wall.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Material {
+    /// Standard carbon nanotube — E=1.0 TPa, ρ=2200 kg/m³.
+    Carbon,
+    /// Boron nitride nanotube — E=0.8 TPa, ρ=2100, lower charge noise.
+    BoronNitride,
+    /// MoS₂ nanotube — E=0.27 TPa, ρ=5060, semiconducting.
+    MoS2,
+    /// Silicon carbide nanotube — E=0.45 TPa, ρ=3210, excellent thermal.
+    SiliconCarbide,
+}
+
+impl Material {
+    /// Young's modulus (Pa).
+    pub fn youngs_modulus(self) -> f64 {
+        match self {
+            Material::Carbon => 1.0e12,
+            Material::BoronNitride => 0.8e12,
+            Material::MoS2 => 0.27e12,
+            Material::SiliconCarbide => 0.45e12,
+        }
+    }
+
+    /// Bulk density (kg/m³).
+    pub fn density(self) -> f64 {
+        match self {
+            Material::Carbon => 2200.0,
+            Material::BoronNitride => 2100.0,
+            Material::MoS2 => 5060.0,
+            Material::SiliconCarbide => 3210.0,
+        }
+    }
+
+    /// Single-wall thickness (m).
+    pub fn wall_thickness(self) -> f64 {
+        match self {
+            Material::Carbon => 0.34e-9,
+            Material::BoronNitride => 0.33e-9,
+            Material::MoS2 => 0.62e-9,
+            Material::SiliconCarbide => 0.25e-9,
+        }
+    }
+
+    /// Base mechanical Q for nanotube (clamping-limited).
+    pub fn base_q_tube(self) -> f64 {
+        match self {
+            Material::Carbon => 5e5,
+            Material::BoronNitride => 3e5,
+            Material::MoS2 => 1e5,
+            Material::SiliconCarbide => 8e5,
+        }
+    }
+
+    /// Base mechanical Q for nanotorus (intrinsic only).
+    pub fn base_q_torus(self) -> f64 {
+        match self {
+            Material::Carbon => 1e7,
+            Material::BoronNitride => 6e6,
+            Material::MoS2 => 2e6,
+            Material::SiliconCarbide => 1.5e7,
+        }
+    }
+
+    /// Geometric overlap factor for nanotube in Fabry-Perot cavity.
+    pub fn eta_geo_tube(self) -> f64 {
+        match self {
+            Material::Carbon => 1e-5,
+            Material::BoronNitride => 8e-6,
+            Material::MoS2 => 5e-6,
+            Material::SiliconCarbide => 1.2e-5,
+        }
+    }
+
+    /// Geometric overlap factor for nanotorus in WGM cavity.
+    pub fn eta_geo_torus(self) -> f64 {
+        match self {
+            Material::Carbon => 5e-4,
+            Material::BoronNitride => 4e-4,
+            Material::MoS2 => 2e-4,
+            Material::SiliconCarbide => 6e-4,
+        }
+    }
+
+    /// Charge noise dephasing rate (Hz).
+    pub fn charge_noise_hz(self) -> f64 {
+        match self {
+            Material::Carbon => 1e3,
+            Material::BoronNitride => 5e2,
+            Material::MoS2 => 2e3,
+            Material::SiliconCarbide => 3e2,
+        }
+    }
+
+    /// Magnetic noise dephasing rate (Hz).
+    pub fn magnetic_noise_hz(self) -> f64 {
+        match self {
+            Material::Carbon => 1e2,
+            Material::BoronNitride => 1e2,
+            Material::MoS2 => 3e2,
+            Material::SiliconCarbide => 50.0,
+        }
+    }
+
+    /// Human-readable label.
+    pub fn label(self) -> &'static str {
+        match self {
+            Material::Carbon => "Carbon",
+            Material::BoronNitride => "Boron Nitride",
+            Material::MoS2 => "MoS\u{2082}",
+            Material::SiliconCarbide => "Silicon Carbide",
+        }
+    }
+}
+
+/// Bundle geometry for multiple nanotori.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BundleGeometry {
+    /// Single nanotorus (current behavior).
+    Single,
+    /// N nanotori in a linear chain, mechanically coupled end-to-end.
+    Chain { count: usize },
+    /// N nanotori arranged in a ring-of-rings (T² of T²).
+    RingOfRings { count: usize },
+    /// N concentric nanotori of increasing radius.
+    Concentric { layers: usize },
+    /// Two interlocked nanotori (Hopf link topology).
+    HopfLink,
+}
+
+impl BundleGeometry {
+    /// Number of individual nanotori in the bundle.
+    pub fn n_resonators(&self) -> usize {
+        match *self {
+            BundleGeometry::Single => 1,
+            BundleGeometry::Chain { count } => count,
+            BundleGeometry::RingOfRings { count } => count,
+            BundleGeometry::Concentric { layers } => layers,
+            BundleGeometry::HopfLink => 2,
+        }
+    }
+
+    /// Mass multiplier relative to a single torus.
+    pub fn mass_factor(&self) -> f64 {
+        match *self {
+            BundleGeometry::Single => 1.0,
+            BundleGeometry::Chain { count } => count as f64,
+            BundleGeometry::RingOfRings { count } => count as f64,
+            BundleGeometry::Concentric { layers } => {
+                // Sum of radii ratios: 1 + 2 + 3 + ... + layers
+                (1..=layers).map(|i| i as f64).sum()
+            }
+            BundleGeometry::HopfLink => 2.0,
+        }
+    }
+
+    /// Cooperative Q enhancement from collective modes.
+    pub fn cooperative_q_factor(&self) -> f64 {
+        match *self {
+            BundleGeometry::Single => 1.0,
+            BundleGeometry::Chain { count } => (count as f64).sqrt(), // phased modes
+            BundleGeometry::RingOfRings { count } => count as f64,   // full phase matching
+            BundleGeometry::Concentric { layers } => layers as f64 * 0.8,
+            BundleGeometry::HopfLink => 1.5, // strong coupling
+        }
+    }
+
+    /// Human-readable label.
+    pub fn label(&self) -> &'static str {
+        match *self {
+            BundleGeometry::Single => "Single",
+            BundleGeometry::Chain { .. } => "Chain",
+            BundleGeometry::RingOfRings { .. } => "Ring of Rings",
+            BundleGeometry::Concentric { .. } => "Concentric",
+            BundleGeometry::HopfLink => "Hopf Link",
+        }
+    }
+}
 
 /// All tunable physical parameters for the Doppler cooling model.
 #[derive(Debug, Clone)]
@@ -28,8 +231,10 @@ pub struct PhysicsParams {
     /// Quality factor of the Tonnetz harmonic filter.
     pub tonnetz_q: f64,
 
-    // ── CNT geometry parameters ──
-    /// Nanotube length (nm). Typical: 300–5000 nm.
+    // ── Resonator geometry ──
+    /// Resonator geometry: clamped nanotube or toroidal ring.
+    pub resonator_type: ResonatorType,
+    /// Nanotube length (nm). Typical: 300–5000 nm. Only used for Nanotube.
     pub cnt_length_nm: f64,
     /// Outer diameter (nm). SWCNT ~1–2 nm, MWCNT ~5–50 nm.
     pub cnt_diameter_nm: f64,
@@ -37,55 +242,97 @@ pub struct PhysicsParams {
     pub num_walls: usize,
     /// Cavity finesse (determines cavity linewidth). Typical: 1e3–1e5.
     pub cavity_finesse: f64,
+    /// Ring major diameter (nm). Only used for Nanotorus. Typical: 50–500 nm.
+    pub ring_diameter_nm: f64,
+    /// Wall material (Carbon, BN, MoS₂, SiC).
+    pub material: Material,
+    /// Bundle geometry for nanotorus arrays.
+    pub bundle_geometry: BundleGeometry,
 }
 
-/// Young's modulus of CNT (Pa).
-const CNT_YOUNGS_MODULUS: f64 = 1.0e12;
-/// Graphite density (kg/m³).
-const CNT_DENSITY: f64 = 2200.0;
-/// Wall thickness of single graphene layer (m).
-const WALL_THICKNESS: f64 = 0.34e-9;
+// Material-specific constants are now in `Material` methods.
+// Former constants CNT_YOUNGS_MODULUS, CNT_DENSITY, WALL_THICKNESS are replaced
+// by self.material.youngs_modulus(), self.material.density(), self.material.wall_thickness().
 
 impl PhysicsParams {
-    /// Derive mechanical frequency omega_m (rad/s) from CNT geometry.
-    ///
-    /// Uses Euler-Bernoulli beam theory for clamped-clamped nanotube:
-    /// f_m = (β₁²/2π) × √(EI / ρAL⁴) where β₁ = 4.730.
-    pub fn omega_m(&self) -> f64 {
-        let l = self.cnt_length_nm * 1e-9; // meters
+    /// Cross-section geometry: outer/inner diameters, second moment of area, area.
+    fn cross_section(&self) -> (f64, f64, f64, f64) {
         let d_outer = self.cnt_diameter_nm * 1e-9;
-        let wall_total = WALL_THICKNESS * self.num_walls as f64;
+        let wall_total = self.material.wall_thickness() * self.num_walls as f64;
         let d_inner = (d_outer - 2.0 * wall_total).max(0.0);
-
-        // Second moment of area (hollow cylinder)
         let i_moment = std::f64::consts::PI / 64.0
             * (d_outer.powi(4) - d_inner.powi(4));
-        // Cross-sectional area
         let area = std::f64::consts::PI / 4.0
             * (d_outer.powi(2) - d_inner.powi(2));
+        (d_outer, d_inner, i_moment, area)
+    }
 
-        if area < 1e-30 || l < 1e-12 {
+    /// Derive mechanical frequency omega_m (rad/s) from resonator geometry.
+    ///
+    /// **Nanotube** (Euler-Bernoulli clamped-clamped beam):
+    /// ω = β₁² × √(EI / ρAL⁴), where β₁ = 4.730 (first mode).
+    ///
+    /// **Nanotorus** (Timoshenko in-plane bending of a thin ring):
+    /// ω_m = m(m²−1)/√(m²+1) × √(EI / ρAR⁴), where m=2 is the lowest
+    /// non-rigid bending mode. Coefficient = 6/√5 ≈ 2.683.
+    /// Reference: Love, "A Treatise on the Mathematical Theory of Elasticity" (1927).
+    pub fn omega_m(&self) -> f64 {
+        let (_d_outer, _d_inner, i_moment, area) = self.cross_section();
+
+        if area < 1e-30 {
             return 2.0 * std::f64::consts::PI * 1e9; // fallback 1 GHz
         }
 
-        let beta1 = 4.730; // first mode, clamped-clamped
-        beta1 * beta1 * (CNT_YOUNGS_MODULUS * i_moment / (CNT_DENSITY * area * l.powi(4))).sqrt()
+        match self.resonator_type {
+            ResonatorType::Nanotube => {
+                let l = self.cnt_length_nm * 1e-9;
+                if l < 1e-12 {
+                    return 2.0 * std::f64::consts::PI * 1e9;
+                }
+                let beta1 = 4.730; // first mode, clamped-clamped
+                beta1 * beta1
+                    * (self.material.youngs_modulus() * i_moment
+                        / (self.material.density() * area * l.powi(4)))
+                    .sqrt()
+            }
+            ResonatorType::Nanotorus => {
+                let r = (self.ring_diameter_nm / 2.0) * 1e-9; // major radius in meters
+                if r < 1e-12 {
+                    return 2.0 * std::f64::consts::PI * 1e9;
+                }
+                // m=2 lowest non-rigid bending mode: coeff = 2(4-1)/√(4+1) = 6/√5
+                let coeff = 6.0 / 5.0_f64.sqrt(); // ≈ 2.683
+                coeff
+                    * (self.material.youngs_modulus() * i_moment
+                        / (self.material.density() * area * r.powi(4)))
+                    .sqrt()
+            }
+        }
     }
 
     /// Derive optomechanical coupling g₀ (Hz) from geometry.
     ///
     /// g₀ = G_eff × x_zpf where G_eff = (ω_c/L_cav) × η_geo.
-    /// η_geo is the geometric mode overlap between CNT vibration and cavity
-    /// field (~10⁻⁵ for typical CNT-in-Fabry-Perot setups). Higher cavity
-    /// finesse improves mode matching: η ∝ √(F/F_ref).
+    ///
+    /// **Nanotube**: η_geo ~ 10⁻⁵ (tube in Fabry-Perot cavity).
+    /// **Nanotorus**: η_geo ~ 5×10⁻⁴ (ring mode naturally matches WGM cavity
+    /// mode profile, ~50× better geometric overlap). Scales with √(finesse/10⁴).
     pub fn g0(&self) -> f64 {
-        let l = self.cnt_length_nm * 1e-9;
-        let d_outer = self.cnt_diameter_nm * 1e-9;
-        let wall_total = WALL_THICKNESS * self.num_walls as f64;
-        let d_inner = (d_outer - 2.0 * wall_total).max(0.0);
-        let area = std::f64::consts::PI / 4.0
-            * (d_outer.powi(2) - d_inner.powi(2));
-        let mass = CNT_DENSITY * area * l;
+        let (_d_outer, _d_inner, _i_moment, area) = self.cross_section();
+
+        let single_mass = match self.resonator_type {
+            ResonatorType::Nanotube => {
+                let l = self.cnt_length_nm * 1e-9;
+                self.material.density() * area * l
+            }
+            ResonatorType::Nanotorus => {
+                let r = (self.ring_diameter_nm / 2.0) * 1e-9;
+                self.material.density() * area * 2.0 * std::f64::consts::PI * r
+            }
+        };
+
+        // Bundle mass: for collective modes the effective mass scales with n_resonators
+        let mass = single_mass * self.bundle_geometry.mass_factor();
 
         if mass < 1e-30 {
             return 1e3; // fallback 1 kHz
@@ -94,26 +341,45 @@ impl PhysicsParams {
         let omega = self.omega_m();
         let x_zpf = (HBAR / (2.0 * mass * omega)).sqrt();
 
+        // Collective enhancement: g0_collective = g0_single × √N for phase-matched modes
+        let n_res = self.bundle_geometry.n_resonators() as f64;
+        let collective_factor = n_res.sqrt();
+
         // Cavity pull with geometric overlap factor
         let omega_c = 2.0 * std::f64::consts::PI * 2.82e14; // 1064nm laser
         let l_cav = 100e-6; // 100 µm microcavity
-        // η_geo ~ 10⁻⁵ baseline, scales with √(finesse/10⁴)
-        let eta_geo = 1e-5 * (self.cavity_finesse / 1e4).sqrt();
+
+        let eta_geo_base = match self.resonator_type {
+            ResonatorType::Nanotube => self.material.eta_geo_tube(),
+            ResonatorType::Nanotorus => self.material.eta_geo_torus(),
+        };
+        let eta_geo = eta_geo_base * (self.cavity_finesse / 1e4).sqrt();
         let g_eff = omega_c / l_cav * eta_geo;
 
-        g_eff * x_zpf
+        g_eff * x_zpf * collective_factor
     }
 
     /// Mechanical quality factor derived from geometry.
     ///
-    /// SWCNT: Q ~ 1e5–1e6, MWCNT: degrades with inter-wall friction.
+    /// **Nanotube**: Q ~ 5×10⁵ × wall_factor × length_factor (clamping-limited).
+    /// **Nanotorus**: Q ~ 1×10⁷ × wall_factor (no clamping points — intrinsic
+    /// dissipation only). Multi-wall friction still degrades Q for both types.
     pub fn q_mech(&self) -> f64 {
-        let base_q = 5e5;
-        // Multi-wall friction reduces Q
         let wall_factor = 1.0 / (self.num_walls as f64).sqrt();
-        // Longer tubes have lower clamping losses
-        let length_factor = (self.cnt_length_nm / 1000.0).sqrt().clamp(0.3, 3.0);
-        base_q * wall_factor * length_factor
+
+        match self.resonator_type {
+            ResonatorType::Nanotube => {
+                let base_q = self.material.base_q_tube();
+                let length_factor =
+                    (self.cnt_length_nm / 1000.0).sqrt().clamp(0.3, 3.0);
+                base_q * wall_factor * length_factor
+            }
+            ResonatorType::Nanotorus => {
+                // No clamping losses → intrinsic Q is ~20× higher
+                let base_q = self.material.base_q_torus();
+                base_q * wall_factor * self.bundle_geometry.cooperative_q_factor()
+            }
+        }
     }
 
     /// Mechanical damping rate gamma_m (rad/s).
@@ -131,6 +397,64 @@ impl PhysicsParams {
     pub fn piezo_freq(&self) -> f64 {
         self.omega_m()
     }
+
+    /// Mechanical spectral gap: ratio of 2nd to 1st mode frequency.
+    ///
+    /// This quantifies the frequency separation between the fundamental and
+    /// next bending mode — analogous to the Tonnetz mathematical spectral gap.
+    ///
+    /// **Nanotube**: ω₂/ω₁ = (β₂/β₁)² = (7.853/4.730)² ≈ 2.757
+    /// **Nanotorus**: ω₃/ω₂ = [3(9−1)/√10] / [2(4−1)/√5]
+    ///              = [24/√10] / [6/√5] ≈ 2.83
+    ///   where m=2,3 are the lowest non-rigid ring modes.
+    pub fn mech_spectral_gap(&self) -> f64 {
+        match self.resonator_type {
+            ResonatorType::Nanotube => {
+                // (β₂/β₁)² for clamped-clamped beam
+                let beta1: f64 = 4.730;
+                let beta2: f64 = 7.853;
+                (beta2 / beta1).powi(2)
+            }
+            ResonatorType::Nanotorus => {
+                // ω_m = m(m²−1)/√(m²+1) × const
+                // ratio ω₃/ω₂:
+                let omega_2_coeff = 2.0 * 3.0 / 5.0_f64.sqrt(); // 6/√5
+                let omega_3_coeff = 3.0 * 8.0 / 10.0_f64.sqrt(); // 24/√10
+                omega_3_coeff / omega_2_coeff
+            }
+        }
+    }
+
+    /// Human-readable label for the active resonator type.
+    pub fn resonator_label(&self) -> &'static str {
+        match self.resonator_type {
+            ResonatorType::Nanotube => "CNT RESONATOR",
+            ResonatorType::Nanotorus => "NANOTORUS",
+        }
+    }
+}
+
+impl PhysicsParams {
+    /// Optimal nanotorus preset: cryo SWCNT ring, high finesse, strong Tonnetz.
+    pub fn nanotorus_default() -> Self {
+        Self {
+            resonator_type: ResonatorType::Nanotorus,
+            ring_diameter_nm: 200.0,
+            cnt_diameter_nm: 1.4,
+            num_walls: 1,
+            cavity_finesse: 50000.0,
+            temperature: 0.020,
+            laser_power: 20.0,
+            detuning: -1.0,
+            kappa: 0.5,
+            piezo_voltage: 5.0,
+            tonnetz_grid_size: 12,
+            tonnetz_q: 100.0,
+            cnt_length_nm: 1000.0, // unused for nanotorus but must be set
+            material: Material::Carbon,
+            bundle_geometry: BundleGeometry::Single,
+        }
+    }
 }
 
 impl Default for PhysicsParams {
@@ -143,11 +467,15 @@ impl Default for PhysicsParams {
             piezo_voltage: 0.0,
             tonnetz_grid_size: 6,
             tonnetz_q: 10.0,
+            resonator_type: ResonatorType::Nanotube,
             // Default: 1µm SWCNT, d=1.4nm
             cnt_length_nm: 1000.0,
             cnt_diameter_nm: 1.4,
             num_walls: 1,
             cavity_finesse: 10000.0,
+            ring_diameter_nm: 200.0,
+            material: Material::Carbon,
+            bundle_geometry: BundleGeometry::Single,
         }
     }
 }
@@ -182,6 +510,119 @@ pub struct PhysicsResult {
     pub g0_khz: f64,
     /// Derived mechanical Q factor.
     pub q_mech: f64,
+    /// Resonator type label for display.
+    pub resonator_label: &'static str,
+    /// Mechanical spectral gap (ratio of 2nd to 1st mode frequency).
+    /// Analogous to the Tonnetz mathematical spectral gap.
+    pub mech_spectral_gap: f64,
+}
+
+/// Build coupling map for a bundle of nanotori on a Tonnetz grid.
+///
+/// Each nanotorus gets its own toroidal sub-lattice of size `grid_size²`.
+/// Inter-torus edges are added according to the bundle topology.
+fn build_bundle_coupling_map(
+    bundle: &BundleGeometry,
+    grid_size: usize,
+) -> (Vec<(usize, usize, f64)>, usize) {
+    let sub_n = grid_size * grid_size;
+    match *bundle {
+        BundleGeometry::Single => {
+            let map = build_coupling_map(
+                &CouplingTopology::Toroidal { grid_size },
+                sub_n,
+            );
+            (map, sub_n)
+        }
+        BundleGeometry::Chain { count } | BundleGeometry::RingOfRings { count } => {
+            let total = count * sub_n;
+            let mut edges = Vec::new();
+            // Build each sub-lattice with offset indices
+            for t in 0..count {
+                let offset = t * sub_n;
+                let sub_map = build_coupling_map(
+                    &CouplingTopology::Toroidal { grid_size },
+                    sub_n,
+                );
+                for (a, b, w) in sub_map {
+                    edges.push((a + offset, b + offset, w));
+                }
+            }
+            // Compute base nearest-neighbor weight from the sub-lattice
+            let base_w = edges.first().map(|&(_, _, w)| w).unwrap_or(1.0);
+            let inter_w = 0.5 * base_w;
+            // Inter-torus coupling: adjacent tori share boundary edges
+            let wrap = matches!(*bundle, BundleGeometry::RingOfRings { .. });
+            for t in 0..(count - 1) {
+                let off_a = t * sub_n;
+                let off_b = (t + 1) * sub_n;
+                // Couple corresponding boundary qubits (last row ↔ first row)
+                for col in 0..grid_size {
+                    let a = off_a + (grid_size - 1) * grid_size + col;
+                    let b = off_b + col;
+                    edges.push((a, b, inter_w));
+                }
+            }
+            if wrap && count > 2 {
+                let off_a = (count - 1) * sub_n;
+                let off_b = 0;
+                for col in 0..grid_size {
+                    let a = off_a + (grid_size - 1) * grid_size + col;
+                    let b = off_b + col;
+                    edges.push((a, b, inter_w));
+                }
+            }
+            (edges, total)
+        }
+        BundleGeometry::Concentric { layers } => {
+            let total = layers * sub_n;
+            let mut edges = Vec::new();
+            for t in 0..layers {
+                let offset = t * sub_n;
+                let sub_map = build_coupling_map(
+                    &CouplingTopology::Toroidal { grid_size },
+                    sub_n,
+                );
+                for (a, b, w) in sub_map {
+                    edges.push((a + offset, b + offset, w));
+                }
+            }
+            let base_w = edges.first().map(|&(_, _, w)| w).unwrap_or(1.0);
+            // All-to-all inter-torus coupling with exponential decay
+            for i in 0..layers {
+                for j in (i + 1)..layers {
+                    let w = base_w * (-(( j - i) as f64)).exp();
+                    for q in 0..grid_size {
+                        let a = i * sub_n + q;
+                        let b = j * sub_n + q;
+                        edges.push((a, b, w));
+                    }
+                }
+            }
+            (edges, total)
+        }
+        BundleGeometry::HopfLink => {
+            let total = 2 * sub_n;
+            let mut edges = Vec::new();
+            for t in 0..2 {
+                let offset = t * sub_n;
+                let sub_map = build_coupling_map(
+                    &CouplingTopology::Toroidal { grid_size },
+                    sub_n,
+                );
+                for (a, b, w) in sub_map {
+                    edges.push((a + offset, b + offset, w));
+                }
+            }
+            let base_w = edges.first().map(|&(_, _, w)| w).unwrap_or(1.0);
+            // Strong cross-coupling between corresponding qubit pairs
+            let cross_w = 0.8 * base_w;
+            for q in 0..sub_n {
+                edges.push((q, q + sub_n, cross_w));
+            }
+            (edges, total)
+        }
+    }
 }
 
 /// Evaluate the full Doppler cooling + Tonnetz filter model.
@@ -194,6 +635,8 @@ pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
     let q_mech = params.q_mech();
     let freq_ghz = omega_m / (2.0 * std::f64::consts::PI * 1e9);
     let g0_khz = g0 / 1e3;
+    let resonator_label = params.resonator_label();
+    let mech_spectral_gap = params.mech_spectral_gap();
 
     // -- Thermal phonon occupation (Bose-Einstein) --
     let hw_over_kt = HBAR * omega_m / (K_B * params.temperature);
@@ -223,13 +666,17 @@ pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
 
     // -- Tonnetz spectral gap filter --
     let spectral_gap = theoretical_decay_rate(params.tonnetz_grid_size);
-    let n_qubits = params.tonnetz_grid_size * params.tonnetz_grid_size;
-    let coupling_map = build_coupling_map(
-        &CouplingTopology::Toroidal {
-            grid_size: params.tonnetz_grid_size,
-        },
-        n_qubits,
-    );
+    let n_base = params.tonnetz_grid_size * params.tonnetz_grid_size;
+    let (coupling_map, n_qubits) = if params.resonator_type == ResonatorType::Nanotorus {
+        build_bundle_coupling_map(&params.bundle_geometry, params.tonnetz_grid_size)
+    } else {
+        (build_coupling_map(
+            &CouplingTopology::Toroidal {
+                grid_size: params.tonnetz_grid_size,
+            },
+            n_base,
+        ), n_base)
+    };
     let coupling_weight: f64 = coupling_map.iter().map(|&(_, _, w)| w).sum();
 
     // Enhancement: the Tonnetz filter suppresses dephasing noise by a factor
@@ -247,8 +694,8 @@ pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
 
     // Dephasing contributions
     let gamma_thermal = gamma_m * (2.0 * n_final + 1.0);
-    let gamma_charge = 1e3; // charge noise ~1 kHz for CNT
-    let gamma_magnetic = 1e2; // magnetic noise ~100 Hz
+    let gamma_charge = params.material.charge_noise_hz();
+    let gamma_magnetic = params.material.magnetic_noise_hz();
 
     let gamma_2_bare = 1.0 / (2.0 * t1) + gamma_thermal + gamma_charge + gamma_magnetic;
     let t2_bare = 1.0 / gamma_2_bare;
@@ -272,5 +719,7 @@ pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
         freq_ghz,
         g0_khz,
         q_mech,
+        resonator_label,
+        mech_spectral_gap,
     }
 }

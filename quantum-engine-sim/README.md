@@ -161,6 +161,8 @@ quantum-engine-sim/src/
   bin/gui.rs      -- eframe entry point (1400x900, wgpu/Metal)
   gui.rs          -- egui App: torus drawing, charts, sliders, results
   sim_worker.rs   -- background thread for heavy computation
+  cnt_physics.rs  -- Material, BundleGeometry, PhysicsParams, Doppler cooling model
+  cnt_bridge.rs   -- T2-to-error-rate conversion, toric code Monte Carlo bridge
   engine.rs       -- quantum engine cycle, presets (microwave/optical/mid-IR)
   covariant.rs    -- gradient descent on T^2, convergence validation
   toric_code.rs   -- Kitaev toric code Monte Carlo
@@ -168,6 +170,7 @@ quantum-engine-sim/src/
   torus.rs        -- T^2 lattice geometry, Laplacian spectrum
   vacuum.rs       -- Casimir energy, Unruh effect, dynamical Casimir
   units.rs        -- physical constants (hbar, c, k_B)
+  logit_drift.rs  -- hallucination reduction via toroidal logit bias
 ```
 
 The GUI uses a worker thread (crossbeam channels) for non-blocking simulation. Four request types:
@@ -175,6 +178,46 @@ The GUI uses a worker thread (crossbeam channels) for non-blocking simulation. F
 - `RunDescent` -- Euclidean vs Covariant comparison
 - `RunScaling` -- performance across lattice sizes
 - `RunConvergence` -- convergence rate validation
+
+## Materials
+
+The CNT physics model supports four wall materials. Select via the **Material** dropdown in both the CNT Doppler and Nanotorus tabs.
+
+| Material | E (TPa) | rho (kg/m^3) | Wall (nm) | Base Q (tube) | Base Q (torus) | Charge Noise | Magnetic Noise |
+|----------|---------|-------------|-----------|---------------|----------------|-------------|---------------|
+| **Carbon** | 1.0 | 2200 | 0.34 | 5e5 | 1e7 | 1 kHz | 100 Hz |
+| **Boron Nitride** | 0.8 | 2100 | 0.33 | 3e5 | 6e6 | 500 Hz | 100 Hz |
+| **MoS2** | 0.27 | 5060 | 0.62 | 1e5 | 2e6 | 2 kHz | 300 Hz |
+| **Silicon Carbide** | 0.45 | 3210 | 0.25 | 8e5 | 1.5e7 | 300 Hz | 50 Hz |
+
+Material choice affects every derived quantity: mechanical frequency (omega_m), optomechanical coupling (g0), quality factor (Q), and decoherence rates (T1, T2). BN and SiC have lower charge/magnetic noise, giving different T2 trade-offs. MoS2 is semiconducting with much higher density, producing a fundamentally different frequency regime.
+
+## Bundle Geometries
+
+For nanotorus simulations, multiple tori can be arranged in different topological configurations. Select via the **Bundle Geometry** dropdown in the Nanotorus tab.
+
+| Geometry | N Resonators | Mass Factor | Cooperative Q | Coupling Topology |
+|----------|-------------|-------------|---------------|-------------------|
+| **Single** | 1 | 1.0x | 1.0x | Standard toroidal Tonnetz |
+| **Chain** | count | count x | sqrt(count) | Linear, end-to-end (0.5x inter-torus weight) |
+| **Ring of Rings** | count | count x | count x | Chain with wrap-around (T^2 of T^2) |
+| **Concentric** | layers | sum of radii | layers x 0.8 | All-to-all, exp(-distance) decay |
+| **Hopf Link** | 2 | 2.0x | 1.5x | Strong cross-coupling (0.8x base weight) |
+
+Bundle geometry modifies the Tonnetz coupling map: each nanotorus gets its own N x N sub-lattice, with inter-torus edges added according to the topology. The cooperative Q factor enhances the mechanical quality factor through collective phase-matched modes (analogous to superradiance). The mass factor increases effective mass, reducing x_zpf, but collective coupling (sqrt(N) enhancement) partially compensates.
+
+### Presets
+
+**CNT Doppler tab:**
+- **Optimal** -- Carbon, short SWCNT, cryo, high Tonnetz
+- **Room Temp** -- Carbon, default geometry, 300 K
+
+**Nanotorus tab:**
+- **Optimal** -- Carbon, single torus, cryo
+- **Large Ring** -- Carbon, 500 nm diameter
+- **Room Temp** -- Carbon, 300 K
+- **Bundle Chain** -- Carbon, chain of 4 nanotori
+- **BN Torus** -- Boron Nitride, single torus
 
 ## Cross-Domain Evidence
 
