@@ -1380,7 +1380,11 @@ impl QuantumEngineApp {
         let mut preset_changed = false;
         ui.horizontal(|ui| {
             if ui.add(egui::Button::new(egui::RichText::new("Optimal").color(FOREST_GREEN).size(12.0))).clicked() {
-                // Dilution fridge + high laser + strong Tonnetz filter
+                // Short SWCNT in dilution fridge + high laser + strong Tonnetz
+                self.cnt_params.cnt_length_nm = 300.0;
+                self.cnt_params.cnt_diameter_nm = 1.4;
+                self.cnt_params.num_walls = 1;
+                self.cnt_params.cavity_finesse = 50000.0;
                 self.cnt_params.temperature = 0.020;
                 self.cnt_params.laser_power = 20.0;
                 self.cnt_params.detuning = -1.0;
@@ -1402,9 +1406,43 @@ impl QuantumEngineApp {
             }
         });
 
-        section_heading(ui, "PHYSICAL LAYER: Doppler Cooling");
-        dim_label(ui, "CNT optomechanical resonator cooled by laser.");
+        section_heading(ui, "NANOTUBE GEOMETRY");
+        dim_label(ui, "CNT mechanical resonator properties.");
         let mut changed = preset_changed;
+
+        ui.add_space(4.0);
+        ui.label("Length (nm)");
+        dim_label(ui, "Shorter \u{2192} higher frequency.");
+        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.cnt_length_nm, 100.0..=5000.0).logarithmic(true)).changed();
+
+        ui.add_space(2.0);
+        ui.label("Diameter (nm)");
+        dim_label(ui, "SWCNT ~1\u{2013}2nm, MWCNT ~5\u{2013}50nm.");
+        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.cnt_diameter_nm, 0.5..=50.0).logarithmic(true)).changed();
+
+        ui.add_space(2.0);
+        ui.label("Walls");
+        dim_label(ui, "1=SWCNT, 2+=MWCNT. More walls \u{2192} lower Q.");
+        let mut walls_f = self.cnt_params.num_walls as f64;
+        if ui.add(egui::Slider::new(&mut walls_f, 1.0..=10.0).step_by(1.0)).changed() {
+            self.cnt_params.num_walls = walls_f as usize;
+            changed = true;
+        }
+
+        ui.add_space(2.0);
+        ui.label("Cavity Finesse");
+        dim_label(ui, "Higher \u{2192} narrower linewidth, better resolved.");
+        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.cavity_finesse, 100.0..=100000.0).logarithmic(true)).changed();
+
+        // Show derived quantities
+        if let Some(ref phys) = self.cnt_physics_result {
+            ui.add_space(2.0);
+            dim_label(ui, &format!("  f_m = {:.2} GHz  g\u{2080} = {:.0} kHz  Q = {:.0}",
+                phys.freq_ghz, phys.g0_khz, phys.q_mech));
+        }
+
+        section_heading(ui, "DOPPLER COOLING");
+        dim_label(ui, "Laser cooling of CNT mechanical mode.");
 
         ui.add_space(4.0);
         ui.label("Temperature (K)");
@@ -1474,9 +1512,19 @@ impl QuantumEngineApp {
     }
 
     fn draw_cnt_results(&self, ui: &mut egui::Ui) {
-        section_heading(ui, "PHYSICS RESULTS");
+        section_heading(ui, "CNT RESONATOR");
 
         if let Some(ref phys) = self.cnt_physics_result {
+            ui.label(format!("f_m: {:.2} GHz", phys.freq_ghz));
+            dim_label(ui, "  Mechanical frequency");
+            ui.label(format!("g\u{2080}: {:.0} kHz", phys.g0_khz));
+            dim_label(ui, "  Optomechanical coupling");
+            let qc = if phys.q_mech > 1e5 { FOREST_GREEN } else { GOLD_EG };
+            ui.colored_label(qc, format!("Q: {:.0}", phys.q_mech));
+            dim_label(ui, "  Mechanical quality factor");
+
+            ui.add_space(6.0);
+            section_heading(ui, "COOLING");
             ui.label(format!("n_th: {:.1}", phys.n_thermal));
             dim_label(ui, "  Thermal phonon number");
             ui.label(format!("C: {:.1}", phys.cooperativity));
@@ -1704,8 +1752,10 @@ impl QuantumEngineApp {
         if let Some(ref phys) = self.cnt_physics_result {
             // Primary: error correctability
             let (st, sc) = if self.cnt_p_error < 0.09 { ("CORRECTABLE", FOREST_GREEN) } else { ("TOO NOISY", WARN_RED) };
-            // Secondary: coherence enhancement effectiveness
-            let (coh_st, coh_sc) = if phys.tonnetz_enhancement > 5.0 {
+            // Secondary: coherence — must check absolute T₂, not just enhancement factor
+            let (coh_st, coh_sc) = if phys.t2_ns < 1.0 {
+                ("NEGLIGIBLE", WARN_RED)
+            } else if phys.tonnetz_enhancement > 5.0 && phys.t2_ns > self.cnt_gate_time_ns {
                 ("EFFECTIVE", FOREST_GREEN)
             } else if phys.tonnetz_enhancement > 1.5 {
                 ("MODERATE", GOLD_EG)

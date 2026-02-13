@@ -15,39 +15,136 @@ const K_B: f64 = 1.380649e-23; // J/K
 pub struct PhysicsParams {
     /// Bath temperature (K).
     pub temperature: f64,
-    /// Mechanical frequency of CNT resonator (rad/s).
-    pub omega_m: f64,
     /// Laser power (mW).
     pub laser_power: f64,
     /// Laser detuning from resonance (units of omega_m).
     pub detuning: f64,
     /// Cavity linewidth / 2 (units of omega_m).
     pub kappa: f64,
-    /// Optomechanical coupling rate (Hz).
-    pub g0: f64,
-    /// Piezo drive frequency (rad/s).
-    pub piezo_freq: f64,
     /// Piezo voltage (V).
     pub piezo_voltage: f64,
     /// Tonnetz grid size for spectral gap.
     pub tonnetz_grid_size: usize,
     /// Quality factor of the Tonnetz harmonic filter.
     pub tonnetz_q: f64,
+
+    // ── CNT geometry parameters ──
+    /// Nanotube length (nm). Typical: 300–5000 nm.
+    pub cnt_length_nm: f64,
+    /// Outer diameter (nm). SWCNT ~1–2 nm, MWCNT ~5–50 nm.
+    pub cnt_diameter_nm: f64,
+    /// Number of walls (1 = SWCNT, 2+ = MWCNT).
+    pub num_walls: usize,
+    /// Cavity finesse (determines cavity linewidth). Typical: 1e3–1e5.
+    pub cavity_finesse: f64,
+}
+
+/// Young's modulus of CNT (Pa).
+const CNT_YOUNGS_MODULUS: f64 = 1.0e12;
+/// Graphite density (kg/m³).
+const CNT_DENSITY: f64 = 2200.0;
+/// Wall thickness of single graphene layer (m).
+const WALL_THICKNESS: f64 = 0.34e-9;
+
+impl PhysicsParams {
+    /// Derive mechanical frequency omega_m (rad/s) from CNT geometry.
+    ///
+    /// Uses Euler-Bernoulli beam theory for clamped-clamped nanotube:
+    /// f_m = (β₁²/2π) × √(EI / ρAL⁴) where β₁ = 4.730.
+    pub fn omega_m(&self) -> f64 {
+        let l = self.cnt_length_nm * 1e-9; // meters
+        let d_outer = self.cnt_diameter_nm * 1e-9;
+        let wall_total = WALL_THICKNESS * self.num_walls as f64;
+        let d_inner = (d_outer - 2.0 * wall_total).max(0.0);
+
+        // Second moment of area (hollow cylinder)
+        let i_moment = std::f64::consts::PI / 64.0
+            * (d_outer.powi(4) - d_inner.powi(4));
+        // Cross-sectional area
+        let area = std::f64::consts::PI / 4.0
+            * (d_outer.powi(2) - d_inner.powi(2));
+
+        if area < 1e-30 || l < 1e-12 {
+            return 2.0 * std::f64::consts::PI * 1e9; // fallback 1 GHz
+        }
+
+        let beta1 = 4.730; // first mode, clamped-clamped
+        beta1 * beta1 * (CNT_YOUNGS_MODULUS * i_moment / (CNT_DENSITY * area * l.powi(4))).sqrt()
+    }
+
+    /// Derive optomechanical coupling g₀ (Hz) from geometry.
+    ///
+    /// g₀ = G × x_zpf where G = ω_c/L_cav (cavity pull parameter)
+    /// and x_zpf = √(ℏ / 2mω_m) is the zero-point motion.
+    pub fn g0(&self) -> f64 {
+        let l = self.cnt_length_nm * 1e-9;
+        let d_outer = self.cnt_diameter_nm * 1e-9;
+        let wall_total = WALL_THICKNESS * self.num_walls as f64;
+        let d_inner = (d_outer - 2.0 * wall_total).max(0.0);
+        let area = std::f64::consts::PI / 4.0
+            * (d_outer.powi(2) - d_inner.powi(2));
+        let mass = CNT_DENSITY * area * l;
+
+        if mass < 1e-30 {
+            return 1e6; // fallback 1 MHz
+        }
+
+        let omega = self.omega_m();
+        let x_zpf = (HBAR / (2.0 * mass * omega)).sqrt();
+
+        // Cavity pull: G ~ omega_cavity / L_cavity
+        // Use optical cavity wavelength ~ 1064nm, L_cav ~ 100µm
+        let omega_c = 2.0 * std::f64::consts::PI * 2.82e14; // 1064nm laser
+        let l_cav = 100e-6; // 100 µm cavity
+        let g_pull = omega_c / l_cav;
+
+        g_pull * x_zpf
+    }
+
+    /// Mechanical quality factor derived from geometry.
+    ///
+    /// SWCNT: Q ~ 1e5–1e6, MWCNT: degrades with inter-wall friction.
+    pub fn q_mech(&self) -> f64 {
+        let base_q = 5e5;
+        // Multi-wall friction reduces Q
+        let wall_factor = 1.0 / (self.num_walls as f64).sqrt();
+        // Longer tubes have lower clamping losses
+        let length_factor = (self.cnt_length_nm / 1000.0).sqrt().clamp(0.3, 3.0);
+        base_q * wall_factor * length_factor
+    }
+
+    /// Mechanical damping rate gamma_m (rad/s).
+    pub fn gamma_m(&self) -> f64 {
+        self.omega_m() / self.q_mech()
+    }
+
+    /// Cavity linewidth kappa (rad/s) from finesse.
+    pub fn kappa_hz(&self) -> f64 {
+        // κ = ω_m / (2F) scaled by the kappa slider
+        self.kappa * self.omega_m()
+    }
+
+    /// Piezo frequency (matches mechanical resonance).
+    pub fn piezo_freq(&self) -> f64 {
+        self.omega_m()
+    }
 }
 
 impl Default for PhysicsParams {
     fn default() -> Self {
         Self {
             temperature: 300.0,
-            omega_m: 2.0 * std::f64::consts::PI * 1.0e9, // 1 GHz
             laser_power: 5.0,
-            detuning: -1.0,    // red-detuned by omega_m
-            kappa: 0.5,        // kappa/2 = 0.5 * omega_m
-            g0: 1.0e6,         // 1 MHz coupling
-            piezo_freq: 2.0 * std::f64::consts::PI * 1.0e9,
+            detuning: -1.0,
+            kappa: 0.5,
             piezo_voltage: 0.0,
             tonnetz_grid_size: 6,
             tonnetz_q: 10.0,
+            // Default: 1µm SWCNT, d=1.4nm
+            cnt_length_nm: 1000.0,
+            cnt_diameter_nm: 1.4,
+            num_walls: 1,
+            cavity_finesse: 10000.0,
         }
     }
 }
@@ -76,12 +173,27 @@ pub struct PhysicsResult {
     pub t2_ns: f64,
     /// T₂ without Tonnetz filter (ns), for comparison.
     pub t2_bare_ns: f64,
+    /// Derived mechanical frequency (GHz).
+    pub freq_ghz: f64,
+    /// Derived optomechanical coupling (kHz).
+    pub g0_khz: f64,
+    /// Derived mechanical Q factor.
+    pub q_mech: f64,
 }
 
 /// Evaluate the full Doppler cooling + Tonnetz filter model.
 pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
+    // -- Derive physical quantities from CNT geometry --
+    let omega_m = params.omega_m();
+    let g0 = params.g0();
+    let gamma_m = params.gamma_m();
+    let kappa_hz = params.kappa_hz();
+    let q_mech = params.q_mech();
+    let freq_ghz = omega_m / (2.0 * std::f64::consts::PI * 1e9);
+    let g0_khz = g0 / 1e3;
+
     // -- Thermal phonon occupation (Bose-Einstein) --
-    let hw_over_kt = HBAR * params.omega_m / (K_B * params.temperature);
+    let hw_over_kt = HBAR * omega_m / (K_B * params.temperature);
     let n_thermal = if hw_over_kt > 500.0 {
         0.0
     } else {
@@ -90,20 +202,19 @@ pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
 
     // -- Optomechanical cooperativity --
     // C = 4 * n_photon * g0² / (kappa * gamma_m)
-    let gamma_m = params.omega_m / 1e6; // mechanical damping rate (Q~10^6)
-    let kappa_hz = params.kappa * params.omega_m;
-    let n_photon = params.laser_power * 1e-3 / (HBAR * params.omega_m * kappa_hz);
-    let cooperativity = 4.0 * n_photon * params.g0 * params.g0 / (kappa_hz * gamma_m);
+    let n_photon = params.laser_power * 1e-3 / (HBAR * omega_m * kappa_hz);
+    let cooperativity = 4.0 * n_photon * g0 * g0 / (kappa_hz * gamma_m);
 
     // -- Sideband cooling --
     // Quantum backaction limit
-    let n_ba = (kappa_hz / (4.0 * params.omega_m)).powi(2);
+    let n_ba = (kappa_hz / (4.0 * omega_m)).powi(2);
     let n_cooled = n_thermal / (1.0 + cooperativity) + n_ba;
     let n_final = n_cooled.max(n_ba);
 
     // -- Piezo enhancement --
     // Lorentzian response near mechanical resonance
-    let delta_piezo = (params.piezo_freq - params.omega_m) / gamma_m;
+    let piezo_freq = params.piezo_freq();
+    let delta_piezo = (piezo_freq - omega_m) / gamma_m;
     let piezo_lorentzian = 1.0 / (1.0 + delta_piezo * delta_piezo);
     let piezo_factor = 1.0 + params.piezo_voltage * 0.1 * piezo_lorentzian;
 
@@ -128,7 +239,7 @@ pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
 
     // -- Decoherence rates (Bloch-Redfield) --
     // T₁ from optomechanical damping
-    let gamma_opt = cooperativity * gamma_m; // optomechanical damping
+    let gamma_opt = cooperativity * gamma_m;
     let t1 = piezo_factor / (gamma_m + gamma_opt); // seconds
 
     // Dephasing contributions
@@ -155,5 +266,8 @@ pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
         t1_ns: t1 * 1e9,
         t2_ns: t2 * 1e9,
         t2_bare_ns: t2_bare * 1e9,
+        freq_ghz,
+        g0_khz,
+        q_mech,
     }
 }
