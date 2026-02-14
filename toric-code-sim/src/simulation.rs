@@ -11,7 +11,7 @@
 
 use rand::Rng;
 
-use crate::lattice::ToricLattice;
+use crate::lattice::{ToricLattice, EdgeDir};
 use crate::syndrome::{Syndrome, has_any_logical_error};
 
 /// Configuration for a Monte Carlo threshold experiment.
@@ -49,6 +49,38 @@ pub fn apply_random_errors<R: Rng>(lattice: &mut ToricLattice, p: f64, rng: &mut
             lattice.apply_x_error(edge);
         }
         if rng.gen::<f64>() < p {
+            lattice.apply_z_error(edge);
+        }
+    }
+}
+
+/// Apply biased X and Z errors with independent rates per edge direction.
+///
+/// `p_x_h` / `p_x_v`: X-error probability on horizontal / vertical edges.
+/// `p_z_h` / `p_z_v`: Z-error probability on horizontal / vertical edges.
+///
+/// Setting all four equal to the same `p` recovers `apply_random_errors`.
+/// Directional bias models anisotropic noise (e.g. fabrication asymmetry,
+/// correlated crosstalk along one lattice axis).
+pub fn apply_biased_errors<R: Rng>(
+    lattice: &mut ToricLattice,
+    p_x_h: f64,
+    p_x_v: f64,
+    p_z_h: f64,
+    p_z_v: f64,
+    rng: &mut R,
+) {
+    let num_edges = lattice.num_edges();
+    for idx in 0..num_edges {
+        let edge = lattice.index_to_edge(idx);
+        let (p_x, p_z) = match edge.dir {
+            EdgeDir::Horizontal => (p_x_h, p_z_h),
+            EdgeDir::Vertical => (p_x_v, p_z_v),
+        };
+        if rng.gen::<f64>() < p_x {
+            lattice.apply_x_error(edge);
+        }
+        if rng.gen::<f64>() < p_z {
             lattice.apply_z_error(edge);
         }
     }
@@ -331,6 +363,52 @@ mod tests {
                 0,
                 "m-particle count must be even"
             );
+        }
+    }
+
+    #[test]
+    fn test_biased_errors_horizontal_only() {
+        let mut rng = rand::thread_rng();
+        let mut lat = ToricLattice::new(8);
+        // X errors only on horizontal edges, Z errors only on vertical
+        apply_biased_errors(&mut lat, 0.5, 0.0, 0.0, 0.5, &mut rng);
+
+        let mut x_horiz = 0;
+        let mut x_vert = 0;
+        let mut z_horiz = 0;
+        let mut z_vert = 0;
+        for idx in 0..lat.num_edges() {
+            let edge = lat.index_to_edge(idx);
+            match edge.dir {
+                EdgeDir::Horizontal => {
+                    if lat.x_errors()[idx] { x_horiz += 1; }
+                    if lat.z_errors()[idx] { z_horiz += 1; }
+                }
+                EdgeDir::Vertical => {
+                    if lat.x_errors()[idx] { x_vert += 1; }
+                    if lat.z_errors()[idx] { z_vert += 1; }
+                }
+            }
+        }
+        // Vertical edges should have zero X errors
+        assert_eq!(x_vert, 0, "p_x_v=0 should produce no X errors on vertical edges");
+        // Horizontal edges should have zero Z errors
+        assert_eq!(z_horiz, 0, "p_z_h=0 should produce no Z errors on horizontal edges");
+        // Horizontal X and Vertical Z should be populated (~50%)
+        assert!(x_horiz > 0, "p_x_h=0.5 should produce some X errors on horizontal edges");
+        assert!(z_vert > 0, "p_z_v=0.5 should produce some Z errors on vertical edges");
+    }
+
+    #[test]
+    fn test_biased_errors_recovers_isotropic() {
+        // When all four rates equal, syndrome parity rules still hold
+        let mut rng = rand::thread_rng();
+        for _ in 0..20 {
+            let mut lat = ToricLattice::new(6);
+            apply_biased_errors(&mut lat, 0.1, 0.1, 0.1, 0.1, &mut rng);
+            let syn = Syndrome::measure(&lat);
+            assert_eq!(syn.num_e_particles() % 2, 0, "e-particles must be even");
+            assert_eq!(syn.num_m_particles() % 2, 0, "m-particles must be even");
         }
     }
 

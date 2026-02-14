@@ -743,3 +743,52 @@ pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
         mech_spectral_gap,
     }
 }
+
+#[cfg(test)]
+mod numerical_results {
+    use super::*;
+
+    #[test]
+    fn print_nanotorus_vs_tube_results() {
+        // ── Nanotorus (optimal cryo preset) ──
+        let nt_params = PhysicsParams::nanotorus_default();
+        let nt = evaluate(&nt_params);
+
+        // ── Nanotube (default: 1µm SWCNT at 300 K) ──
+        let tb_params = PhysicsParams::default();
+        let tb = evaluate(&tb_params);
+
+        println!("\n{}", "=".repeat(80));
+        println!("  CNT NANOTORUS vs NANOTUBE — FULL PHYSICS RESULTS");
+        println!("{}", "=".repeat(80));
+
+        println!("{:<35} {:>20} {:>20}", "PARAMETER", "NANOTORUS", "NANOTUBE");
+        println!("{:-<35} {:->20} {:->20}", "", "", "");
+        println!("{:<35} {:>20} {:>20}", "Resonator type", nt.resonator_label, tb.resonator_label);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "Frequency (GHz)", nt.freq_ghz, tb.freq_ghz);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "g0 coupling (kHz)", nt.g0_khz, tb.g0_khz);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "Q mechanical", nt.q_mech, tb.q_mech);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "Mech spectral gap (omega2/omega1)", nt.mech_spectral_gap, tb.mech_spectral_gap);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "n_thermal (phonons)", nt.n_thermal, tb.n_thermal);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "Cooperativity C", nt.cooperativity, tb.cooperativity);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "n_final (cooled phonons)", nt.n_final, tb.n_final);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "Piezo factor", nt.piezo_factor, tb.piezo_factor);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "Tonnetz spectral gap lambda_1", nt.spectral_gap, tb.spectral_gap);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "Coupling weight", nt.coupling_weight, tb.coupling_weight);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "Tonnetz enhancement", nt.tonnetz_enhancement, tb.tonnetz_enhancement);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "T1 (ns)", nt.t1_ns, tb.t1_ns);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "T2 bare (ns)", nt.t2_bare_ns, tb.t2_bare_ns);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "T2 with Tonnetz (ns)", nt.t2_ns, tb.t2_ns);
+        println!("{:<35} {:>20.6e} {:>20.6e}", "T2 enhancement (T2/T2_bare)", nt.t2_ns / nt.t2_bare_ns, tb.t2_ns / tb.t2_bare_ns);
+        println!("\n{}", "=".repeat(80));
+
+        // Also print intermediate params for full traceability
+        println!("\n  INTERMEDIATE DERIVED QUANTITIES");
+        println!("{:-<75}", "");
+        println!("{:<35} {:>20.6e} {:>20.6e}", "omega_m (rad/s)", nt_params.omega_m(), tb_params.omega_m());
+        println!("{:<35} {:>20.6e} {:>20.6e}", "g0 raw (Hz)", nt_params.g0(), tb_params.g0());
+        println!("{:<35} {:>20.6e} {:>20.6e}", "gamma_m (rad/s)", nt_params.gamma_m(), tb_params.gamma_m());
+        println!("{:<35} {:>20.6e} {:>20.6e}", "kappa_hz (rad/s)", nt_params.kappa_hz(), tb_params.kappa_hz());
+        println!("{:<35} {:>20.6e} {:>20.6e}", "Q mech", nt_params.q_mech(), tb_params.q_mech());
+    }
+}
