@@ -856,4 +856,60 @@ mod numerical_results {
         println!("{:<35} {:>20.6e} {:>20.6e}", "kappa_hz (rad/s)", nt_params.kappa_hz(), tb_params.kappa_hz());
         println!("{:<35} {:>20.6e} {:>20.6e}", "Q mech", nt_params.q_mech(), tb_params.q_mech());
     }
+
+    #[test]
+    fn print_bn_charge_state_comparison() {
+        println!("\n{}", "=".repeat(90));
+        println!("  BORON NITRIDE CHARGE STATE COMPARISON — JAHN-TELLER EFFECT");
+        println!("{}", "=".repeat(90));
+
+        let states = [ChargeState::Neutral, ChargeState::Cation, ChargeState::Anion];
+
+        println!("{:<30} {:>18} {:>18} {:>18}", "PARAMETER", "BN⁰ (Neutral)", "BN⁺ (Cation)", "BN⁻ (Anion)");
+        println!("{:-<30} {:->18} {:->18} {:->18}", "", "", "", "");
+
+        let mut results = Vec::new();
+        for &cs in &states {
+            let params = PhysicsParams {
+                material: Material::BoronNitride,
+                bn_charge_state: cs,
+                ..PhysicsParams::nanotorus_default()
+            };
+            let r = evaluate(&params);
+            results.push((params, r));
+        }
+
+        let labels = ["BN⁰", "BN⁺", "BN⁻"];
+        println!("{:<30} {:>18.4e} {:>18.4e} {:>18.4e}", "Frequency (GHz)",
+            results[0].1.freq_ghz, results[1].1.freq_ghz, results[2].1.freq_ghz);
+        println!("{:<30} {:>18.4e} {:>18.4e} {:>18.4e}", "Q mechanical",
+            results[0].1.q_mech, results[1].1.q_mech, results[2].1.q_mech);
+        println!("{:<30} {:>18.4e} {:>18.4e} {:>18.4e}", "g0 coupling (kHz)",
+            results[0].1.g0_khz, results[1].1.g0_khz, results[2].1.g0_khz);
+        println!("{:<30} {:>18.4e} {:>18.4e} {:>18.4e}", "Cooperativity C",
+            results[0].1.cooperativity, results[1].1.cooperativity, results[2].1.cooperativity);
+        println!("{:<30} {:>18.4e} {:>18.4e} {:>18.4e}", "T1 (ns)",
+            results[0].1.t1_ns, results[1].1.t1_ns, results[2].1.t1_ns);
+        println!("{:<30} {:>18.4e} {:>18.4e} {:>18.4e}", "T2 bare (ns)",
+            results[0].1.t2_bare_ns, results[1].1.t2_bare_ns, results[2].1.t2_bare_ns);
+        println!("{:<30} {:>18.4e} {:>18.4e} {:>18.4e}", "T2 Tonnetz (ns)",
+            results[0].1.t2_ns, results[1].1.t2_ns, results[2].1.t2_ns);
+        println!("{:<30} {:>18.4e} {:>18.4e} {:>18.4e}", "T2 enhancement",
+            results[0].1.t2_ns / results[0].1.t2_bare_ns,
+            results[1].1.t2_ns / results[1].1.t2_bare_ns,
+            results[2].1.t2_ns / results[2].1.t2_bare_ns);
+        println!("{:<30} {:>18.4e} {:>18.4e} {:>18.4e}", "Tonnetz enhancement",
+            results[0].1.tonnetz_enhancement, results[1].1.tonnetz_enhancement, results[2].1.tonnetz_enhancement);
+
+        println!("\n  VERDICT: BN⁰ T2 = {:.2} ns vs BN⁺ T2 = {:.2} ns ({:.1}% longer)",
+            results[0].1.t2_ns, results[1].1.t2_ns,
+            (results[0].1.t2_ns / results[1].1.t2_ns - 1.0) * 100.0);
+
+        println!("{}", "=".repeat(90));
+
+        // Assert neutral BN has strictly better coherence
+        assert!(results[0].1.t2_ns > results[1].1.t2_ns, "Neutral BN should have longer T2 than Cation");
+        assert!(results[0].1.t2_ns > results[2].1.t2_ns, "Neutral BN should have longer T2 than Anion");
+        assert!(results[0].1.q_mech > results[1].1.q_mech, "Neutral BN should have higher Q than Cation");
+    }
 }
