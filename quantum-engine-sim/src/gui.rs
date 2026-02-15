@@ -46,6 +46,8 @@ enum Tab {
     CntDoppler,
     Nanotorus,
     HallucinationReduction,
+    LogoDecoded,
+    ToroidalEngine,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -797,6 +799,30 @@ pub struct QuantumEngineApp {
     drift_descent_euc: Option<DescentResult>,
     needs_drift_descent: bool,
 
+    // Logo Decoded tab
+    logo_sphere_speed: f64,
+    logo_torus_major: f32,
+    logo_torus_minor: f32,
+    logo_lattice_n: usize,
+    logo_show_force: bool,
+    logo_show_tonnetz: bool,
+    logo_show_bloch_axes: bool,
+    logo_show_triadic: bool,
+    logo_sphere_angle: f32,
+
+    // Toroidal Engine tab (sphere inside tube)
+    te_torus_major: f32,
+    te_torus_minor: f32,
+    te_sphere_speed: f64,       // angular velocity around the tube (toroidal)
+    te_spin_speed: f64,         // sphere self-rotation speed
+    te_lattice_n: usize,
+    te_sphere_u: f32,           // current toroidal angle of sphere
+    te_sphere_v: f32,           // current poloidal angle of sphere
+    te_show_force: bool,
+    te_show_tonnetz: bool,
+    te_show_trail: bool,
+    te_trail: Vec<[f32; 3]>,    // trail of recent sphere positions
+
     // Visualization state (shared)
     time: f32,
     rotation: [f32; 2],
@@ -900,6 +926,28 @@ impl QuantumEngineApp {
             drift_descent_cov: None,
             drift_descent_euc: None,
             needs_drift_descent: false,
+
+            logo_sphere_speed: 1.0,
+            logo_torus_major: 1.2,
+            logo_torus_minor: 0.45,
+            logo_lattice_n: 8,
+            logo_show_force: true,
+            logo_show_tonnetz: true,
+            logo_show_bloch_axes: true,
+            logo_show_triadic: true,
+            logo_sphere_angle: 0.0,
+
+            te_torus_major: 1.2,
+            te_torus_minor: 0.45,
+            te_sphere_speed: 0.3,
+            te_spin_speed: 1.5,
+            te_lattice_n: 8,
+            te_sphere_u: 0.0,
+            te_sphere_v: 0.0,
+            te_show_force: true,
+            te_show_tonnetz: true,
+            te_show_trail: true,
+            te_trail: Vec::with_capacity(512),
 
             time: 0.0,
             rotation: [0.3, 0.15],
@@ -1188,6 +1236,8 @@ impl eframe::App for QuantumEngineApp {
                         ui.selectable_value(&mut self.active_tab, Tab::CntDoppler, egui::RichText::new("CNT Doppler").strong());
                         ui.selectable_value(&mut self.active_tab, Tab::Nanotorus, egui::RichText::new("Nanotorus").strong().color(TORUS_BLUE));
                         ui.selectable_value(&mut self.active_tab, Tab::HallucinationReduction, egui::RichText::new("Hallucination").strong());
+                        ui.selectable_value(&mut self.active_tab, Tab::LogoDecoded, egui::RichText::new("Logo Decoded").strong().color(egui::Color32::from_rgb(167, 139, 250)));
+                        ui.selectable_value(&mut self.active_tab, Tab::ToroidalEngine, egui::RichText::new("Toroidal Engine").strong().color(LOGO_RED));
                     });
                     ui.separator();
 
@@ -1206,6 +1256,8 @@ impl eframe::App for QuantumEngineApp {
                         Tab::CntDoppler => self.draw_cnt_controls(ui),
                         Tab::Nanotorus => self.draw_nano_controls(ui),
                         Tab::HallucinationReduction => self.draw_drift_controls(ui),
+                        Tab::LogoDecoded => self.draw_logo_controls(ui),
+                        Tab::ToroidalEngine => self.draw_te_controls(ui),
                     }
                 });
             });
@@ -1221,6 +1273,8 @@ impl eframe::App for QuantumEngineApp {
                         Tab::CntDoppler => self.draw_cnt_results(ui),
                         Tab::Nanotorus => self.draw_nano_results(ui),
                         Tab::HallucinationReduction => self.draw_drift_results(ui),
+                        Tab::LogoDecoded => self.draw_logo_results(ui),
+                        Tab::ToroidalEngine => self.draw_te_results(ui),
                     }
                 });
             });
@@ -1234,6 +1288,8 @@ impl eframe::App for QuantumEngineApp {
                     Tab::CntDoppler => self.draw_cnt_central(ui, ctx),
                     Tab::Nanotorus => self.draw_nano_central(ui),
                     Tab::HallucinationReduction => self.draw_drift_central(ui),
+                    Tab::LogoDecoded => self.draw_logo_central(ui),
+                    Tab::ToroidalEngine => self.draw_te_central(ui),
                 }
             });
 
@@ -1243,6 +1299,8 @@ impl eframe::App for QuantumEngineApp {
             Tab::CntDoppler => self.draw_cnt_status(ctx),
             Tab::Nanotorus => self.draw_nano_status(ctx),
             Tab::HallucinationReduction => self.draw_drift_status(ctx),
+            Tab::LogoDecoded => self.draw_logo_status(ctx),
+            Tab::ToroidalEngine => self.draw_te_status(ctx),
         }
 
         ctx.request_repaint();
@@ -3353,5 +3411,1109 @@ impl QuantumEngineApp {
                 if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
             });
         }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Logo Decoded tab: Spinning sphere inside torus → orthogonal force
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const LOGO_PURPLE: egui::Color32 = egui::Color32::from_rgb(167, 139, 250);
+const LOGO_CYAN: egui::Color32 = egui::Color32::from_rgb(34, 211, 238);
+const LOGO_RED: egui::Color32 = egui::Color32::from_rgb(248, 113, 113);
+const LOGO_AMBER: egui::Color32 = egui::Color32::from_rgb(251, 191, 36);
+
+impl QuantumEngineApp {
+    // ─── Controls (left sidebar) ────────────────────────────────────────────
+
+    fn draw_logo_controls(&mut self, ui: &mut egui::Ui) {
+        ui.colored_label(LOGO_PURPLE, egui::RichText::new("THE LOGO DECODED").strong().size(13.0));
+        dim_label(ui, "Prior art \u{2014} November 2023");
+        ui.add_space(4.0);
+
+        section_heading(ui, "TOROIDAL ENGINE");
+        ui.add_space(2.0);
+
+        ui.label("Sphere rotation speed");
+        ui.add(egui::Slider::new(&mut self.logo_sphere_speed, 0.0..=5.0).text("rad/s"));
+        ui.add_space(4.0);
+
+        ui.label("Torus major radius R");
+        ui.add(egui::Slider::new(&mut self.logo_torus_major, 0.6..=2.0).text("R"));
+        ui.label("Torus minor radius r");
+        ui.add(egui::Slider::new(&mut self.logo_torus_minor, 0.15..=0.8).text("r"));
+        ui.add_space(4.0);
+
+        section_heading(ui, "TONNETZ LATTICE");
+        let mut n_f = self.logo_lattice_n as f64;
+        ui.add(egui::Slider::new(&mut n_f, 4.0..=24.0).integer().text("N\u{00d7}N"));
+        self.logo_lattice_n = n_f as usize;
+        ui.add_space(4.0);
+
+        section_heading(ui, "OVERLAYS");
+        ui.checkbox(&mut self.logo_show_force, "Orthogonal force vectors");
+        ui.checkbox(&mut self.logo_show_tonnetz, "Tonnetz lattice nodes");
+        ui.checkbox(&mut self.logo_show_bloch_axes, "Bloch sphere axes");
+        ui.checkbox(&mut self.logo_show_triadic, "Triadic coherence cell");
+        ui.add_space(8.0);
+
+        section_heading(ui, "LOGO ELEMENTS");
+        ui.add_space(2.0);
+        let items = [
+            ("\u{25cb} Large circle", "Torus T\u{00b2} \u{2014} constraint manifold", LOGO_PURPLE),
+            ("\u{25cf} Filled node", "Karmonic functional H eval point", FOREST_GREEN),
+            ("\u{25cb}\u{25cb}\u{25cb} Open nodes", "Triadic coherence cell", LOGO_CYAN),
+            ("\u{2500} Edges", "Graph Laplacian structure E", LOGO_AMBER),
+        ];
+        for (elem, desc, color) in items {
+            ui.horizontal(|ui| {
+                ui.colored_label(color, egui::RichText::new(elem).strong().size(12.0));
+            });
+            dim_label(ui, desc);
+            ui.add_space(2.0);
+        }
+
+        ui.add_space(8.0);
+        section_heading(ui, "THE INSIGHT");
+        dim_label(ui, "A spinning sphere inside a toroid");
+        dim_label(ui, "generates orthogonal force from");
+        dim_label(ui, "\u{03c0}\u{2081}(T\u{00b2}) = \u{2124}\u{00d7}\u{2124} topology.");
+        ui.add_space(4.0);
+        dim_label(ui, "Same geometry controls:");
+        let domains = [
+            ("Quantum coherence time", LOGO_CYAN),
+            ("LLM hallucination reduction", LOGO_PURPLE),
+            ("Propulsive thrust", LOGO_RED),
+        ];
+        for (d, c) in domains {
+            ui.colored_label(c, egui::RichText::new(d).size(12.0));
+        }
+    }
+
+    // ─── Results (right sidebar) ────────────────────────────────────────────
+
+    fn draw_logo_results(&mut self, ui: &mut egui::Ui) {
+        let n = self.logo_lattice_n;
+        let torus = crate::torus::TorusLattice::new(n, 1.0);
+        let gap = torus.spectral_gap();
+        let n_q = n * n;
+        let gap_linear = crate::coherence::spectral_gap(crate::coherence::Topology::Linear, n_q);
+        let gap_complete = crate::coherence::spectral_gap(crate::coherence::Topology::Complete, n_q);
+        let mixing = torus.mixing_time_lattice();
+        let poincare = 1.0 / gap;
+        let coherence_norm = crate::coherence::coherence_time_normalized(gap, 1.0_f64 / std::f64::consts::E);
+
+        section_heading(ui, "SPECTRAL GAP");
+        ui.colored_label(LOGO_PURPLE, egui::RichText::new(format!("\u{03bb}\u{2081} = {:.6}", gap)).strong().size(16.0));
+        dim_label(ui, &format!("N={} \u{2192} {}x{} torus", n, n, n));
+        dim_label(ui, &format!("{} qubits on T\u{00b2}", n_q));
+        ui.add_space(4.0);
+
+        ui.colored_label(LABEL_CLR, egui::RichText::new("Topology comparison").strong().size(12.0));
+        ui.horizontal(|ui| {
+            ui.colored_label(LOGO_PURPLE, "T\u{00b2}:");
+            ui.label(format!("{:.4}", gap));
+        });
+        ui.horizontal(|ui| {
+            ui.colored_label(WARN_RED, "Linear:");
+            ui.label(format!("{:.4}", gap_linear));
+        });
+        ui.horizontal(|ui| {
+            ui.colored_label(FOREST_GREEN, "Complete:");
+            ui.label(format!("{:.1}", gap_complete));
+        });
+        dim_label(ui, &format!("T\u{00b2}/Linear advantage: {:.1}\u{00d7}", gap / gap_linear));
+        ui.add_space(8.0);
+
+        section_heading(ui, "DERIVED QUANTITIES");
+        ui.horizontal(|ui| {
+            ui.colored_label(LOGO_CYAN, "Mixing time:");
+            ui.label(format!("{:.2}", mixing));
+        });
+        ui.horizontal(|ui| {
+            ui.colored_label(LOGO_CYAN, "Poincar\u{00e9} const:");
+            ui.label(format!("{:.2}", poincare));
+        });
+        ui.horizontal(|ui| {
+            ui.colored_label(LOGO_CYAN, "Coherence \u{03c4}/\u{03b3}:");
+            ui.label(format!("{:.2}", coherence_norm));
+        });
+        ui.add_space(8.0);
+
+        // Orthogonal thrust metric (dimensionless, proportional to λ₁ × ω²)
+        let omega = self.logo_sphere_speed;
+        let thrust_metric = gap * omega * omega;
+        section_heading(ui, "ORTHOGONAL FORCE");
+        ui.colored_label(LOGO_RED, egui::RichText::new(format!("F\u{22a5} \u{221d} {:.4}", thrust_metric)).strong().size(16.0));
+        dim_label(ui, &format!("\u{03bb}\u{2081}\u{00d7}\u{03c9}\u{00b2} = {:.6}\u{00d7}{:.2}\u{00b2}", gap, omega));
+        ui.add_space(4.0);
+        dim_label(ui, "Force emerges from topology:");
+        dim_label(ui, "\u{03c0}\u{2081}(T\u{00b2}) = \u{2124}\u{00d7}\u{2124}");
+        dim_label(ui, "Two winding numbers \u{2192}");
+        dim_label(ui, "confined toroidal + free poloidal");
+        dim_label(ui, "\u{2192} axial orthogonal force");
+        ui.add_space(8.0);
+
+        section_heading(ui, "STRUCTURAL PARALLEL");
+        let rows = [
+            ("Topology", "S\u{00b2} compact", "T\u{00b2} compact"),
+            ("Coords", "(\u{03b8},\u{03c6})", "(\u{03b8}\u{2081},\u{03b8}\u{2082})"),
+            ("Spectrum", "Hamiltonian", "Laplacian \u{03bb}\u{2081}"),
+            ("Coherence", "Unitarity", "Spectral gap"),
+            ("Protect", "Toric code", "Logit bias +2.8pp"),
+        ];
+        egui::Grid::new("structural_parallel").striped(true).show(ui, |ui| {
+            ui.colored_label(LOGO_AMBER, egui::RichText::new("").strong().size(11.0));
+            ui.colored_label(LOGO_CYAN, egui::RichText::new("Bloch S\u{00b2}").strong().size(11.0));
+            ui.colored_label(LOGO_PURPLE, egui::RichText::new("Tonnetz T\u{00b2}").strong().size(11.0));
+            ui.end_row();
+            for (prop, bloch, tonnetz) in rows {
+                ui.colored_label(LOGO_AMBER, egui::RichText::new(prop).size(11.0));
+                ui.label(egui::RichText::new(bloch).size(11.0));
+                ui.label(egui::RichText::new(tonnetz).size(11.0));
+                ui.end_row();
+            }
+        });
+        ui.add_space(8.0);
+
+        section_heading(ui, "PRIOR ART TIMELINE");
+        let events = [
+            ("Nov 2023", "Logo created", true),
+            ("2023-24", "Paraxiom Inc. est.", true),
+            ("Feb 7 2026", "TLB paper (Zenodo)", false),
+            ("Feb 10 2026", "Defensive disclosure", false),
+            ("Feb 15 2026", "Logo decoded", true),
+        ];
+        for (date, event, highlight) in events {
+            ui.horizontal(|ui| {
+                let c = if highlight { LOGO_PURPLE } else { DIM };
+                ui.colored_label(c, egui::RichText::new(date).strong().size(10.0));
+                ui.label(egui::RichText::new(event).size(10.0));
+            });
+        }
+    }
+
+    // ─── Central panel: 3D torus with spinning sphere ───────────────────────
+
+    fn draw_logo_central(&mut self, ui: &mut egui::Ui) {
+        if !self.paused {
+            let dt = ui.input(|i| i.predicted_dt);
+            self.logo_sphere_angle += dt * self.logo_sphere_speed as f32;
+        }
+
+        let rect = ui.available_rect_before_wrap();
+        let painter = ui.painter_at(rect);
+
+        // Background
+        painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(10, 14, 10));
+
+        let rm = self.logo_torus_major;
+        let rn = self.logo_torus_minor;
+        let rot = self.rotation;
+        let time = self.time;
+        let rings = 24_usize;
+        let segs = 48_usize;
+
+        // ── Torus surface patches (semi-transparent purple) ─────────────
+        for ring in 0..rings {
+            let u0 = 2.0 * PI * ring as f32 / rings as f32;
+            let u1 = 2.0 * PI * ((ring + 1) % rings) as f32 / rings as f32;
+            for s in 0..segs {
+                let v0 = 2.0 * PI * s as f32 / segs as f32;
+                let v1 = 2.0 * PI * ((s + 1) % segs) as f32 / segs as f32;
+
+                let (p00, z00) = project(torus_pt(rm, rn, u0, v0), rot, rect);
+                let (p10, z10) = project(torus_pt(rm, rn, u1, v0), rot, rect);
+                let (p11, z11) = project(torus_pt(rm, rn, u1, v1), rot, rect);
+                let (p01, z01) = project(torus_pt(rm, rn, u0, v1), rot, rect);
+
+                let avg_z = (z00 + z10 + z11 + z01) * 0.25;
+                let e1x = p10.x - p00.x;
+                let e1y = p10.y - p00.y;
+                let e2x = p01.x - p00.x;
+                let e2y = p01.y - p00.y;
+                if e1x * e2y - e1y * e2x > 0.0 { continue; }
+
+                let depth_t = ((avg_z + 2.0) / 4.0).clamp(0.0, 1.0);
+                let alpha = (14.0 + 18.0 * depth_t) as u8;
+                let r = (40.0 + 40.0 * depth_t) as u8;
+                let g = (20.0 + 30.0 * depth_t) as u8;
+                let b = (80.0 + 60.0 * depth_t) as u8;
+
+                let mesh = egui::Mesh {
+                    indices: vec![0, 1, 2, 0, 2, 3],
+                    vertices: vec![
+                        egui::epaint::Vertex { pos: p00, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                        egui::epaint::Vertex { pos: p10, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                        egui::epaint::Vertex { pos: p11, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                        egui::epaint::Vertex { pos: p01, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                    ],
+                    texture_id: egui::TextureId::default(),
+                };
+                painter.add(egui::Shape::mesh(mesh));
+            }
+        }
+
+        // ── Torus wireframe ─────────────────────────────────────────────
+        for ring in 0..rings {
+            let fixed = 2.0 * PI * ring as f32 / rings as f32;
+            for s in 0..segs {
+                let a = 2.0 * PI * s as f32 / segs as f32;
+                let b = 2.0 * PI * ((s + 1) % segs) as f32 / segs as f32;
+                // u-rings
+                let (s1, z1) = project(torus_pt(rm, rn, fixed, a), rot, rect);
+                let (s2, _z2) = project(torus_pt(rm, rn, fixed, b), rot, rect);
+                let al = depth_alpha(z1);
+                painter.line_segment([s1, s2], egui::Stroke::new(0.5, egui::Color32::from_rgba_unmultiplied(80, 60, 140, al)));
+                // v-rings
+                let (s1, z1) = project(torus_pt(rm, rn, a, fixed), rot, rect);
+                let (s2, _z2) = project(torus_pt(rm, rn, b, fixed), rot, rect);
+                let al = depth_alpha(z1);
+                painter.line_segment([s1, s2], egui::Stroke::new(0.5, egui::Color32::from_rgba_unmultiplied(80, 60, 140, al)));
+            }
+        }
+
+        // ── Non-contractible cycles (gold pulsing) ──────────────────────
+        for &(cycle_u, fixed_other) in &[(true, 0.0_f32), (true, PI), (false, 0.0), (false, PI)] {
+            for s in 0..segs {
+                let a = 2.0 * PI * s as f32 / segs as f32;
+                let b = 2.0 * PI * ((s + 1) % segs) as f32 / segs as f32;
+                let (p1, p2) = if cycle_u {
+                    (torus_pt(rm, rn, fixed_other, a), torus_pt(rm, rn, fixed_other, b))
+                } else {
+                    (torus_pt(rm, rn, a, fixed_other), torus_pt(rm, rn, b, fixed_other))
+                };
+                let (sc1, _) = project(p1, rot, rect);
+                let (sc2, _) = project(p2, rot, rect);
+                let pulse = 0.55 + 0.45 * (a + time * if cycle_u { -2.0 } else { 1.5 }).sin();
+                let r = (212.0 * pulse + 80.0 * (1.0 - pulse)) as u8;
+                let g = (175.0 * pulse + 100.0 * (1.0 - pulse)) as u8;
+                let bl = (55.0 * pulse + 30.0 * (1.0 - pulse)) as u8;
+                painter.line_segment([sc1, sc2], egui::Stroke::new(2.0, egui::Color32::from_rgb(r, g, bl)));
+            }
+        }
+
+        // ── Tonnetz lattice nodes on torus surface ──────────────────────
+        if self.logo_show_tonnetz {
+            let grid = self.logo_lattice_n;
+            for row in 0..grid {
+                for col in 0..grid {
+                    let u = 2.0 * PI * row as f32 / grid as f32;
+                    let v = 2.0 * PI * col as f32 / grid as f32;
+                    let (sp, z) = project(torus_pt(rm, rn + 0.015, u, v), rot, rect);
+                    let al = depth_alpha(z);
+                    let phase_v = 0.6 + 0.4 * (time * 2.0 + u + v).sin();
+                    let br = (180.0 * phase_v) as u8;
+                    painter.circle_filled(sp, 2.0, egui::Color32::from_rgba_unmultiplied(br, br, (br as f32 * 0.8) as u8, al));
+                }
+            }
+        }
+
+        // ── Spinning Bloch sphere at torus center ───────────────────────
+        // The sphere sits in the "hole" of the torus (at the origin).
+        let sphere_r = rn * 0.65;
+        let sphere_segs = 32_usize;
+        let angle = self.logo_sphere_angle;
+
+        // Sphere wireframe (equator + meridians)
+        for m in 0..3 {
+            let meridian_offset = PI * m as f32 / 3.0;
+            for s in 0..sphere_segs {
+                let t0 = 2.0 * PI * s as f32 / sphere_segs as f32;
+                let t1 = 2.0 * PI * ((s + 1) % sphere_segs) as f32 / sphere_segs as f32;
+
+                // Equator (rotates with sphere)
+                if m == 0 {
+                    let eq0 = [
+                        sphere_r * (t0 + angle).cos(),
+                        sphere_r * (t0 + angle).sin(),
+                        0.0,
+                    ];
+                    let eq1 = [
+                        sphere_r * (t1 + angle).cos(),
+                        sphere_r * (t1 + angle).sin(),
+                        0.0,
+                    ];
+                    let (a, za) = project(eq0, rot, rect);
+                    let (b, _) = project(eq1, rot, rect);
+                    let al = depth_alpha(za);
+                    painter.line_segment([a, b], egui::Stroke::new(1.5, egui::Color32::from_rgba_unmultiplied(34, 211, 238, al)));
+                }
+
+                // Meridians
+                let mer0 = [
+                    sphere_r * t0.sin() * (meridian_offset + angle).cos(),
+                    sphere_r * t0.sin() * (meridian_offset + angle).sin(),
+                    sphere_r * t0.cos(),
+                ];
+                let mer1 = [
+                    sphere_r * t1.sin() * (meridian_offset + angle).cos(),
+                    sphere_r * t1.sin() * (meridian_offset + angle).sin(),
+                    sphere_r * t1.cos(),
+                ];
+                let (a, za) = project(mer0, rot, rect);
+                let (b, _) = project(mer1, rot, rect);
+                let al = depth_alpha(za);
+                painter.line_segment([a, b], egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(34, 211, 238, (al as f32 * 0.7) as u8)));
+            }
+        }
+
+        // Bloch vector (state vector spinning inside sphere)
+        let state_theta = PI * 0.35;
+        let state_phi = angle * 2.3;
+        let state_pos = [
+            sphere_r * state_theta.sin() * state_phi.cos(),
+            sphere_r * state_theta.sin() * state_phi.sin(),
+            sphere_r * state_theta.cos(),
+        ];
+        let (origin_s, _) = project([0.0, 0.0, 0.0], rot, rect);
+        let (state_s, _) = project(state_pos, rot, rect);
+        painter.line_segment([origin_s, state_s], egui::Stroke::new(2.5, LOGO_CYAN));
+        painter.circle_filled(state_s, 5.0, LOGO_CYAN);
+
+        // Bloch sphere axes
+        if self.logo_show_bloch_axes {
+            let axes: [([f32; 3], &str, egui::Color32); 4] = [
+                ([sphere_r * 1.15, 0.0, 0.0], "|+x>", LOGO_CYAN),
+                ([0.0, sphere_r * 1.15, 0.0], "|+y>", LOGO_PURPLE),
+                ([0.0, 0.0, sphere_r * 1.15], "|0>", FOREST_GREEN),
+                ([0.0, 0.0, -sphere_r * 1.15], "|1>", WARN_RED),
+            ];
+            for (pos, label, color) in axes {
+                let (p, _) = project(pos, rot, rect);
+                painter.circle_filled(p, 3.0, color);
+                painter.text(
+                    egui::pos2(p.x + 6.0, p.y - 6.0),
+                    egui::Align2::LEFT_BOTTOM,
+                    label,
+                    egui::FontId::monospace(10.0),
+                    color,
+                );
+            }
+        }
+
+        // ── Triadic coherence cell ──────────────────────────────────────
+        if self.logo_show_triadic {
+            let triad_y = rn + 0.5;
+            let node_positions: [[f32; 3]; 3] = [
+                [-0.5, 0.0, -triad_y],
+                [0.5, 0.0, -triad_y],
+                [0.0, 0.0, -triad_y - 0.4],
+            ];
+            let center_pos = [0.0_f32, 0.0, -triad_y + 0.15];
+
+            for node in &node_positions {
+                let (np, _) = project(*node, rot, rect);
+                let (cp, _) = project(center_pos, rot, rect);
+                painter.line_segment([np, cp], egui::Stroke::new(2.0, egui::Color32::from_rgb(100, 100, 90)));
+            }
+
+            let (cp, _) = project(center_pos, rot, rect);
+            painter.circle_filled(cp, 7.0, egui::Color32::WHITE);
+            painter.text(
+                egui::pos2(cp.x + 10.0, cp.y),
+                egui::Align2::LEFT_CENTER,
+                "H(q)",
+                egui::FontId::monospace(11.0),
+                LOGO_AMBER,
+            );
+
+            let triad_labels = ["c12", "c13", "c23"];
+            for (i, node) in node_positions.iter().enumerate() {
+                let (np, _) = project(*node, rot, rect);
+                painter.circle_stroke(np, 6.0, egui::Stroke::new(2.0, LOGO_CYAN));
+                painter.text(
+                    egui::pos2(np.x + 8.0, np.y + 2.0),
+                    egui::Align2::LEFT_CENTER,
+                    triad_labels[i],
+                    egui::FontId::monospace(10.0),
+                    LOGO_CYAN,
+                );
+            }
+        }
+
+        // ── Orthogonal force arrows (along torus axis = z-axis) ─────────
+        if self.logo_show_force {
+            let arrow_base = rn + 0.08;
+            let arrow_tip = rn + 0.6;
+            let pulse = 0.4 + 0.6 * (time * 3.0).sin().abs();
+            let alpha = (180.0 * pulse) as u8;
+            let force_color = egui::Color32::from_rgba_unmultiplied(248, 113, 113, alpha);
+
+            // Up arrow
+            let (base_up, _) = project([0.0, 0.0, arrow_base], rot, rect);
+            let (tip_up, _) = project([0.0, 0.0, arrow_tip], rot, rect);
+            painter.line_segment([base_up, tip_up], egui::Stroke::new(3.5, force_color));
+            // Arrowhead
+            let dx = tip_up.x - base_up.x;
+            let dy = tip_up.y - base_up.y;
+            let len = (dx * dx + dy * dy).sqrt().max(1.0);
+            let ux = dx / len;
+            let uy = dy / len;
+            let head_size = 10.0;
+            let h1 = egui::pos2(tip_up.x - ux * head_size + uy * head_size * 0.5, tip_up.y - uy * head_size - ux * head_size * 0.5);
+            let h2 = egui::pos2(tip_up.x - ux * head_size - uy * head_size * 0.5, tip_up.y - uy * head_size + ux * head_size * 0.5);
+            painter.add(egui::Shape::convex_polygon(vec![tip_up, h1, h2], force_color, egui::Stroke::NONE));
+
+            // Down arrow
+            let (base_dn, _) = project([0.0, 0.0, -arrow_base], rot, rect);
+            let (tip_dn, _) = project([0.0, 0.0, -arrow_tip], rot, rect);
+            painter.line_segment([base_dn, tip_dn], egui::Stroke::new(3.5, force_color));
+            let dx = tip_dn.x - base_dn.x;
+            let dy = tip_dn.y - base_dn.y;
+            let len = (dx * dx + dy * dy).sqrt().max(1.0);
+            let ux = dx / len;
+            let uy = dy / len;
+            let h1 = egui::pos2(tip_dn.x - ux * head_size + uy * head_size * 0.5, tip_dn.y - uy * head_size - ux * head_size * 0.5);
+            let h2 = egui::pos2(tip_dn.x - ux * head_size - uy * head_size * 0.5, tip_dn.y - uy * head_size + ux * head_size * 0.5);
+            painter.add(egui::Shape::convex_polygon(vec![tip_dn, h1, h2], force_color, egui::Stroke::NONE));
+
+            // Labels
+            painter.text(
+                egui::pos2(tip_up.x + 12.0, tip_up.y),
+                egui::Align2::LEFT_CENTER,
+                "F\u{22a5} THRUST",
+                egui::FontId::monospace(12.0),
+                LOGO_RED,
+            );
+            painter.text(
+                egui::pos2(tip_dn.x + 12.0, tip_dn.y),
+                egui::Align2::LEFT_CENTER,
+                "F\u{22a5} THRUST",
+                egui::FontId::monospace(12.0),
+                LOGO_RED,
+            );
+
+            // Toroidal circulation arrows
+            let circ_segs = 36_usize;
+            for s in 0..circ_segs {
+                let t0 = 2.0 * PI * s as f32 / circ_segs as f32;
+                let t1 = 2.0 * PI * ((s + 1) % circ_segs) as f32 / circ_segs as f32;
+                let r_circ = rm + rn * 0.3;
+                let c0 = [r_circ * t0.cos(), r_circ * t0.sin(), 0.0_f32];
+                let c1 = [r_circ * t1.cos(), r_circ * t1.sin(), 0.0];
+                let (a, za) = project(c0, rot, rect);
+                let (b, _) = project(c1, rot, rect);
+                let al = depth_alpha(za);
+                let dash_pulse = 0.4 + 0.6 * ((t0 * 3.0 - time * 2.0).sin() * 0.5 + 0.5);
+                let lp = (LOGO_PURPLE.r() as f32 * dash_pulse) as u8;
+                let gp = (LOGO_PURPLE.g() as f32 * dash_pulse) as u8;
+                let bp = (LOGO_PURPLE.b() as f32 * dash_pulse) as u8;
+                painter.line_segment([a, b], egui::Stroke::new(1.5, egui::Color32::from_rgba_unmultiplied(lp, gp, bp, (al as f32 * 0.6) as u8)));
+            }
+        }
+
+        // ── Title and theory labels ─────────────────────────────────────
+        painter.text(
+            egui::pos2(rect.left() + 20.0, rect.top() + 20.0),
+            egui::Align2::LEFT_TOP,
+            "SPINNING SPHERE INSIDE TORUS \u{2192} ORTHOGONAL FORCE",
+            egui::FontId::monospace(14.0),
+            LOGO_PURPLE,
+        );
+        painter.text(
+            egui::pos2(rect.left() + 20.0, rect.top() + 38.0),
+            egui::Align2::LEFT_TOP,
+            "Bloch S\u{00b2} inside Tonnetz T\u{00b2} \u{2014} Prior Art Nov 2023",
+            egui::FontId::monospace(11.0),
+            DIM,
+        );
+
+        // Physics pipeline at bottom
+        let pipeline_y = rect.bottom() - 35.0;
+        let labels = ["CNT Resonator", "\u{2192}", "Doppler Cooling", "\u{2192}", "Tonnetz Filter", "\u{2192}", "Toric Code"];
+        let colors = [LOGO_CYAN, DIM, TORUS_BLUE, DIM, LOGO_PURPLE, DIM, FOREST_GREEN];
+        let mut px = rect.left() + 20.0;
+        for (label, color) in labels.iter().zip(colors.iter()) {
+            painter.text(
+                egui::pos2(px, pipeline_y),
+                egui::Align2::LEFT_TOP,
+                label,
+                egui::FontId::monospace(11.0),
+                *color,
+            );
+            px += label.len() as f32 * 7.5 + 8.0;
+        }
+
+        // Spectral gap chart (bottom right area)
+        let chart_rect = egui::Rect::from_min_size(
+            egui::pos2(rect.right() - 280.0, rect.bottom() - 180.0),
+            egui::vec2(260.0, 160.0),
+        );
+        if rect.width() > 600.0 && rect.height() > 400.0 {
+            painter.rect_filled(chart_rect, 6.0, egui::Color32::from_rgba_unmultiplied(15, 20, 15, 200));
+            painter.rect_stroke(chart_rect, 6.0, egui::Stroke::new(1.0, egui::Color32::from_rgb(40, 50, 40)), egui::epaint::StrokeKind::Outside);
+            painter.text(
+                egui::pos2(chart_rect.left() + 8.0, chart_rect.top() + 6.0),
+                egui::Align2::LEFT_TOP,
+                "\u{03bb}\u{2081}(N) Spectral Gap vs Lattice Size",
+                egui::FontId::monospace(10.0),
+                LOGO_AMBER,
+            );
+
+            let sizes = [4_usize, 6, 8, 10, 12, 16, 20, 24];
+            let max_gap = 2.0_f32;
+            let chart_inner = egui::Rect::from_min_max(
+                egui::pos2(chart_rect.left() + 30.0, chart_rect.top() + 22.0),
+                egui::pos2(chart_rect.right() - 10.0, chart_rect.bottom() - 20.0),
+            );
+
+            for (i, &n) in sizes.iter().enumerate() {
+                let gap = 2.0 - 2.0 * (2.0 * std::f64::consts::PI / n as f64).cos();
+                let x = chart_inner.left() + (i as f32 / (sizes.len() - 1) as f32) * chart_inner.width();
+                let y = chart_inner.bottom() - (gap as f32 / max_gap) * chart_inner.height();
+
+                let is_current = n == self.logo_lattice_n;
+                let dot_r = if is_current { 5.0 } else { 3.0 };
+                let c = if is_current { LOGO_PURPLE } else { LOGO_CYAN };
+                painter.circle_filled(egui::pos2(x, y), dot_r, c);
+
+                if i > 0 {
+                    let prev_gap = 2.0 - 2.0 * (2.0 * std::f64::consts::PI / sizes[i - 1] as f64).cos();
+                    let ppx = chart_inner.left() + ((i - 1) as f32 / (sizes.len() - 1) as f32) * chart_inner.width();
+                    let py = chart_inner.bottom() - (prev_gap as f32 / max_gap) * chart_inner.height();
+                    painter.line_segment([egui::pos2(ppx, py), egui::pos2(x, y)], egui::Stroke::new(1.5, LOGO_CYAN));
+                }
+
+                painter.text(
+                    egui::pos2(x, chart_inner.bottom() + 4.0),
+                    egui::Align2::CENTER_TOP,
+                    &format!("{}", n),
+                    egui::FontId::monospace(9.0),
+                    DIM,
+                );
+            }
+        }
+
+        // Mouse drag for rotation
+        let resp = ui.interact(rect, egui::Id::new("logo_torus_drag"), egui::Sense::drag());
+        if resp.dragged() {
+            self.rotation[0] += resp.drag_delta().y * 0.01;
+            self.rotation[1] += resp.drag_delta().x * 0.01;
+        } else if self.auto_rotate && !self.paused {
+            self.rotation[1] += 0.004;
+        }
+    }
+
+    // ─── Status badge ───────────────────────────────────────────────────
+
+    fn draw_logo_status(&self, ctx: &egui::Context) {
+        let n = self.logo_lattice_n;
+        let gap = crate::torus::TorusLattice::new(n, 1.0).spectral_gap();
+        let omega = self.logo_sphere_speed;
+        let thrust = gap * omega * omega;
+
+        let sc = if thrust > 0.5 { FOREST_GREEN } else if thrust > 0.1 { GOLD_EG } else { WARN_RED };
+        let st = if thrust > 0.5 { "STRONG" } else if thrust > 0.1 { "MODERATE" } else { "WEAK" };
+
+        let frame = egui::Frame {
+            fill: egui::Color32::from_rgba_unmultiplied(22, 18, 32, 230),
+            corner_radius: egui::CornerRadius::from(6),
+            inner_margin: egui::Margin::same(10),
+            stroke: egui::Stroke::new(2.0, LOGO_PURPLE),
+            ..Default::default()
+        };
+        egui::Window::new("logo_status").title_bar(false).resizable(false).movable(false).frame(frame).anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0]).show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.colored_label(LOGO_PURPLE, egui::RichText::new("LOGO DECODED").strong().size(15.0));
+                ui.separator();
+                ui.colored_label(sc, egui::RichText::new(format!("F\u{22a5} {}", st)).strong().size(13.0));
+            });
+            ui.label(format!("\u{03bb}\u{2081}={:.4}  \u{03c9}={:.1}  F\u{22a5}\u{221d}{:.4}", gap, omega, thrust));
+            dim_label(ui, &format!("{}x{} torus, {} qubits", n, n, n * n));
+            dim_label(ui, "Prior art: November 2023");
+            if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
+        });
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Toroidal Engine tab: Sphere rolling INSIDE the torus tube
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const TE_ORANGE: egui::Color32 = egui::Color32::from_rgb(255, 160, 60);
+
+/// Compute a point on the tube center line at toroidal angle u.
+fn tube_center(r_maj: f32, u: f32) -> [f32; 3] {
+    [r_maj * u.cos(), r_maj * u.sin(), 0.0]
+}
+
+/// Compute local frame at toroidal angle u on the torus.
+/// Returns (tangent, normal_outward, binormal_up) — a right-handed frame.
+fn tube_frame(u: f32) -> ([f32; 3], [f32; 3], [f32; 3]) {
+    // tangent = d/du of (cos u, sin u, 0) = (-sin u, cos u, 0)
+    let tangent = [-u.sin(), u.cos(), 0.0];
+    // normal points outward from the torus axis = (cos u, sin u, 0)
+    let normal = [u.cos(), u.sin(), 0.0];
+    // binormal = tangent × normal = (0, 0, -1) → use (0, 0, 1) for right-hand
+    let binormal = [0.0_f32, 0.0, 1.0];
+    (tangent, normal, binormal)
+}
+
+/// Point inside the tube at toroidal angle u, poloidal angle v, at radius r from tube center.
+fn tube_interior_pt(r_maj: f32, r_offset: f32, u: f32, v: f32) -> [f32; 3] {
+    let (_t, n, b) = tube_frame(u);
+    let center = tube_center(r_maj, u);
+    [
+        center[0] + r_offset * (v.cos() * n[0] + v.sin() * b[0]),
+        center[1] + r_offset * (v.cos() * n[1] + v.sin() * b[1]),
+        center[2] + r_offset * (v.cos() * n[2] + v.sin() * b[2]),
+    ]
+}
+
+impl QuantumEngineApp {
+    // ─── Controls ───────────────────────────────────────────────────────
+
+    fn draw_te_controls(&mut self, ui: &mut egui::Ui) {
+        ui.colored_label(LOGO_RED, egui::RichText::new("TOROIDAL ENGINE").strong().size(13.0));
+        dim_label(ui, "Sphere confined inside torus tube");
+        ui.add_space(4.0);
+
+        section_heading(ui, "TORUS GEOMETRY");
+        ui.label("Major radius R (tube center path)");
+        ui.add(egui::Slider::new(&mut self.te_torus_major, 0.6..=2.0).text("R"));
+        ui.label("Minor radius r (tube diameter)");
+        ui.add(egui::Slider::new(&mut self.te_torus_minor, 0.15..=0.8).text("r"));
+        ui.add_space(2.0);
+        let sphere_d = self.te_torus_minor * 2.0;
+        dim_label(ui, &format!("Sphere diameter = tube diameter = {:.2}", sphere_d));
+        dim_label(ui, &format!("Sphere radius = {:.3}", self.te_torus_minor));
+        ui.add_space(4.0);
+
+        section_heading(ui, "SPHERE MOTION");
+        ui.label("Toroidal speed (around tube)");
+        ui.add(egui::Slider::new(&mut self.te_sphere_speed, 0.0..=2.0).text("rad/s"));
+        ui.label("Sphere self-spin");
+        ui.add(egui::Slider::new(&mut self.te_spin_speed, 0.0..=5.0).text("rad/s"));
+        ui.add_space(4.0);
+
+        section_heading(ui, "TONNETZ LATTICE");
+        let mut n_f = self.te_lattice_n as f64;
+        ui.add(egui::Slider::new(&mut n_f, 4.0..=24.0).integer().text("N\u{00d7}N"));
+        self.te_lattice_n = n_f as usize;
+        ui.add_space(4.0);
+
+        section_heading(ui, "OVERLAYS");
+        ui.checkbox(&mut self.te_show_force, "Orthogonal force vectors");
+        ui.checkbox(&mut self.te_show_tonnetz, "Tonnetz lattice nodes");
+        ui.checkbox(&mut self.te_show_trail, "Sphere trail");
+        ui.add_space(8.0);
+
+        section_heading(ui, "PHYSICS");
+        dim_label(ui, "The sphere rolls inside the");
+        dim_label(ui, "toroidal tube. Tube walls confine");
+        dim_label(ui, "angular momentum to two modes:");
+        ui.add_space(4.0);
+        ui.colored_label(LOGO_PURPLE, egui::RichText::new("Toroidal (u)").size(12.0));
+        dim_label(ui, "  Around the big loop");
+        ui.colored_label(LOGO_CYAN, egui::RichText::new("Poloidal (v)").size(12.0));
+        dim_label(ui, "  Around the tube cross-section");
+        ui.add_space(4.0);
+        ui.colored_label(LOGO_RED, egui::RichText::new("Orthogonal force").size(12.0));
+        dim_label(ui, "  Confined toroidal momentum");
+        dim_label(ui, "  \u{2192} axial force along z-axis");
+        ui.add_space(4.0);
+        dim_label(ui, "\u{03c0}\u{2081}(T\u{00b2}) = \u{2124}\u{00d7}\u{2124}");
+        dim_label(ui, "Two winding numbers \u{2192}");
+        dim_label(ui, "independent angular momenta");
+    }
+
+    // ─── Results ────────────────────────────────────────────────────────
+
+    fn draw_te_results(&mut self, ui: &mut egui::Ui) {
+        let n = self.te_lattice_n;
+        let torus = crate::torus::TorusLattice::new(n, 1.0);
+        let gap = torus.spectral_gap();
+        let n_q = n * n;
+
+        section_heading(ui, "SPECTRAL GAP");
+        ui.colored_label(LOGO_PURPLE, egui::RichText::new(format!("\u{03bb}\u{2081} = {:.6}", gap)).strong().size(16.0));
+        dim_label(ui, &format!("{}x{} torus, {} sites", n, n, n_q));
+        ui.add_space(4.0);
+
+        // Kinetic energy of sphere (dimensionless)
+        let omega_t = self.te_sphere_speed; // toroidal
+        let omega_s = self.te_spin_speed;   // self-spin
+        let r_maj = self.te_torus_major as f64;
+        let r_min = self.te_torus_minor as f64;
+
+        // Moment of inertia: solid sphere I = 2/5 m r²
+        // Rolling inside tube: v_cm = R * omega_t, v_rot = r * omega_s
+        // KE_toroidal = 1/2 m (R * omega_t)²
+        // KE_spin = 1/2 * (2/5 m r²) * omega_s²
+        let ke_toroidal = 0.5 * r_maj * r_maj * omega_t * omega_t;
+        let ke_spin = 0.5 * 0.4 * r_min * r_min * omega_s * omega_s;
+        let ke_total = ke_toroidal + ke_spin;
+
+        // Angular momentum: L_toroidal = m R² omega_t (around torus axis)
+        let l_toroidal = r_maj * r_maj * omega_t;
+        // Angular momentum from spin: L_spin = (2/5) m r² omega_s
+        let l_spin = 0.4 * r_min * r_min * omega_s;
+
+        // Orthogonal force: proportional to spectral gap × angular momentum
+        let f_ortho = gap * l_toroidal;
+        // Coherence-enhanced force: includes spectral gap amplification
+        let f_enhanced = gap * (l_toroidal + l_spin);
+
+        section_heading(ui, "KINETIC ENERGY");
+        ui.horizontal(|ui| {
+            ui.colored_label(LOGO_PURPLE, "KE toroidal:");
+            ui.label(format!("{:.4}", ke_toroidal));
+        });
+        ui.horizontal(|ui| {
+            ui.colored_label(LOGO_CYAN, "KE spin:");
+            ui.label(format!("{:.4}", ke_spin));
+        });
+        ui.horizontal(|ui| {
+            ui.colored_label(LABEL_CLR, "KE total:");
+            ui.label(format!("{:.4}", ke_total));
+        });
+        ui.add_space(4.0);
+
+        section_heading(ui, "ANGULAR MOMENTUM");
+        ui.horizontal(|ui| {
+            ui.colored_label(LOGO_PURPLE, "L toroidal:");
+            ui.label(format!("{:.4}", l_toroidal));
+        });
+        ui.horizontal(|ui| {
+            ui.colored_label(LOGO_CYAN, "L spin:");
+            ui.label(format!("{:.4}", l_spin));
+        });
+        ui.add_space(4.0);
+
+        section_heading(ui, "ORTHOGONAL FORCE");
+        ui.colored_label(LOGO_RED, egui::RichText::new(format!("F\u{22a5} = {:.4}", f_ortho)).strong().size(16.0));
+        dim_label(ui, &format!("\u{03bb}\u{2081} \u{00d7} L_toroidal = {:.4} \u{00d7} {:.4}", gap, l_toroidal));
+        ui.add_space(4.0);
+        ui.colored_label(TE_ORANGE, egui::RichText::new(format!("F\u{22a5}(enhanced) = {:.4}", f_enhanced)).strong().size(14.0));
+        dim_label(ui, "Includes spin angular momentum");
+        ui.add_space(8.0);
+
+        // Coherence time
+        let coherence = crate::coherence::coherence_time_normalized(gap, 1.0_f64 / std::f64::consts::E);
+        let mixing = torus.mixing_time_lattice();
+
+        section_heading(ui, "COHERENCE");
+        ui.horizontal(|ui| {
+            ui.colored_label(LOGO_CYAN, "Coherence \u{03c4}/\u{03b3}:");
+            ui.label(format!("{:.2}", coherence));
+        });
+        ui.horizontal(|ui| {
+            ui.colored_label(LOGO_CYAN, "Mixing time:");
+            ui.label(format!("{:.2}", mixing));
+        });
+        ui.add_space(8.0);
+
+        section_heading(ui, "SPHERE GEOMETRY");
+        dim_label(ui, &format!("Sphere radius: {:.3}", r_min));
+        dim_label(ui, &format!("Tube radius: {:.3}", r_min));
+        dim_label(ui, &format!("Tube center: R = {:.3}", r_maj));
+        dim_label(ui, "Sphere fills tube cross-section");
+        dim_label(ui, "(snug fit, no lateral play)");
+        ui.add_space(4.0);
+
+        // Current position
+        let u_deg = (self.te_sphere_u * 180.0 / PI).rem_euclid(360.0);
+        dim_label(ui, &format!("Sphere u = {:.0}\u{00b0}", u_deg));
+    }
+
+    // ─── Central panel: 3D torus with sphere INSIDE the tube ────────────
+
+    fn draw_te_central(&mut self, ui: &mut egui::Ui) {
+        if !self.paused {
+            let dt = ui.input(|i| i.predicted_dt);
+            self.te_sphere_u += dt * self.te_sphere_speed as f32;
+            self.te_sphere_v += dt * self.te_spin_speed as f32;
+
+            // Record trail
+            let sphere_pos = tube_center(self.te_torus_major, self.te_sphere_u);
+            self.te_trail.push(sphere_pos);
+            if self.te_trail.len() > 512 {
+                self.te_trail.remove(0);
+            }
+        }
+
+        let rect = ui.available_rect_before_wrap();
+        let painter = ui.painter_at(rect);
+        painter.rect_filled(rect, 0.0, egui::Color32::from_rgb(10, 12, 18));
+
+        let rm = self.te_torus_major;
+        let rn = self.te_torus_minor;
+        let rot = self.rotation;
+        let time = self.time;
+        let rings = 24_usize;
+        let segs = 48_usize;
+
+        // ── Torus surface (semi-transparent, so you can see the sphere inside) ──
+        // We draw the back half first, then the sphere, then the front half
+        // For simplicity, draw the whole torus semi-transparent
+        for ring in 0..rings {
+            let u0 = 2.0 * PI * ring as f32 / rings as f32;
+            let u1 = 2.0 * PI * ((ring + 1) % rings) as f32 / rings as f32;
+            for s in 0..segs {
+                let v0 = 2.0 * PI * s as f32 / segs as f32;
+                let v1 = 2.0 * PI * ((s + 1) % segs) as f32 / segs as f32;
+
+                let (p00, z00) = project(torus_pt(rm, rn, u0, v0), rot, rect);
+                let (p10, z10) = project(torus_pt(rm, rn, u1, v0), rot, rect);
+                let (p11, z11) = project(torus_pt(rm, rn, u1, v1), rot, rect);
+                let (p01, z01) = project(torus_pt(rm, rn, u0, v1), rot, rect);
+
+                let avg_z = (z00 + z10 + z11 + z01) * 0.25;
+                let e1x = p10.x - p00.x;
+                let e1y = p10.y - p00.y;
+                let e2x = p01.x - p00.x;
+                let e2y = p01.y - p00.y;
+                if e1x * e2y - e1y * e2x > 0.0 { continue; }
+
+                let depth_t = ((avg_z + 2.0) / 4.0).clamp(0.0, 1.0);
+                let alpha = (10.0 + 14.0 * depth_t) as u8; // more transparent to see sphere
+                let r = (20.0 + 50.0 * depth_t) as u8;
+                let g = (30.0 + 40.0 * depth_t) as u8;
+                let b = (60.0 + 70.0 * depth_t) as u8;
+
+                let mesh = egui::Mesh {
+                    indices: vec![0, 1, 2, 0, 2, 3],
+                    vertices: vec![
+                        egui::epaint::Vertex { pos: p00, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                        egui::epaint::Vertex { pos: p10, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                        egui::epaint::Vertex { pos: p11, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                        egui::epaint::Vertex { pos: p01, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                    ],
+                    texture_id: egui::TextureId::default(),
+                };
+                painter.add(egui::Shape::mesh(mesh));
+            }
+        }
+
+        // ── Torus wireframe ─────────────────────────────────────────────
+        for ring in 0..rings {
+            let fixed = 2.0 * PI * ring as f32 / rings as f32;
+            for s in 0..segs {
+                let a = 2.0 * PI * s as f32 / segs as f32;
+                let b = 2.0 * PI * ((s + 1) % segs) as f32 / segs as f32;
+                let (s1, z1) = project(torus_pt(rm, rn, fixed, a), rot, rect);
+                let (s2, _) = project(torus_pt(rm, rn, fixed, b), rot, rect);
+                let al = depth_alpha(z1);
+                painter.line_segment([s1, s2], egui::Stroke::new(0.4, egui::Color32::from_rgba_unmultiplied(60, 80, 140, (al as f32 * 0.5) as u8)));
+                let (s1, z1) = project(torus_pt(rm, rn, a, fixed), rot, rect);
+                let (s2, _) = project(torus_pt(rm, rn, b, fixed), rot, rect);
+                let al = depth_alpha(z1);
+                painter.line_segment([s1, s2], egui::Stroke::new(0.4, egui::Color32::from_rgba_unmultiplied(60, 80, 140, (al as f32 * 0.5) as u8)));
+            }
+        }
+
+        // ── Tonnetz lattice nodes ───────────────────────────────────────
+        if self.te_show_tonnetz {
+            let grid = self.te_lattice_n;
+            for row in 0..grid {
+                for col in 0..grid {
+                    let u = 2.0 * PI * row as f32 / grid as f32;
+                    let v = 2.0 * PI * col as f32 / grid as f32;
+                    let (sp, z) = project(torus_pt(rm, rn + 0.015, u, v), rot, rect);
+                    let al = depth_alpha(z);
+                    let phase_v = 0.5 + 0.5 * (time * 1.5 + u + v).sin();
+                    let br = (150.0 * phase_v) as u8;
+                    painter.circle_filled(sp, 1.8, egui::Color32::from_rgba_unmultiplied(br, br, (br as f32 * 0.7) as u8, al));
+                }
+            }
+        }
+
+        // ── Sphere trail ────────────────────────────────────────────────
+        if self.te_show_trail && self.te_trail.len() > 1 {
+            let trail_len = self.te_trail.len();
+            let stride = (trail_len / 200).max(1);
+            for i in (stride..trail_len).step_by(stride) {
+                let (p1, z1) = project(self.te_trail[i - stride], rot, rect);
+                let (p2, _) = project(self.te_trail[i], rot, rect);
+                let al = depth_alpha(z1);
+                let frac = i as f32 / trail_len as f32;
+                let r = (255.0 * frac) as u8;
+                let g = (140.0 * frac) as u8;
+                let b = (60.0 * frac) as u8;
+                painter.line_segment([p1, p2], egui::Stroke::new(2.0, egui::Color32::from_rgba_unmultiplied(r, g, b, (al as f32 * frac) as u8)));
+            }
+        }
+
+        // ── THE SPHERE (inside the tube) ────────────────────────────────
+        // Sphere center is at tube center line, at current toroidal angle
+        let sphere_u = self.te_sphere_u;
+        let sphere_center = tube_center(rm, sphere_u);
+        let sphere_r = rn * 0.95; // slightly less than tube radius (snug fit)
+
+        // Draw sphere wireframe at tube center position
+        let spin_angle = self.te_sphere_v;
+        let (_tangent, normal, binormal) = tube_frame(sphere_u);
+
+        // Sphere equator (in the plane perpendicular to the tube tangent)
+        let eq_segs = 32_usize;
+        for s in 0..eq_segs {
+            let t0 = 2.0 * PI * s as f32 / eq_segs as f32;
+            let t1 = 2.0 * PI * ((s + 1) % eq_segs) as f32 / eq_segs as f32;
+
+            // Equator in normal-binormal plane (the tube cross-section plane)
+            let a0 = t0 + spin_angle;
+            let a1 = t1 + spin_angle;
+            let eq0 = [
+                sphere_center[0] + sphere_r * (a0.cos() * normal[0] + a0.sin() * binormal[0]),
+                sphere_center[1] + sphere_r * (a0.cos() * normal[1] + a0.sin() * binormal[1]),
+                sphere_center[2] + sphere_r * (a0.cos() * normal[2] + a0.sin() * binormal[2]),
+            ];
+            let eq1 = [
+                sphere_center[0] + sphere_r * (a1.cos() * normal[0] + a1.sin() * binormal[0]),
+                sphere_center[1] + sphere_r * (a1.cos() * normal[1] + a1.sin() * binormal[1]),
+                sphere_center[2] + sphere_r * (a1.cos() * normal[2] + a1.sin() * binormal[2]),
+            ];
+            let (pa, za) = project(eq0, rot, rect);
+            let (pb, _) = project(eq1, rot, rect);
+            let al = depth_alpha(za);
+            painter.line_segment([pa, pb], egui::Stroke::new(2.0, egui::Color32::from_rgba_unmultiplied(255, 160, 60, al)));
+        }
+
+        // Additional meridian circles on the sphere (along the tube direction)
+        for m in 0..3 {
+            let offset = PI * m as f32 / 3.0 + spin_angle;
+            for s in 0..eq_segs {
+                let t0 = 2.0 * PI * s as f32 / eq_segs as f32;
+                let t1 = 2.0 * PI * ((s + 1) % eq_segs) as f32 / eq_segs as f32;
+
+                // Meridian: rotate around the normal axis
+                let tangent = [-sphere_u.sin(), sphere_u.cos(), 0.0_f32];
+                let axis_n = [
+                    offset.cos() * normal[0] + offset.sin() * binormal[0],
+                    offset.cos() * normal[1] + offset.sin() * binormal[1],
+                    offset.cos() * normal[2] + offset.sin() * binormal[2],
+                ];
+                let axis_cross = [
+                    -offset.sin() * normal[0] + offset.cos() * binormal[0],
+                    -offset.sin() * normal[1] + offset.cos() * binormal[1],
+                    -offset.sin() * normal[2] + offset.cos() * binormal[2],
+                ];
+                let m0 = [
+                    sphere_center[0] + sphere_r * (t0.cos() * tangent[0] + t0.sin() * axis_cross[0]),
+                    sphere_center[1] + sphere_r * (t0.cos() * tangent[1] + t0.sin() * axis_cross[1]),
+                    sphere_center[2] + sphere_r * (t0.cos() * tangent[2] + t0.sin() * axis_cross[2]),
+                ];
+                let m1 = [
+                    sphere_center[0] + sphere_r * (t1.cos() * tangent[0] + t1.sin() * axis_cross[0]),
+                    sphere_center[1] + sphere_r * (t1.cos() * tangent[1] + t1.sin() * axis_cross[1]),
+                    sphere_center[2] + sphere_r * (t1.cos() * tangent[2] + t1.sin() * axis_cross[2]),
+                ];
+                let (pa, za) = project(m0, rot, rect);
+                let (pb, _) = project(m1, rot, rect);
+                let al = depth_alpha(za);
+                painter.line_segment([pa, pb], egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(255, 160, 60, (al as f32 * 0.6) as u8)));
+            }
+        }
+
+        // Sphere center dot
+        let (sc_pt, _) = project(sphere_center, rot, rect);
+        painter.circle_filled(sc_pt, 4.0, TE_ORANGE);
+
+        // ── Orthogonal force arrows ─────────────────────────────────────
+        if self.te_show_force {
+            let pulse = 0.4 + 0.6 * (time * 2.5).sin().abs();
+            let alpha = (200.0 * pulse) as u8;
+            let force_color = egui::Color32::from_rgba_unmultiplied(248, 113, 113, alpha);
+
+            // Force along torus symmetry axis (z-axis)
+            let tip_height = rn + 0.7;
+            let base_height = rn + 0.05;
+
+            let (base_up, _) = project([0.0, 0.0, base_height], rot, rect);
+            let (tip_up, _) = project([0.0, 0.0, tip_height], rot, rect);
+            painter.line_segment([base_up, tip_up], egui::Stroke::new(4.0, force_color));
+            // Arrowhead
+            let dx = tip_up.x - base_up.x;
+            let dy = tip_up.y - base_up.y;
+            let len = (dx * dx + dy * dy).sqrt().max(1.0);
+            let ux = dx / len;
+            let uy = dy / len;
+            let hs = 12.0;
+            let h1 = egui::pos2(tip_up.x - ux * hs + uy * hs * 0.5, tip_up.y - uy * hs - ux * hs * 0.5);
+            let h2 = egui::pos2(tip_up.x - ux * hs - uy * hs * 0.5, tip_up.y - uy * hs + ux * hs * 0.5);
+            painter.add(egui::Shape::convex_polygon(vec![tip_up, h1, h2], force_color, egui::Stroke::NONE));
+
+            let (base_dn, _) = project([0.0, 0.0, -base_height], rot, rect);
+            let (tip_dn, _) = project([0.0, 0.0, -tip_height], rot, rect);
+            painter.line_segment([base_dn, tip_dn], egui::Stroke::new(4.0, force_color));
+            let dx = tip_dn.x - base_dn.x;
+            let dy = tip_dn.y - base_dn.y;
+            let len = (dx * dx + dy * dy).sqrt().max(1.0);
+            let ux = dx / len;
+            let uy = dy / len;
+            let h1 = egui::pos2(tip_dn.x - ux * hs + uy * hs * 0.5, tip_dn.y - uy * hs - ux * hs * 0.5);
+            let h2 = egui::pos2(tip_dn.x - ux * hs - uy * hs * 0.5, tip_dn.y - uy * hs + ux * hs * 0.5);
+            painter.add(egui::Shape::convex_polygon(vec![tip_dn, h1, h2], force_color, egui::Stroke::NONE));
+
+            painter.text(egui::pos2(tip_up.x + 14.0, tip_up.y), egui::Align2::LEFT_CENTER, "F\u{22a5}", egui::FontId::monospace(14.0), LOGO_RED);
+            painter.text(egui::pos2(tip_dn.x + 14.0, tip_dn.y), egui::Align2::LEFT_CENTER, "F\u{22a5}", egui::FontId::monospace(14.0), LOGO_RED);
+        }
+
+        // ── Labels ──────────────────────────────────────────────────────
+        painter.text(
+            egui::pos2(rect.left() + 20.0, rect.top() + 20.0),
+            egui::Align2::LEFT_TOP,
+            "SPHERE INSIDE TORUS TUBE \u{2192} ORTHOGONAL FORCE",
+            egui::FontId::monospace(14.0),
+            LOGO_RED,
+        );
+        painter.text(
+            egui::pos2(rect.left() + 20.0, rect.top() + 38.0),
+            egui::Align2::LEFT_TOP,
+            "Ball confined in toroidal cavity \u{2014} tube diameter = sphere diameter",
+            egui::FontId::monospace(11.0),
+            DIM,
+        );
+
+        // Show sphere position indicator on the tube path
+        painter.text(
+            egui::pos2(rect.left() + 20.0, rect.top() + 56.0),
+            egui::Align2::LEFT_TOP,
+            &format!("u = {:.0}\u{00b0}  \u{03c9}_t = {:.2}  \u{03c9}_s = {:.2}", (self.te_sphere_u * 180.0 / PI).rem_euclid(360.0), self.te_sphere_speed, self.te_spin_speed),
+            egui::FontId::monospace(11.0),
+            TE_ORANGE,
+        );
+
+        // Mouse drag
+        let resp = ui.interact(rect, egui::Id::new("te_torus_drag"), egui::Sense::drag());
+        if resp.dragged() {
+            self.rotation[0] += resp.drag_delta().y * 0.01;
+            self.rotation[1] += resp.drag_delta().x * 0.01;
+        } else if self.auto_rotate && !self.paused {
+            self.rotation[1] += 0.003;
+        }
+    }
+
+    // ─── Status badge ───────────────────────────────────────────────────
+
+    fn draw_te_status(&self, ctx: &egui::Context) {
+        let n = self.te_lattice_n;
+        let gap = crate::torus::TorusLattice::new(n, 1.0).spectral_gap();
+        let r_maj = self.te_torus_major as f64;
+        let omega_t = self.te_sphere_speed;
+        let l_toroidal = r_maj * r_maj * omega_t;
+        let f_ortho = gap * l_toroidal;
+
+        let sc = if f_ortho > 0.3 { FOREST_GREEN } else if f_ortho > 0.05 { GOLD_EG } else { WARN_RED };
+        let st = if f_ortho > 0.3 { "STRONG" } else if f_ortho > 0.05 { "MODERATE" } else { "WEAK" };
+
+        let frame = egui::Frame {
+            fill: egui::Color32::from_rgba_unmultiplied(18, 12, 12, 230),
+            corner_radius: egui::CornerRadius::from(6),
+            inner_margin: egui::Margin::same(10),
+            stroke: egui::Stroke::new(2.0, LOGO_RED),
+            ..Default::default()
+        };
+        egui::Window::new("te_status").title_bar(false).resizable(false).movable(false).frame(frame).anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0]).show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.colored_label(LOGO_RED, egui::RichText::new("TOROIDAL ENGINE").strong().size(15.0));
+                ui.separator();
+                ui.colored_label(sc, egui::RichText::new(format!("F\u{22a5} {}", st)).strong().size(13.0));
+            });
+            ui.label(format!("\u{03bb}\u{2081}={:.4}  L={:.4}  F\u{22a5}={:.4}", gap, l_toroidal, f_ortho));
+            dim_label(ui, &format!("{}x{} torus \u{2014} sphere \u{2300}={:.2}", n, n, self.te_torus_minor * 2.0));
+            if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
+        });
     }
 }

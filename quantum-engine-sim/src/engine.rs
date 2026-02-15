@@ -357,3 +357,135 @@ mod tests {
         assert!(r16.coherence_enhancement >= r4.coherence_enhancement);
     }
 }
+
+// ─── Kani formal verification harnesses ─────────────────────────────────────
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    // ── Panic-freedom proofs ────────────────────────────────────────────────
+
+    /// Prove auto_drive_frequency never panics for positive l_min.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn auto_drive_no_panic() {
+        let l_min: f64 = kani::any();
+        kani::assume(l_min > 1e-30 && l_min.is_finite() && l_min < 1.0);
+
+        let config = EngineConfig {
+            l_min,
+            ..EngineConfig::microwave()
+        };
+        let _freq = config.auto_drive_frequency(); // no panic
+    }
+
+    /// Prove effective_drive never panics.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn effective_drive_no_panic() {
+        let freq: f64 = kani::any();
+        kani::assume(freq >= 0.0 && freq.is_finite() && freq < 1e20);
+        let config = EngineConfig {
+            drive_frequency: freq,
+            ..EngineConfig::microwave()
+        };
+        let _eff = config.effective_drive(); // no panic
+    }
+
+    /// Prove perturbative_param never panics.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn perturbative_param_no_panic() {
+        let mod_depth: f64 = kani::any();
+        let l_min: f64 = kani::any();
+        kani::assume(mod_depth >= 0.0 && mod_depth.is_finite() && mod_depth < 1.0);
+        kani::assume(l_min > 1e-30 && l_min.is_finite() && l_min < 1.0);
+
+        let config = EngineConfig {
+            modulation_depth: mod_depth,
+            l_min,
+            ..EngineConfig::microwave()
+        };
+        let _pp = config.perturbative_param(); // no panic
+    }
+
+    // ── Value proofs with concrete presets ───────────────────────────────────
+
+    /// Prove microwave preset has valid configuration.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn microwave_preset_valid() {
+        let config = EngineConfig::microwave();
+        assert!(config.n >= 2);
+        assert!(config.l_max > config.l_min);
+        assert!(config.l_min > 0.0);
+        assert!(config.modulation_depth > 0.0);
+        assert!(config.modulation_depth < 1.0);
+        assert!(config.temperature > 0.0);
+        assert!(config.decoherence_rate > 0.0);
+    }
+
+    /// Prove optical preset has valid configuration.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn optical_preset_valid() {
+        let config = EngineConfig::optical();
+        assert!(config.n >= 2);
+        assert!(config.l_max > config.l_min);
+        assert!(config.l_min > 0.0);
+        assert!(config.modulation_depth > 0.0);
+    }
+
+    /// Prove mid_infrared preset has valid configuration.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn mid_infrared_preset_valid() {
+        let config = EngineConfig::mid_infrared();
+        assert!(config.n >= 2);
+        assert!(config.l_max > config.l_min);
+        assert!(config.l_min > 0.0);
+    }
+
+    /// Prove effective_drive returns auto when drive_frequency is 0.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn effective_drive_auto_concrete() {
+        let config = EngineConfig {
+            drive_frequency: 0.0,
+            ..EngineConfig::microwave()
+        };
+        let auto = config.auto_drive_frequency();
+        let effective = config.effective_drive();
+        assert!((auto - effective).abs() < 1e-10);
+    }
+
+    /// Prove effective_drive returns explicit when set.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn effective_drive_explicit_concrete() {
+        let config = EngineConfig {
+            drive_frequency: 42e9,
+            ..EngineConfig::microwave()
+        };
+        assert!((config.effective_drive() - 42e9).abs() < 1e-10);
+    }
+
+    /// Prove perturbative_param is small for microwave preset.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn perturbative_param_small_microwave() {
+        let config = EngineConfig::microwave();
+        let pp = config.perturbative_param();
+        assert!(pp >= 0.0);
+        assert!(pp < 0.01);
+    }
+
+    /// Prove auto_drive > 0 for all presets.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn auto_drive_positive_presets() {
+        assert!(EngineConfig::microwave().auto_drive_frequency() > 0.0);
+        assert!(EngineConfig::optical().auto_drive_frequency() > 0.0);
+        assert!(EngineConfig::mid_infrared().auto_drive_frequency() > 0.0);
+    }
+}

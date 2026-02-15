@@ -20,7 +20,7 @@ where
 {
     /// Build a new iterator using the row index, the number of qubits in the matrix, and the
     /// complex values of the matrix.
-    pub fn new(row: usize, n: usize, data: &'a [P]) -> MatrixOpIterator<P> {
+    pub fn new(row: usize, n: usize, data: &'a [P]) -> MatrixOpIterator<'a, P> {
         let lower = get_flat_index(n, row, 0);
         let upper = get_flat_index(n, row, 1 << n);
         MatrixOpIterator {
@@ -70,7 +70,7 @@ where
     P: Clone,
 {
     /// Build a new iterator using the row index, and the sparse matrix data.
-    pub fn new(row: usize, data: &'a [Vec<(usize, P)>]) -> SparseMatrixOpIterator<P> {
+    pub fn new(row: usize, data: &'a [Vec<(usize, P)>]) -> SparseMatrixOpIterator<'a, P> {
         SparseMatrixOpIterator {
             data: &data[row],
             last_index: None,

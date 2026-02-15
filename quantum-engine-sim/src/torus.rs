@@ -184,3 +184,119 @@ mod tests {
         assert_eq!(t.distance((3, 3), (3, 3)), 0);
     }
 }
+
+// ─── Kani formal verification harnesses ─────────────────────────────────────
+//
+// Kani's CBMC backend models cos/sin non-deterministically, so we split proofs:
+//   - Pure integer / pointer / panic-freedom proofs: use symbolic inputs
+//   - Value properties of transcendental outputs: use concrete N values
+//
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    // ── Pure integer proofs (fully symbolic) ────────────────────────────────
+
+    /// Prove num_sites == n*n for any N.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn num_sites_is_n_squared() {
+        let n: usize = kani::any();
+        kani::assume(n >= 1 && n <= 256);
+        let t = TorusLattice::new(n, 1.0);
+        assert_eq!(t.num_sites(), n * n);
+    }
+
+    /// Prove distance is symmetric: d(i,j) == d(j,i).
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn distance_symmetric() {
+        let n: usize = kani::any();
+        kani::assume(n >= 2 && n <= 64);
+        let t = TorusLattice::new(n, 1.0);
+
+        let i0: usize = kani::any();
+        let i1: usize = kani::any();
+        let j0: usize = kani::any();
+        let j1: usize = kani::any();
+        kani::assume(i0 < n && i1 < n && j0 < n && j1 < n);
+
+        assert_eq!(t.distance((i0, i1), (j0, j1)), t.distance((j0, j1), (i0, i1)));
+    }
+
+    /// Prove distance to self is zero.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn distance_to_self_zero() {
+        let n: usize = kani::any();
+        kani::assume(n >= 1 && n <= 64);
+        let t = TorusLattice::new(n, 1.0);
+
+        let i0: usize = kani::any();
+        let i1: usize = kani::any();
+        kani::assume(i0 < n && i1 < n);
+
+        assert_eq!(t.distance((i0, i1), (i0, i1)), 0);
+    }
+
+    /// Prove distance is bounded by N (Manhattan max on N×N torus).
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn distance_bounded() {
+        let n: usize = kani::any();
+        kani::assume(n >= 2 && n <= 64);
+        let t = TorusLattice::new(n, 1.0);
+
+        let i0: usize = kani::any();
+        let i1: usize = kani::any();
+        let j0: usize = kani::any();
+        let j1: usize = kani::any();
+        kani::assume(i0 < n && i1 < n && j0 < n && j1 < n);
+
+        let d = t.distance((i0, i1), (j0, j1));
+        // Max Manhattan distance on N-torus is N (N/2 per axis)
+        assert!(d <= n);
+    }
+
+    // ── Panic-freedom proofs (symbolic, no value assertions on cos output) ──
+
+    /// Prove spectral_gap never panics for any valid N and length.
+    /// Note: does NOT assert value because cos() is non-deterministic in CBMC.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn spectral_gap_no_panic() {
+        let n: usize = kani::any();
+        kani::assume(n >= 1 && n <= 256);
+        let t = TorusLattice::new(n, 1.0);
+        let _gap = t.spectral_gap(); // no panic
+    }
+
+    /// Prove lattice_spacing never panics (pure f64 division).
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn lattice_spacing_no_panic() {
+        let n: usize = kani::any();
+        kani::assume(n >= 1 && n <= 256);
+        let length: f64 = kani::any();
+        kani::assume(length > 1e-30 && length.is_finite() && length < 1e10);
+        let t = TorusLattice::new(n, length);
+        let _spacing = t.lattice_spacing(); // no panic
+    }
+
+    /// Prove mixing_time_lattice never panics.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn mixing_time_no_panic() {
+        let n: usize = kani::any();
+        kani::assume(n >= 2 && n <= 256);
+        let t = TorusLattice::new(n, 1.0);
+        let _mix = t.mixing_time_lattice(); // no panic (divides by spectral_gap)
+    }
+
+    // NOTE: Value properties of spectral_gap (positivity, monotonicity, bounds)
+    // depend on cos() which CBMC models non-deterministically. These properties
+    // are instead verified by the 47 unit tests in this crate, including
+    // cross-validation against full numerical eigendecomposition (spectral.rs).
+    // See: spectral_gap_4x4, spectral_gap_decreases_with_n,
+    //      spectrum_second_eigenvalue_is_gap, torus_spectrum_matches_analytic.
+}

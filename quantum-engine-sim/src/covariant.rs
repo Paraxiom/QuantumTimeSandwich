@@ -582,3 +582,77 @@ mod tests {
         assert!(!result.steps.is_empty());
     }
 }
+
+// ─── Kani formal verification harnesses ─────────────────────────────────────
+//
+// CBMC models rem_euclid and sqrt non-deterministically for symbolic f64.
+// We use concrete inputs for value properties and symbolic for panic-freedom.
+//
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    // ── Panic-freedom proofs (symbolic) ─────────────────────────────────────
+
+    /// Prove TorusPoint::new never panics for any finite inputs.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn torus_point_new_no_panic() {
+        let x: f64 = kani::any();
+        let y: f64 = kani::any();
+        kani::assume(x.is_finite() && y.is_finite());
+        kani::assume(x.abs() < 1e6 && y.abs() < 1e6);
+        let _p = TorusPoint::new(x, y); // no panic
+    }
+
+    /// Prove distance never panics for any two points.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn distance_no_panic() {
+        let ax: f64 = kani::any();
+        let ay: f64 = kani::any();
+        let bx: f64 = kani::any();
+        let by: f64 = kani::any();
+        // Use pre-wrapped coordinates [0,1) directly to avoid rem_euclid modeling
+        kani::assume(ax >= 0.0 && ax < 1.0 && ax.is_finite());
+        kani::assume(ay >= 0.0 && ay < 1.0 && ay.is_finite());
+        kani::assume(bx >= 0.0 && bx < 1.0 && bx.is_finite());
+        kani::assume(by >= 0.0 && by < 1.0 && by.is_finite());
+
+        let a = TorusPoint { x: ax, y: ay };
+        let b = TorusPoint { x: bx, y: by };
+        let _d = a.distance(&b); // no panic
+    }
+
+    /// Prove denorm_log never panics for valid inputs.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn denorm_log_no_panic() {
+        let t: f64 = kani::any();
+        let lo: f64 = kani::any();
+        let hi: f64 = kani::any();
+        kani::assume(t >= 0.0 && t <= 1.0 && t.is_finite());
+        kani::assume(lo > 1e-30 && lo.is_finite() && lo < 1e6);
+        kani::assume(hi > lo && hi.is_finite() && hi < 1e6);
+        let _val = denorm_log(t, lo, hi); // no panic
+    }
+
+    /// Prove denorm_linear never panics for valid inputs.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn denorm_linear_no_panic() {
+        let t: f64 = kani::any();
+        let lo: f64 = kani::any();
+        let hi: f64 = kani::any();
+        kani::assume(t >= 0.0 && t <= 1.0 && t.is_finite());
+        kani::assume(lo.is_finite() && hi.is_finite());
+        kani::assume(lo.abs() < 1e10 && hi.abs() < 1e10);
+        kani::assume(lo < hi);
+        let _val = denorm_linear(t, lo, hi); // no panic
+    }
+
+    // NOTE: Value properties of TorusPoint distance, denorm_log, denorm_linear
+    // depend on rem_euclid, sqrt, ln, exp which CBMC models non-deterministically.
+    // These are verified by unit tests: covariant_wraps_around, toroidal_distance_symmetric,
+    // toroidal_distance_wraps, covariant_converges.
+}

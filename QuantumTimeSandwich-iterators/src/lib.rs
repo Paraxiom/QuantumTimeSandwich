@@ -5,11 +5,11 @@
     missing_copy_implementations,
     trivial_casts,
     trivial_numeric_casts,
-    unstable_features,
     unused_import_braces,
     unused_qualifications,
     missing_docs
 )]
+#![warn(unstable_features)]
 
 //! Matrix multiplication library for qubit-structure matrices.
 

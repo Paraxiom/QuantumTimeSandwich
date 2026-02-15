@@ -476,3 +476,99 @@ pub fn simulate_mask_analysis(config: &DriftConfig) -> MaskAnalysisResult {
 
     MaskAnalysisResult { sinkhorn, sparsity }
 }
+
+// ─── Kani formal verification harnesses ─────────────────────────────────────
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    // ── Panic-freedom proofs (symbolic) ─────────────────────────────────────
+
+    /// Prove spectral_gap_runtime never panics.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn spectral_gap_runtime_no_panic() {
+        let n: usize = kani::any();
+        kani::assume(n >= 1 && n <= 1024);
+        let _gap = spectral_gap_runtime(n); // no panic
+    }
+
+    // ── Pure integer proofs (fully symbolic) ────────────────────────────────
+
+    /// Prove toroidal_distance is symmetric: d(a,b) == d(b,a).
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn toroidal_distance_symmetric() {
+        let n: usize = kani::any();
+        kani::assume(n >= 2 && n <= 64);
+        let a0: usize = kani::any();
+        let a1: usize = kani::any();
+        let b0: usize = kani::any();
+        let b1: usize = kani::any();
+        kani::assume(a0 < n && a1 < n && b0 < n && b1 < n);
+
+        assert_eq!(
+            toroidal_distance((a0, a1), (b0, b1), n),
+            toroidal_distance((b0, b1), (a0, a1), n)
+        );
+    }
+
+    /// Prove toroidal_distance to self is zero.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn toroidal_distance_self_zero() {
+        let n: usize = kani::any();
+        kani::assume(n >= 1 && n <= 64);
+        let a0: usize = kani::any();
+        let a1: usize = kani::any();
+        kani::assume(a0 < n && a1 < n);
+
+        assert_eq!(toroidal_distance((a0, a1), (a0, a1), n), 0);
+    }
+
+    /// Prove toroidal_distance is bounded by n (max Manhattan on N-torus).
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn toroidal_distance_bounded() {
+        let n: usize = kani::any();
+        kani::assume(n >= 2 && n <= 64);
+        let a0: usize = kani::any();
+        let a1: usize = kani::any();
+        let b0: usize = kani::any();
+        let b1: usize = kani::any();
+        kani::assume(a0 < n && a1 < n && b0 < n && b1 < n);
+
+        let d = toroidal_distance((a0, a1), (b0, b1), n);
+        assert!(d <= n);
+    }
+
+    /// Prove idx_to_norm returns values in [0, 1).
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn idx_to_norm_in_unit_range() {
+        let n: usize = kani::any();
+        kani::assume(n >= 1 && n <= 64);
+        let idx: usize = kani::any();
+        kani::assume(idx < n * n);
+
+        let (row, col) = idx_to_norm(idx, n);
+        assert!(row >= 0.0 && row < 1.0);
+        assert!(col >= 0.0 && col < 1.0);
+    }
+
+    /// Prove DriftConfig::default() creates valid configuration.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn default_config_valid() {
+        let config = DriftConfig::default();
+        assert!(config.grid_n >= 2);
+        assert!(config.num_steps > 0);
+        assert!(config.radius > 0.0);
+        assert!(config.alpha > 0.0);
+        assert!(config.drift_threshold >= 1);
+    }
+
+    // NOTE: Value properties of spectral_gap_runtime (positivity, bounds)
+    // depend on cos() which CBMC models non-deterministically.
+    // Verified by unit tests and cross-validation with spectral.rs eigendecomposition.
+}

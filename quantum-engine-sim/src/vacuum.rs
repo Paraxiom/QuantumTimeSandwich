@@ -84,11 +84,19 @@ pub fn thermal_occupation(omega: f64, temperature: f64) -> f64 {
     if temperature <= 0.0 || omega <= 0.0 {
         return 0.0;
     }
-    let x = HBAR * omega / (KB * temperature);
-    if x > 500.0 {
-        return 0.0; // avoid underflow
+    let denom = KB * temperature;
+    if denom <= 0.0 {
+        return 0.0; // guard against subnormal underflow to zero
     }
-    1.0 / (x.exp() - 1.0)
+    let x = HBAR * omega / denom;
+    if !x.is_finite() || x > 500.0 {
+        return 0.0; // avoid overflow/underflow
+    }
+    let exp_x_minus_1 = x.exp() - 1.0;
+    if exp_x_minus_1 <= 0.0 {
+        return 0.0; // guard against exp(x) ≈ 1 for very small x
+    }
+    1.0 / exp_x_minus_1
 }
 
 /// Average thermal photon number for the fundamental mode of the cavity.
@@ -374,4 +382,63 @@ mod tests {
         let n_th = thermal_occupation(omega, 300.0);
         assert!(n_th > 100.0, "n_th = {} should be >> 1 at room temp", n_th);
     }
+}
+
+// ─── Kani formal verification harnesses ─────────────────────────────────────
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    /// Prove thermal_occupation never panics and never returns NaN.
+    /// The function now has guards for all intermediate overflow/underflow paths.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn thermal_occupation_no_panic() {
+        let omega: f64 = kani::any();
+        let temp: f64 = kani::any();
+        kani::assume(omega.is_finite() && omega >= 0.0 && omega < 1e16);
+        kani::assume(temp.is_finite() && temp >= 0.0 && temp < 1e6);
+        let n_th = thermal_occupation(omega, temp);
+        assert!(n_th >= 0.0);
+        // With the new guards, NaN should be impossible
+        assert!(!n_th.is_nan());
+    }
+
+    /// Prove thermal_occupation returns 0 for zero temperature.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn thermal_occupation_zero_at_zero_temp() {
+        let omega: f64 = kani::any();
+        kani::assume(omega.is_finite() && omega > 0.0 && omega < 1e16);
+        let n_th = thermal_occupation(omega, 0.0);
+        assert_eq!(n_th, 0.0);
+    }
+
+    /// Prove thermal_occupation returns 0 for zero frequency.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn thermal_occupation_zero_at_zero_omega() {
+        let temp: f64 = kani::any();
+        kani::assume(temp.is_finite() && temp > 0.0 && temp < 1e6);
+        let n_th = thermal_occupation(0.0, temp);
+        assert_eq!(n_th, 0.0);
+    }
+
+    /// Prove thermal_occupation returns 0 for negative inputs.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn thermal_occupation_zero_for_negative() {
+        let omega: f64 = kani::any();
+        let temp: f64 = kani::any();
+        kani::assume(omega.is_finite() && temp.is_finite());
+        kani::assume(omega.abs() < 1e16 && temp.abs() < 1e6);
+        kani::assume(omega < 0.0 || temp < 0.0);
+        let n_th = thermal_occupation(omega, temp);
+        assert_eq!(n_th, 0.0);
+    }
+
+    // NOTE: Value properties of thermal_occupation at specific temperature/frequency
+    // (e.g., microwave regime assertions) depend on exp() which CBMC models
+    // non-deterministically. Verified by unit tests: thermal_occupation_at_millikelvin,
+    // thermal_occupation_at_room_temp.
 }

@@ -177,3 +177,78 @@ mod tests {
         assert!(gap_c > gap_t);
     }
 }
+
+// ─── Kani formal verification harnesses ─────────────────────────────────────
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    // ── Panic-freedom proofs (symbolic, no value assertions on cos output) ──
+
+    /// Prove spectral_gap(Toroidal) never panics.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn spectral_gap_toroidal_no_panic() {
+        let n: usize = kani::any();
+        kani::assume(n >= 4 && n <= 256);
+        let _gap = spectral_gap(Topology::Toroidal, n); // no panic
+    }
+
+    /// Prove spectral_gap(Linear) never panics.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn spectral_gap_linear_no_panic() {
+        let n: usize = kani::any();
+        kani::assume(n >= 2 && n <= 256);
+        let _gap = spectral_gap(Topology::Linear, n); // no panic
+    }
+
+    /// Prove spectral_gap(Complete) equals n (pure integer cast, no trig).
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn spectral_gap_complete_equals_n() {
+        let n: usize = kani::any();
+        kani::assume(n >= 2 && n <= 1024);
+        let gap = spectral_gap(Topology::Complete, n);
+        assert!((gap - n as f64).abs() < 1e-10);
+    }
+
+    /// Prove coherence_time_normalized never panics for symbolic gap/threshold.
+    /// ln() on (0,1) is always finite negative; division by positive gap is safe.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn coherence_time_no_panic() {
+        let gap: f64 = kani::any();
+        let threshold: f64 = kani::any();
+        kani::assume(gap.is_finite());
+        kani::assume(threshold.is_finite() && threshold > 0.0 && threshold < 1.0);
+        let _tau = coherence_time_normalized(gap, threshold); // no panic
+    }
+
+    /// Prove coherence_time returns INFINITY for zero gap.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn coherence_time_infinite_at_zero_gap() {
+        let threshold: f64 = kani::any();
+        kani::assume(threshold > 0.0 && threshold < 1.0 && threshold.is_finite());
+        let tau = coherence_time_normalized(0.0, threshold);
+        assert!(tau == f64::INFINITY);
+    }
+
+    /// Prove coherence_time returns INFINITY for negative gap.
+    #[kani::proof]
+    #[kani::unwind(2)]
+    fn coherence_time_infinite_at_negative_gap() {
+        let gap: f64 = kani::any();
+        kani::assume(gap < 0.0 && gap.is_finite() && gap > -1e10);
+        let threshold: f64 = kani::any();
+        kani::assume(threshold > 0.0 && threshold < 1.0 && threshold.is_finite());
+        let tau = coherence_time_normalized(gap, threshold);
+        assert!(tau == f64::INFINITY);
+    }
+
+    // NOTE: Value properties depending on cos/sin/exp (coherence_time positivity,
+    // toroidal vs linear gap ordering, tonnetz enhancement ≥ 1) are verified
+    // by the unit tests: toroidal_gap_larger_than_linear, tonnetz_enhancement_increases_t2,
+    // complete_graph_has_largest_gap. CBMC models transcendentals non-deterministically.
+}
