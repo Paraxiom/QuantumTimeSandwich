@@ -1,6 +1,11 @@
 QuantumTimeSandwich/Cargo.lock
 QuantumTimeSandwich/target/
-bb84/Cargo.lock
+QuantumTimeSandwich-iterators/target/
+QuantumTimeSandwich-macros/target/
 bb84/target/
 tonnetz-coherence-sim/Cargo.lock
 tonnetz-coherence-sim/target/
+toric-code-sim/target/
+toric-doppler-sim/target/
+quantum-engine-sim/target/
+unit_circle_state_machine/target/
