@@ -44,6 +44,7 @@
 
 pub mod units;
 pub mod torus;
+pub mod spectral;
 pub mod coherence;
 pub mod toric_code;
 pub mod vacuum;

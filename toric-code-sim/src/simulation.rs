@@ -258,6 +258,93 @@ pub fn compare_thresholds(
         .collect()
 }
 
+/// Result of a biased threshold sweep at a single bias ratio.
+#[derive(Debug, Clone)]
+pub struct BiasedSweepResult {
+    /// The bias ratio: how much stronger horizontal errors are vs vertical.
+    pub bias_ratio: f64,
+    /// Average physical error rate (mean of all four directional rates).
+    pub p_avg: f64,
+    /// Estimated threshold under biased noise (None if 50% crossing not found).
+    pub threshold_biased: Option<f64>,
+    /// Estimated threshold under isotropic noise at the same lattice size.
+    pub threshold_isotropic: Option<f64>,
+    /// Full sweep results for biased noise.
+    pub biased_results: Vec<SimResult>,
+    /// Full sweep results for isotropic noise.
+    pub isotropic_results: Vec<SimResult>,
+}
+
+/// Run a single biased trial: X errors biased by `bias_ratio` toward horizontal edges.
+///
+/// For a given average error rate `p_avg` and `bias_ratio` eta:
+///   p_x_h = p_avg * eta, p_x_v = p_avg / eta (geometric mean = p_avg)
+///   p_z_h = p_avg / eta, p_z_v = p_avg * eta (complementary bias)
+///
+/// This models fabrication asymmetry where one error type preferentially
+/// occurs along one lattice direction.
+pub fn run_biased_trial<R: Rng>(n: usize, p_avg: f64, bias_ratio: f64, rng: &mut R) -> bool {
+    let mut lattice = ToricLattice::new(n);
+    let p_x_h = (p_avg * bias_ratio).min(1.0);
+    let p_x_v = (p_avg / bias_ratio).min(1.0);
+    let p_z_h = (p_avg / bias_ratio).min(1.0);
+    let p_z_v = (p_avg * bias_ratio).min(1.0);
+    apply_biased_errors(&mut lattice, p_x_h, p_x_v, p_z_h, p_z_v, rng);
+    greedy_decode(&mut lattice);
+    has_any_logical_error(&lattice)
+}
+
+/// Run a biased threshold sweep: compare thresholds at multiple bias ratios.
+///
+/// For each `bias_ratio`, runs a full threshold sweep with biased noise and
+/// a matching isotropic sweep, then estimates the threshold crossing point.
+pub fn biased_threshold_sweep(
+    n: usize,
+    error_rates: &[f64],
+    bias_ratios: &[f64],
+    trials: usize,
+) -> Vec<BiasedSweepResult> {
+    // Isotropic sweep (shared across all bias ratios)
+    let isotropic_results = threshold_sweep(n, error_rates, trials);
+    let threshold_iso = estimate_threshold(&isotropic_results);
+
+    bias_ratios
+        .iter()
+        .map(|&eta| {
+            let mut rng = rand::thread_rng();
+            let biased_results: Vec<SimResult> = error_rates
+                .iter()
+                .map(|&p| {
+                    let mut failures = 0;
+                    for _ in 0..trials {
+                        if run_biased_trial(n, p, eta, &mut rng) {
+                            failures += 1;
+                        }
+                    }
+                    SimResult {
+                        n,
+                        p_error: p,
+                        trials,
+                        logical_failures: failures,
+                        logical_error_rate: failures as f64 / trials as f64,
+                    }
+                })
+                .collect();
+
+            let threshold_biased = estimate_threshold(&biased_results);
+
+            BiasedSweepResult {
+                bias_ratio: eta,
+                p_avg: error_rates[error_rates.len() / 2],
+                threshold_biased,
+                threshold_isotropic: threshold_iso,
+                biased_results,
+                isotropic_results: isotropic_results.clone(),
+            }
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -409,6 +496,59 @@ mod tests {
             let syn = Syndrome::measure(&lat);
             assert_eq!(syn.num_e_particles() % 2, 0, "e-particles must be even");
             assert_eq!(syn.num_m_particles() % 2, 0, "m-particles must be even");
+        }
+    }
+
+    #[test]
+    fn test_biased_trial_zero_error_no_failures() {
+        let mut rng = rand::thread_rng();
+        for _ in 0..20 {
+            assert!(
+                !run_biased_trial(4, 0.0, 2.0, &mut rng),
+                "Zero error rate with bias should never produce logical errors"
+            );
+        }
+    }
+
+    #[test]
+    fn test_biased_trial_unity_bias_matches_isotropic() {
+        // bias_ratio=1.0 should behave like isotropic noise
+        let mut rng = rand::thread_rng();
+        let mut biased_fails = 0;
+        let mut iso_fails = 0;
+        let trials = 200;
+        for _ in 0..trials {
+            if run_biased_trial(4, 0.10, 1.0, &mut rng) {
+                biased_fails += 1;
+            }
+            if run_trial(4, 0.10, &mut rng) {
+                iso_fails += 1;
+            }
+        }
+        // Both should produce similar failure rates (within statistical noise)
+        let biased_rate = biased_fails as f64 / trials as f64;
+        let iso_rate = iso_fails as f64 / trials as f64;
+        assert!(
+            (biased_rate - iso_rate).abs() < 0.25,
+            "bias_ratio=1.0 should approximate isotropic: biased={:.2}, iso={:.2}",
+            biased_rate, iso_rate
+        );
+    }
+
+    #[test]
+    fn test_biased_threshold_sweep_returns_results() {
+        let rates = vec![0.01, 0.05, 0.10, 0.15, 0.20];
+        let biases = vec![1.0, 2.0];
+        let results = biased_threshold_sweep(4, &rates, &biases, 50);
+        assert_eq!(results.len(), 2, "Should return one result per bias ratio");
+        assert_eq!(results[0].biased_results.len(), 5, "Should have one result per error rate");
+        // bias_ratio=1.0 thresholds should be close to isotropic
+        if let (Some(tb), Some(ti)) = (results[0].threshold_biased, results[0].threshold_isotropic) {
+            assert!(
+                (tb - ti).abs() < 0.10,
+                "bias=1.0 threshold {:.3} should be near isotropic {:.3}",
+                tb, ti
+            );
         }
     }
 

@@ -34,6 +34,53 @@ pub enum ResonatorType {
     Nanotorus,
 }
 
+/// Charge state for BN nanotubes. Affects Jahn-Teller distortion.
+///
+/// The second-order Jahn-Teller (SOJT) effect in charged BN nanotubes
+/// breaks vibrational degeneracies, shifting phonon mode frequencies.
+/// Neutral BN (BN⁰) is preferred for Tonnetz-tuned arrays as SOJT
+/// distortion is minimized. See Monajjemi & Mollaamin (2024), Quantum Reports.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ChargeState {
+    /// Neutral — minimal Jahn-Teller distortion.
+    Neutral,
+    /// Cation (+1) — moderate SOJT distortion.
+    Cation,
+    /// Anion (-1) — moderate SOJT distortion.
+    Anion,
+}
+
+impl ChargeState {
+    /// Jahn-Teller Q-factor degradation multiplier.
+    /// Neutral: no degradation. Charged: Q reduced by ~30%.
+    pub fn jt_q_factor(self) -> f64 {
+        match self {
+            ChargeState::Neutral => 1.0,
+            ChargeState::Cation => 0.7,
+            ChargeState::Anion => 0.7,
+        }
+    }
+
+    /// Phonon frequency shift factor from SOJT distortion.
+    /// Charged states shift modes by ~5%, detuning Tonnetz harmonic ratios.
+    pub fn jt_freq_shift(self) -> f64 {
+        match self {
+            ChargeState::Neutral => 1.0,
+            ChargeState::Cation => 1.05,
+            ChargeState::Anion => 0.95,
+        }
+    }
+
+    /// Human-readable label.
+    pub fn label(self) -> &'static str {
+        match self {
+            ChargeState::Neutral => "BN⁰",
+            ChargeState::Cation => "BN⁺",
+            ChargeState::Anion => "BN⁻",
+        }
+    }
+}
+
 /// Material type for the nanotube/nanotorus wall.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Material {
@@ -246,6 +293,8 @@ pub struct PhysicsParams {
     pub ring_diameter_nm: f64,
     /// Wall material (Carbon, BN, MoS₂, SiC).
     pub material: Material,
+    /// Charge state for BN nanotubes (Jahn-Teller effect). Ignored for non-BN materials.
+    pub bn_charge_state: ChargeState,
     /// Bundle geometry for nanotorus arrays.
     pub bundle_geometry: BundleGeometry,
 }
@@ -283,6 +332,13 @@ impl PhysicsParams {
             return 2.0 * std::f64::consts::PI * 1e9; // fallback 1 GHz
         }
 
+        // Jahn-Teller frequency shift (only affects BN)
+        let jt_shift = if self.material == Material::BoronNitride {
+            self.bn_charge_state.jt_freq_shift()
+        } else {
+            1.0
+        };
+
         match self.resonator_type {
             ResonatorType::Nanotube => {
                 let l = self.cnt_length_nm * 1e-9;
@@ -290,7 +346,7 @@ impl PhysicsParams {
                     return 2.0 * std::f64::consts::PI * 1e9;
                 }
                 let beta1 = 4.730; // first mode, clamped-clamped
-                beta1 * beta1
+                jt_shift * beta1 * beta1
                     * (self.material.youngs_modulus() * i_moment
                         / (self.material.density() * area * l.powi(4)))
                     .sqrt()
@@ -302,7 +358,7 @@ impl PhysicsParams {
                 }
                 // m=2 lowest non-rigid bending mode: coeff = 2(4-1)/√(4+1) = 6/√5
                 let coeff = 6.0 / 5.0_f64.sqrt(); // ≈ 2.683
-                coeff
+                jt_shift * coeff
                     * (self.material.youngs_modulus() * i_moment
                         / (self.material.density() * area * r.powi(4)))
                     .sqrt()
@@ -367,17 +423,24 @@ impl PhysicsParams {
     pub fn q_mech(&self) -> f64 {
         let wall_factor = 1.0 / (self.num_walls as f64).sqrt();
 
+        // Jahn-Teller Q degradation (only affects BN)
+        let jt_q = if self.material == Material::BoronNitride {
+            self.bn_charge_state.jt_q_factor()
+        } else {
+            1.0
+        };
+
         match self.resonator_type {
             ResonatorType::Nanotube => {
                 let base_q = self.material.base_q_tube();
                 let length_factor =
                     (self.cnt_length_nm / 1000.0).sqrt().clamp(0.3, 3.0);
-                base_q * wall_factor * length_factor
+                base_q * wall_factor * length_factor * jt_q
             }
             ResonatorType::Nanotorus => {
                 // No clamping losses → intrinsic Q is ~20× higher
                 let base_q = self.material.base_q_torus();
-                base_q * wall_factor * self.bundle_geometry.cooperative_q_factor()
+                base_q * wall_factor * self.bundle_geometry.cooperative_q_factor() * jt_q
             }
         }
     }
@@ -452,6 +515,7 @@ impl PhysicsParams {
             tonnetz_q: 100.0,
             cnt_length_nm: 1000.0, // unused for nanotorus but must be set
             material: Material::Carbon,
+            bn_charge_state: ChargeState::Neutral,
             bundle_geometry: BundleGeometry::Single,
         }
     }
@@ -475,6 +539,7 @@ impl Default for PhysicsParams {
             cavity_finesse: 10000.0,
             ring_diameter_nm: 200.0,
             material: Material::Carbon,
+            bn_charge_state: ChargeState::Neutral,
             bundle_geometry: BundleGeometry::Single,
         }
     }
