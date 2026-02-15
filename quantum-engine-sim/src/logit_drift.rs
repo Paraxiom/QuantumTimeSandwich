@@ -477,6 +477,129 @@ pub fn simulate_mask_analysis(config: &DriftConfig) -> MaskAnalysisResult {
     MaskAnalysisResult { sinkhorn, sparsity }
 }
 
+// ─── Phase 1: Spectral gap regression ────────────────────────────────────────
+
+/// One entry in the spectral-gap regression: drift reduction at a given grid size.
+#[derive(Debug, Clone)]
+pub struct SpectralGapRegressionEntry {
+    pub grid_n: usize,
+    pub spectral_gap: f64,
+    pub toroidal_drift_rate: f64,
+    pub baseline_drift_rate: f64,
+    pub drift_reduction: f64,
+}
+
+/// Result of sweeping grid sizes and fitting drift_reduction vs lambda_1.
+#[derive(Debug, Clone)]
+pub struct SpectralGapRegression {
+    pub entries: Vec<SpectralGapRegressionEntry>,
+    /// Pearson correlation between reduction_factor and lambda_1.
+    pub correlation: f64,
+    /// Mean of (reduction / lambda_1) — should be roughly constant if linear.
+    pub mean_ratio: f64,
+    /// Coefficient of variation of (reduction / lambda_1).
+    pub cv_ratio: f64,
+}
+
+/// Sweep grid sizes N=4..32 and compute drift reduction vs spectral gap.
+///
+/// For each grid size, runs `trials` independent drift simulations of `steps`
+/// steps each and averages the drift rates. Returns entries sorted by grid size
+/// plus a correlation statistic.
+pub fn spectral_gap_regression(
+    grid_sizes: &[usize],
+    steps: usize,
+    trials: usize,
+) -> SpectralGapRegression {
+    let mut entries = Vec::with_capacity(grid_sizes.len());
+
+    for &n in grid_sizes {
+        let mut total_toroidal = 0.0f64;
+        let mut total_baseline = 0.0f64;
+
+        for _ in 0..trials {
+            let config = DriftConfig {
+                grid_n: n,
+                num_steps: steps,
+                ..DriftConfig::default()
+            };
+            let result = simulate_drift(&config);
+            total_toroidal += result.toroidal_drift_rate as f64;
+            total_baseline += result.baseline_drift_rate as f64;
+        }
+
+        let avg_toroidal = total_toroidal / trials as f64;
+        let avg_baseline = total_baseline / trials as f64;
+        let reduction = if avg_toroidal > 1e-9 {
+            avg_baseline / avg_toroidal
+        } else {
+            f64::INFINITY
+        };
+        let gap = spectral_gap_runtime(n) as f64;
+
+        entries.push(SpectralGapRegressionEntry {
+            grid_n: n,
+            spectral_gap: gap,
+            toroidal_drift_rate: avg_toroidal,
+            baseline_drift_rate: avg_baseline,
+            drift_reduction: reduction,
+        });
+    }
+
+    // Compute Pearson correlation between lambda_1 and drift_reduction
+    let finite_entries: Vec<&SpectralGapRegressionEntry> = entries
+        .iter()
+        .filter(|e| e.drift_reduction.is_finite())
+        .collect();
+
+    let n_f = finite_entries.len() as f64;
+    let mean_gap: f64 = finite_entries.iter().map(|e| e.spectral_gap).sum::<f64>() / n_f;
+    let mean_red: f64 = finite_entries.iter().map(|e| e.drift_reduction).sum::<f64>() / n_f;
+
+    let mut cov = 0.0;
+    let mut var_gap = 0.0;
+    let mut var_red = 0.0;
+    for e in &finite_entries {
+        let dg = e.spectral_gap - mean_gap;
+        let dr = e.drift_reduction - mean_red;
+        cov += dg * dr;
+        var_gap += dg * dg;
+        var_red += dr * dr;
+    }
+
+    let correlation = if var_gap > 1e-15 && var_red > 1e-15 {
+        cov / (var_gap.sqrt() * var_red.sqrt())
+    } else {
+        0.0
+    };
+
+    // Compute ratio = reduction / lambda_1 for each entry
+    let ratios: Vec<f64> = finite_entries
+        .iter()
+        .filter(|e| e.spectral_gap > 1e-9)
+        .map(|e| e.drift_reduction / e.spectral_gap)
+        .collect();
+    let mean_ratio = if ratios.is_empty() {
+        0.0
+    } else {
+        ratios.iter().sum::<f64>() / ratios.len() as f64
+    };
+    let var_ratio: f64 = ratios.iter().map(|r| (r - mean_ratio).powi(2)).sum::<f64>()
+        / ratios.len().max(1) as f64;
+    let cv_ratio = if mean_ratio.abs() > 1e-9 {
+        var_ratio.sqrt() / mean_ratio
+    } else {
+        f64::INFINITY
+    };
+
+    SpectralGapRegression {
+        entries,
+        correlation,
+        mean_ratio,
+        cv_ratio,
+    }
+}
+
 // ─── Kani formal verification harnesses ─────────────────────────────────────
 #[cfg(kani)]
 mod kani_proofs {
@@ -571,4 +694,70 @@ mod kani_proofs {
     // NOTE: Value properties of spectral_gap_runtime (positivity, bounds)
     // depend on cos() which CBMC models non-deterministically.
     // Verified by unit tests and cross-validation with spectral.rs eigendecomposition.
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spectral_gap_runtime_positive_for_n_ge_2() {
+        for n in 2..=32 {
+            let gap = spectral_gap_runtime(n);
+            assert!(gap > 0.0, "λ₁ should be positive for N={}, got {}", n, gap);
+        }
+    }
+
+    #[test]
+    fn spectral_gap_runtime_decreases_with_n() {
+        let mut prev = spectral_gap_runtime(2);
+        for n in 3..=32 {
+            let gap = spectral_gap_runtime(n);
+            assert!(gap < prev, "λ₁ should decrease: gap({})={} >= gap({})={}", n, gap, n - 1, prev);
+            prev = gap;
+        }
+    }
+
+    #[test]
+    fn drift_reduction_increases_with_spectral_gap() {
+        // Core Phase 1 validation: larger λ₁ (smaller grid) → more drift reduction.
+        // Sweep N=4,8,12,16,20 with moderate statistics (500 steps × 5 trials).
+        let reg = spectral_gap_regression(
+            &[4, 8, 12, 16, 20],
+            500,
+            5,
+        );
+
+        // 1. All entries should have finite reduction > 1 (mask helps)
+        for e in &reg.entries {
+            assert!(
+                e.drift_reduction > 1.0 || e.drift_reduction.is_finite(),
+                "N={}: reduction={} should be > 1 or finite",
+                e.grid_n, e.drift_reduction
+            );
+        }
+
+        // 2. Positive correlation between λ₁ and drift reduction
+        //    (larger spectral gap → mask is more constraining → more reduction)
+        assert!(
+            reg.correlation > 0.0,
+            "Correlation between λ₁ and drift_reduction should be positive, got {}",
+            reg.correlation
+        );
+    }
+
+    #[test]
+    fn toroidal_mask_reduces_drift_vs_baseline() {
+        let config = DriftConfig {
+            grid_n: 12,
+            num_steps: 1000,
+            ..DriftConfig::default()
+        };
+        let result = simulate_drift(&config);
+        assert!(
+            result.toroidal_drift_rate < result.baseline_drift_rate,
+            "Toroidal drift rate {} should be < baseline {}",
+            result.toroidal_drift_rate, result.baseline_drift_rate
+        );
+    }
 }

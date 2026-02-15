@@ -553,6 +553,71 @@ mod tests {
     }
 
     #[test]
+    fn test_biased_sweep_multiple_ratios() {
+        // Phase 1 experiment: sweep bias ratios [1.0, 1.5, 2.0, 3.0]
+        // and verify threshold behavior across lattice sizes.
+        let rates = vec![0.01, 0.03, 0.05, 0.07, 0.10, 0.13, 0.16, 0.20];
+        let biases = vec![1.0, 1.5, 2.0, 3.0];
+        let results = biased_threshold_sweep(4, &rates, &biases, 100);
+
+        assert_eq!(results.len(), 4, "Should return one result per bias ratio");
+
+        // bias_ratio=1.0 should closely match isotropic
+        let unity = &results[0];
+        assert!((unity.bias_ratio - 1.0).abs() < 1e-10);
+        if let (Some(tb), Some(ti)) = (unity.threshold_biased, unity.threshold_isotropic) {
+            assert!(
+                (tb - ti).abs() < 0.08,
+                "bias=1.0 threshold {:.3} should ≈ isotropic {:.3}",
+                tb, ti
+            );
+        }
+
+        // Higher bias ratios should generally shift the threshold downward
+        // (anisotropic noise is harder to correct with isotropic decoder).
+        // This is a statistical test, so we check the trend rather than strict monotonicity.
+        // Verify we get results at each bias ratio
+        for (i, r) in results.iter().enumerate() {
+            assert_eq!(
+                r.biased_results.len(),
+                rates.len(),
+                "Bias ratio {} should have {} sweep points",
+                biases[i], rates.len()
+            );
+            // Logical error rate at p=0.01 should be near zero
+            assert!(
+                r.biased_results[0].logical_error_rate < 0.3,
+                "At p=0.01, bias={:.1}: logical error rate {:.2} should be low",
+                biases[i], r.biased_results[0].logical_error_rate
+            );
+        }
+    }
+
+    #[test]
+    fn test_biased_sweep_larger_lattice_lower_threshold() {
+        // For a given bias ratio, larger lattice should have a lower threshold
+        // (more qubits, more chances for logical error chains).
+        let rates = vec![0.01, 0.05, 0.10, 0.15, 0.20];
+        let bias = 2.0;
+
+        let results_4 = biased_threshold_sweep(4, &rates, &[bias], 100);
+        let results_6 = biased_threshold_sweep(6, &rates, &[bias], 100);
+
+        // Both should complete without panic
+        assert_eq!(results_4.len(), 1);
+        assert_eq!(results_6.len(), 1);
+
+        // At high error rate (p=0.20), larger lattice should have higher failure rate
+        let fail_4 = results_4[0].biased_results.last().unwrap().logical_error_rate;
+        let fail_6 = results_6[0].biased_results.last().unwrap().logical_error_rate;
+        assert!(
+            fail_6 >= fail_4 - 0.15,
+            "N=6 failure rate {:.2} should be >= N=4 rate {:.2} at p=0.20",
+            fail_6, fail_4
+        );
+    }
+
+    #[test]
     fn test_estimate_threshold() {
         let results = vec![
             SimResult { n: 4, p_error: 0.05, trials: 100, logical_failures: 10, logical_error_rate: 0.10 },

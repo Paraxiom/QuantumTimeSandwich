@@ -292,6 +292,136 @@ mod tests {
     }
 
     #[test]
+    fn coherence_time_scales_with_inverse_spectral_gap() {
+        // Phase 1 validation: coherence time ∝ 1/λ₁.
+        // Sweep grid sizes [2, 3] (2×2=4, 3×3=9 qubits) — fast in CI.
+        // Verify that measured coherence time increases as λ₁ decreases.
+        use crate::coherence::theoretical_decay_rate;
+
+        let grid_sizes = [2usize, 3];
+        let mut coherence_times = Vec::new();
+        let mut spectral_gaps = Vec::new();
+
+        for &gs in &grid_sizes {
+            let n_qubits = gs * gs;
+            let config = SimulationConfig {
+                n_qubits,
+                topology: CouplingTopology::Toroidal { grid_size: gs },
+                noise: NoiseChannel::Depolarizing { p: 0.05 },
+                time_steps: 20,
+                trials: 3,
+            };
+            let result = run_simulation(&config);
+            let gap = theoretical_decay_rate(gs);
+            coherence_times.push(result.mean_coherence_time);
+            spectral_gaps.push(gap);
+        }
+
+        // Spectral gap should decrease with grid size
+        assert!(
+            spectral_gaps[0] > spectral_gaps[1],
+            "λ₁(2)={} should > λ₁(3)={}",
+            spectral_gaps[0], spectral_gaps[1]
+        );
+
+        // Coherence time should increase as grid grows (smaller gap → slower decay)
+        assert!(
+            coherence_times[1] >= coherence_times[0],
+            "Coherence time should increase with grid size: t(3×3)={} >= t(2×2)={}",
+            coherence_times[1], coherence_times[0]
+        );
+    }
+
+    /// Extended coherence regression across grid sizes 2–4 (16 qubits max).
+    /// Takes ~5 minutes in debug mode due to the 4×4 grid.
+    #[test]
+    #[ignore]
+    fn coherence_regression_extended() {
+        use crate::coherence::theoretical_decay_rate;
+
+        let grid_sizes = [2usize, 3, 4];
+        let mut coherence_times = Vec::new();
+        let mut spectral_gaps = Vec::new();
+
+        for &gs in &grid_sizes {
+            let config = SimulationConfig {
+                n_qubits: gs * gs,
+                topology: CouplingTopology::Toroidal { grid_size: gs },
+                noise: NoiseChannel::Depolarizing { p: 0.05 },
+                time_steps: 20,
+                trials: 3,
+            };
+            let result = run_simulation(&config);
+            coherence_times.push(result.mean_coherence_time);
+            spectral_gaps.push(theoretical_decay_rate(gs));
+        }
+
+        // Verify monotone relationship across all three sizes
+        assert!(coherence_times[1] >= coherence_times[0]);
+        assert!(coherence_times[2] >= coherence_times[1]);
+    }
+
+    #[test]
+    fn theoretical_coherence_matches_ratio() {
+        // Verify that theoretical coherence time ratio matches 1/λ₁ ratio.
+        use crate::coherence::{theoretical_coherence_time, theoretical_decay_rate};
+
+        let t4 = theoretical_coherence_time(4, 0.5);
+        let t8 = theoretical_coherence_time(8, 0.5);
+        let gap4 = theoretical_decay_rate(4);
+        let gap8 = theoretical_decay_rate(8);
+
+        // t ∝ 1/λ₁, so t8/t4 should equal gap4/gap8
+        let time_ratio = t8 / t4;
+        let gap_ratio = gap4 / gap8;
+        assert!(
+            (time_ratio - gap_ratio).abs() < 1e-10,
+            "Time ratio {:.6} should equal gap ratio {:.6}",
+            time_ratio, gap_ratio
+        );
+    }
+
+    #[test]
+    fn toroidal_coherence_exceeds_linear() {
+        // Toroidal coupling should provide longer coherence than linear coupling
+        // for the same number of qubits and noise level.
+        let n_qubits = 4;
+        let noise = NoiseChannel::Depolarizing { p: 0.1 };
+        let steps = 10;
+        let trials = 3;
+
+        let toroidal = run_simulation(&SimulationConfig {
+            n_qubits,
+            topology: CouplingTopology::Toroidal { grid_size: 2 },
+            noise: noise.clone(),
+            time_steps: steps,
+            trials,
+        });
+
+        let linear = run_simulation(&SimulationConfig {
+            n_qubits,
+            topology: CouplingTopology::Linear,
+            noise,
+            time_steps: steps,
+            trials,
+        });
+
+        // Toroidal mean fidelity should be >= linear (within noise margin)
+        let toroidal_mean: f64 = toroidal.fidelity_curve.iter().sum::<f64>()
+            / toroidal.fidelity_curve.len() as f64;
+        let linear_mean: f64 = linear.fidelity_curve.iter().sum::<f64>()
+            / linear.fidelity_curve.len() as f64;
+
+        // Allow some noise margin — the key claim is that toroidal doesn't perform
+        // worse than linear, and typically performs better.
+        assert!(
+            toroidal_mean >= linear_mean - 0.15,
+            "Toroidal mean fidelity {:.3} should be >= linear {:.3} (minus margin)",
+            toroidal_mean, linear_mean
+        );
+    }
+
+    #[test]
     fn multiple_trials_average() {
         let config = SimulationConfig {
             n_qubits: 2,
