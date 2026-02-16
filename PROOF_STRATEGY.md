@@ -197,16 +197,26 @@ QuantumTimeSandwich/src/grpc/       -- skeleton oqs_kex_rpc, never imported
       monotonicity, Tonnetz enhancement; thermal occupation bounds; engine cycle
       work/protection/efficiency bounds. See `quantum-engine-sim/verus-proofs/`.
 
-### Phase 3: Formal proofs (Lean 4)
+### Phase 3: Formal proofs (Lean 4) — IN PROGRESS
 
-- [ ] **Formalize Poincare inequality on T^2 in Lean 4 + Mathlib**:
-      `||f - f_bar||^2 <= (1/lambda_1) * ||grad f||^2`
-- [ ] **Formalize spectral gap formula**:
-      Prove `lambda_1 = 2 - 2*cos(2*pi/N)` for cycle graph C_N
-- [ ] **Formalize Cheeger inequality for T^2**:
-      `h^2/2 <= lambda_1 <= 2h` with explicit h for the torus
-- [ ] **Use Aeneas to verify Rust implementation**:
-      Translate `torus.rs::spectral_gap()` to Lean, prove it matches the theorem
+**Lean 4 Tier 3** (17 theorems, 1 sorry): `lean/` directory, Mathlib v4.27.0.
+No axiomatized transcendentals — uses Mathlib's proven `Real.cos`.
+
+- [x] **Distance metric axioms** (ZModDistance.lean, 8 proofs):
+      symmetry, identity, boundedness, triangle inequality, non-degeneracy
+      — ported from `verus-proofs/distance.rs`, fully axiom-free
+- [x] **Cycle graph C_N** (CycleGraph.lean, 4 proofs):
+      SimpleGraph definition, successor/predecessor adjacency, distinctness
+- [x] **Torus T² = C_N x C_N** (Torus.lean, 2 proofs):
+      SimpleGraph on Fin N x Fin N, vertex count N²
+- [x] **Spectral gap properties** (SpectralGapDef.lean, 3 proven + 1 sorry):
+      lambda_1 > 0 (N>=3), 0 < lambda_1 <= 4, monotonicity lambda_1(N+1) < lambda_1(N),
+      2-2cos(2pi)=0 — all from Mathlib `Real.strictAntiOn_cos`, no axioms
+- [ ] **Eigenvalue formula proof** (sorry'd): Show lambda_1 IS the smallest
+      nonzero eigenvalue of L(C_N). Requires discrete Fourier basis on Z/NZ.
+- [ ] **Formalize Poincare inequality on T^2**
+- [ ] **Formalize Cheeger inequality for T^2**
+- [ ] **Use Aeneas to verify Rust `torus.rs::spectral_gap()`**
 
 ### Phase 4: Cross-domain proof (the thesis)
 
