@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    extern crate blas;
+    extern crate cblas_sys;
     extern crate openblas_src;
     extern crate test;
 

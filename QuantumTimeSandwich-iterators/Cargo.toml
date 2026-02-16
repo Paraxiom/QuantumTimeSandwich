@@ -24,11 +24,11 @@ rayon = { version = "^1.7", optional = true }
 
 [dev-dependencies]
 num-complex = "^0.4"
-blas = "^0.22"
-openblas-src = "^0.10"
+cblas-sys = "^0.1"
+openblas-src = { version = "^0.10", features = ["cblas"] }
 sprs = "^0.11"
 faer-core = "^0.9"
 
 [dev-dependencies.ndarray]
-version = "^0.15"
+version = "^0.17"
 features = ["blas"]
