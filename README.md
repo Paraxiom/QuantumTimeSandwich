@@ -117,6 +117,8 @@ Paper: [Topological Constraints for Coherent Language Models](https://doi.org/10
 cd lean && lake build  # 0 errors, 0 sorries
 ```
 
+**Paper**: [162 Lean 4 Theorems for Post-Quantum Infrastructure](https://doi.org/10.5281/zenodo.18663125) (Zenodo, Feb 2026)
+
 ## License
 
 MIT. Based on contributions from [RustQIP](https://github.com/Renmusxd/RustQIP).
