@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 400" width="460" height="400">
+  <defs>
+    <marker id="braid-arr" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto">
+      <path d="M0,0 L7,2.5 L0,5" fill="none" stroke="#6a9a6a" stroke-width="1"/>
+    </marker>
+  </defs>
+  <rect width="460" height="400" rx="8" fill="#1e231e"/>
+  <text x="230" y="28" text-anchor="middle" fill="#dad7cd" font-family="sans-serif" font-size="15" font-weight="600">Braiding: e Around m → Phase (-1)</text>
+
+  <!-- 5x5 lattice fragment -->
+  <g stroke="#4a6a4a" stroke-width="1" stroke-linecap="round" opacity="0.3">
+    <!-- Horizontal -->
+    <line x1="80" y1="80" x2="160" y2="80"/><line x1="160" y1="80" x2="240" y2="80"/>
+    <line x1="240" y1="80" x2="320" y2="80"/><line x1="320" y1="80" x2="400" y2="80"/>
+    <line x1="80" y1="160" x2="160" y2="160"/><line x1="160" y1="160" x2="240" y2="160"/>
+    <line x1="240" y1="160" x2="320" y2="160"/><line x1="320" y1="160" x2="400" y2="160"/>
+    <line x1="80" y1="240" x2="160" y2="240"/><line x1="160" y1="240" x2="240" y2="240"/>
+    <line x1="240" y1="240" x2="320" y2="240"/><line x1="320" y1="240" x2="400" y2="240"/>
+    <line x1="80" y1="320" x2="160" y2="320"/><line x1="160" y1="320" x2="240" y2="320"/>
+    <line x1="240" y1="320" x2="320" y2="320"/><line x1="320" y1="320" x2="400" y2="320"/>
+    <!-- Vertical -->
+    <line x1="80" y1="80" x2="80" y2="160"/><line x1="80" y1="160" x2="80" y2="240"/>
+    <line x1="80" y1="240" x2="80" y2="320"/>
+    <line x1="160" y1="80" x2="160" y2="160"/><line x1="160" y1="160" x2="160" y2="240"/>
+    <line x1="160" y1="240" x2="160" y2="320"/>
+    <line x1="240" y1="80" x2="240" y2="160"/><line x1="240" y1="160" x2="240" y2="240"/>
+    <line x1="240" y1="240" x2="240" y2="320"/>
+    <line x1="320" y1="80" x2="320" y2="160"/><line x1="320" y1="160" x2="320" y2="240"/>
+    <line x1="320" y1="240" x2="320" y2="320"/>
+    <line x1="400" y1="80" x2="400" y2="160"/><line x1="400" y1="160" x2="400" y2="240"/>
+    <line x1="400" y1="240" x2="400" y2="320"/>
+  </g>
+
+  <!-- Vertices -->
+  <g fill="#555" opacity="0.4">
+    <circle cx="80" cy="80" r="3"/><circle cx="160" cy="80" r="3"/>
+    <circle cx="240" cy="80" r="3"/><circle cx="320" cy="80" r="3"/><circle cx="400" cy="80" r="3"/>
+    <circle cx="80" cy="160" r="3"/><circle cx="160" cy="160" r="3"/>
+    <circle cx="320" cy="160" r="3"/><circle cx="400" cy="160" r="3"/>
+    <circle cx="80" cy="240" r="3"/><circle cx="160" cy="240" r="3"/>
+    <circle cx="320" cy="240" r="3"/><circle cx="400" cy="240" r="3"/>
+    <circle cx="80" cy="320" r="3"/><circle cx="160" cy="320" r="3"/>
+    <circle cx="240" cy="320" r="3"/><circle cx="320" cy="320" r="3"/><circle cx="400" cy="320" r="3"/>
+  </g>
+
+  <!-- m-particle at center plaquette (between vertices 240,160 / 320,160 / 240,240 / 320,240) -->
+  <circle cx="280" cy="200" r="14" fill="none" stroke="#a08a62" stroke-width="2.5"/>
+  <circle cx="280" cy="200" r="5" fill="#a08a62"/>
+  <text x="280" y="195" text-anchor="middle" fill="#a08a62" font-family="sans-serif" font-size="14" font-weight="700" dy="-18">m</text>
+
+  <!-- e-particle braiding path (Z-error chain around the m) -->
+  <!-- Path: right along row 1 (y=160), down col 3, left along row 2 (y=240), up col 1 -->
+  <g stroke="#6a9a6a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9">
+    <!-- Right: (160,160) → (240,160) → (320,160) -->
+    <line x1="160" y1="160" x2="240" y2="160" marker-end="url(#braid-arr)"/>
+    <line x1="240" y1="160" x2="320" y2="160" marker-end="url(#braid-arr)"/>
+    <!-- Down: (320,160) → (320,240) -->
+    <line x1="320" y1="160" x2="320" y2="240" marker-end="url(#braid-arr)"/>
+    <!-- Left: (320,240) → (240,240) → (160,240) -->
+    <line x1="320" y1="240" x2="240" y2="240" marker-end="url(#braid-arr)"/>
+    <line x1="240" y1="240" x2="160" y2="240" marker-end="url(#braid-arr)"/>
+    <!-- Up: (160,240) → (160,160) -->
+    <line x1="160" y1="240" x2="160" y2="160" marker-end="url(#braid-arr)"/>
+  </g>
+
+  <!-- e-particle start position -->
+  <circle cx="160" cy="160" r="10" fill="none" stroke="#6a9a6a" stroke-width="2"/>
+  <circle cx="160" cy="160" r="4" fill="#6a9a6a"/>
+  <text x="140" y="150" text-anchor="end" fill="#6a9a6a" font-family="sans-serif" font-size="13" font-weight="600">e</text>
+
+  <!-- XZ overlap highlight on shared edge -->
+  <line x1="240" y1="160" x2="240" y2="240" stroke="#e06060" stroke-width="4" opacity="0.7"/>
+  <circle cx="240" cy="200" r="8" fill="none" stroke="#e06060" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <text x="256" y="204" fill="#e06060" font-family="sans-serif" font-size="10" font-weight="600">XZ</text>
+
+  <!-- Phase annotation -->
+  <rect x="100" y="348" width="260" height="36" rx="8" fill="rgba(106,154,106,0.12)" stroke="rgba(106,154,106,0.3)" stroke-width="1"/>
+  <text x="230" y="371" text-anchor="middle" fill="#dad7cd" font-family="sans-serif" font-size="14">
+    Phase = (-1)<tspan baseline-shift="super" font-size="10">crossings</tspan> = (-1)<tspan baseline-shift="super" font-size="10">1</tspan> = <tspan fill="#6a9a6a" font-weight="700">-1</tspan>
+  </text>
+</svg>

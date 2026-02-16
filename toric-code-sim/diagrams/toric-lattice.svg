@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 520" width="520" height="520">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6" fill="none" stroke="#a08a62" stroke-width="1.2"/>
+    </marker>
+  </defs>
+  <rect width="520" height="520" rx="8" fill="#1e231e"/>
+  <text x="260" y="30" text-anchor="middle" fill="#dad7cd" font-family="sans-serif" font-size="16" font-weight="600">4×4 Toric Lattice on T²</text>
+
+  <!-- Plaquette shading (sample plaquettes) -->
+  <rect x="110" y="110" width="90" height="90" rx="4" fill="rgba(106,154,106,0.08)" stroke="rgba(106,154,106,0.15)" stroke-width="0.5"/>
+  <rect x="200" y="200" width="90" height="90" rx="4" fill="rgba(106,154,106,0.08)" stroke="rgba(106,154,106,0.15)" stroke-width="0.5"/>
+  <rect x="290" y="110" width="90" height="90" rx="4" fill="rgba(160,138,98,0.08)" stroke="rgba(160,138,98,0.15)" stroke-width="0.5"/>
+  <text x="155" y="162" text-anchor="middle" fill="rgba(106,154,106,0.5)" font-family="sans-serif" font-size="11">B_p</text>
+  <text x="335" y="162" text-anchor="middle" fill="rgba(160,138,98,0.5)" font-family="sans-serif" font-size="11">B_p</text>
+
+  <!-- Horizontal edges -->
+  <g stroke="#6a9a6a" stroke-width="2" stroke-linecap="round">
+    <!-- Row 0 -->
+    <line x1="110" y1="110" x2="200" y2="110"/>
+    <line x1="200" y1="110" x2="290" y2="110"/>
+    <line x1="290" y1="110" x2="380" y2="110"/>
+    <line x1="380" y1="110" x2="460" y2="110" stroke-dasharray="4,4" opacity="0.5"/>
+    <!-- Row 1 -->
+    <line x1="110" y1="200" x2="200" y2="200"/>
+    <line x1="200" y1="200" x2="290" y2="200"/>
+    <line x1="290" y1="200" x2="380" y2="200"/>
+    <line x1="380" y1="200" x2="460" y2="200" stroke-dasharray="4,4" opacity="0.5"/>
+    <!-- Row 2 -->
+    <line x1="110" y1="290" x2="200" y2="290"/>
+    <line x1="200" y1="290" x2="290" y2="290"/>
+    <line x1="290" y1="290" x2="380" y2="290"/>
+    <line x1="380" y1="290" x2="460" y2="290" stroke-dasharray="4,4" opacity="0.5"/>
+    <!-- Row 3 -->
+    <line x1="110" y1="380" x2="200" y2="380"/>
+    <line x1="200" y1="380" x2="290" y2="380"/>
+    <line x1="290" y1="380" x2="380" y2="380"/>
+    <line x1="380" y1="380" x2="460" y2="380" stroke-dasharray="4,4" opacity="0.5"/>
+  </g>
+
+  <!-- Vertical edges -->
+  <g stroke="#a08a62" stroke-width="2" stroke-linecap="round">
+    <!-- Col 0 -->
+    <line x1="110" y1="110" x2="110" y2="200"/>
+    <line x1="110" y1="200" x2="110" y2="290"/>
+    <line x1="110" y1="290" x2="110" y2="380"/>
+    <line x1="110" y1="380" x2="110" y2="460" stroke-dasharray="4,4" opacity="0.5"/>
+    <!-- Col 1 -->
+    <line x1="200" y1="110" x2="200" y2="200"/>
+    <line x1="200" y1="200" x2="200" y2="290"/>
+    <line x1="200" y1="290" x2="200" y2="380"/>
+    <line x1="200" y1="380" x2="200" y2="460" stroke-dasharray="4,4" opacity="0.5"/>
+    <!-- Col 2 -->
+    <line x1="290" y1="110" x2="290" y2="200"/>
+    <line x1="290" y1="200" x2="290" y2="290"/>
+    <line x1="290" y1="290" x2="290" y2="380"/>
+    <line x1="290" y1="380" x2="290" y2="460" stroke-dasharray="4,4" opacity="0.5"/>
+    <!-- Col 3 -->
+    <line x1="380" y1="110" x2="380" y2="200"/>
+    <line x1="380" y1="200" x2="380" y2="290"/>
+    <line x1="380" y1="290" x2="380" y2="380"/>
+    <line x1="380" y1="380" x2="380" y2="460" stroke-dasharray="4,4" opacity="0.5"/>
+  </g>
+
+  <!-- Vertices (dots) -->
+  <g fill="#dad7cd">
+    <circle cx="110" cy="110" r="5"/><circle cx="200" cy="110" r="5"/>
+    <circle cx="290" cy="110" r="5"/><circle cx="380" cy="110" r="5"/>
+    <circle cx="110" cy="200" r="5"/><circle cx="200" cy="200" r="5"/>
+    <circle cx="290" cy="200" r="5"/><circle cx="380" cy="200" r="5"/>
+    <circle cx="110" cy="290" r="5"/><circle cx="200" cy="290" r="5"/>
+    <circle cx="290" cy="290" r="5"/><circle cx="380" cy="290" r="5"/>
+    <circle cx="110" cy="380" r="5"/><circle cx="200" cy="380" r="5"/>
+    <circle cx="290" cy="380" r="5"/><circle cx="380" cy="380" r="5"/>
+  </g>
+
+  <!-- Vertex label (A_v) -->
+  <text x="200" y="195" text-anchor="middle" fill="#dad7cd" font-family="sans-serif" font-size="11">A_v</text>
+
+  <!-- Wraparound arrows showing periodic boundaries -->
+  <!-- Right wrap: row 0 -->
+  <path d="M465,110 C490,110 490,60 260,50" fill="none" stroke="#a08a62" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)" opacity="0.6"/>
+  <text x="480" y="80" fill="#a08a62" font-family="sans-serif" font-size="10" opacity="0.7">wrap</text>
+  <!-- Bottom wrap: col 0 -->
+  <path d="M110,465 C110,490 60,490 50,260" fill="none" stroke="#a08a62" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)" opacity="0.6"/>
+  <text x="52" y="485" fill="#a08a62" font-family="sans-serif" font-size="10" opacity="0.7">wrap</text>
+
+  <!-- Edge labels -->
+  <text x="150" y="100" text-anchor="middle" fill="#6a9a6a" font-family="sans-serif" font-size="10">h-edge</text>
+  <text x="95" y="155" text-anchor="middle" fill="#a08a62" font-family="sans-serif" font-size="10" transform="rotate(-90,95,155)">v-edge</text>
+
+  <!-- Legend -->
+  <g transform="translate(30,440)">
+    <line x1="0" y1="0" x2="25" y2="0" stroke="#6a9a6a" stroke-width="2"/>
+    <text x="30" y="4" fill="#8a9a8a" font-family="sans-serif" font-size="10">Horizontal edge (qubit)</text>
+    <line x1="0" y1="16" x2="25" y2="16" stroke="#a08a62" stroke-width="2"/>
+    <text x="30" y="20" fill="#8a9a8a" font-family="sans-serif" font-size="10">Vertical edge (qubit)</text>
+    <circle cx="12" cy="36" r="4" fill="#dad7cd"/>
+    <text x="30" y="40" fill="#8a9a8a" font-family="sans-serif" font-size="10">Vertex (A_v stabilizer)</text>
+    <rect x="0" y="48" width="25" height="12" rx="2" fill="rgba(106,154,106,0.15)"/>
+    <text x="30" y="58" fill="#8a9a8a" font-family="sans-serif" font-size="10">Plaquette (B_p stabilizer)</text>
+  </g>
+</svg>

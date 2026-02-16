@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toric Code on T² — Paraxiom Research</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+    --green: #6a9a6a;
+    --green-light: #b0c4a0;
+    --green-dark: #4a6a4a;
+    --gold: #a08a62;
+    --dark: #1e231e;
+    --bg: #1e231e;
+    --bg-light: #282e28;
+    --surface: rgba(88, 129, 87, 0.1);
+    --border: rgba(88, 129, 87, 0.3);
+    --text: #dad7cd;
+    --text-dim: #8a9a8a;
+    --red: #c06060;
+}
+
+@keyframes breathe {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+}
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+@keyframes gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+@keyframes pulse-soft {
+    0%, 100% { box-shadow: 0 4px 20px rgba(88,129,87,0.1); }
+    50% { box-shadow: 0 4px 30px rgba(88,129,87,0.2); }
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+}
+
+/* ═══ LCARS Frame ═══ */
+.lcars-top {
+    height: 50px;
+    display: flex;
+    align-items: flex-end;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+}
+.lcars-top-corner {
+    width: 140px; height: 50px;
+    background: linear-gradient(135deg, var(--green) 0%, var(--gold) 100%);
+    border-radius: 0 0 25px 0;
+}
+.lcars-top-bar {
+    flex: 1; height: 28px; margin-left: 12px;
+    display: flex; gap: 8px;
+}
+.lcars-pill {
+    height: 100%; border-radius: 14px;
+    animation: breathe 6s ease-in-out infinite;
+}
+.lcars-top-end {
+    width: 100px; height: 50px;
+    background: linear-gradient(135deg, var(--green) 0%, var(--gold) 100%);
+    border-radius: 0 0 0 25px;
+    margin-left: 12px;
+}
+.lcars-bottom {
+    height: 50px;
+    display: flex; align-items: flex-start;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+}
+.lcars-bottom-corner {
+    width: 140px; height: 50px;
+    background: linear-gradient(225deg, var(--green) 0%, var(--gold) 100%);
+    border-radius: 0 25px 0 0;
+}
+.lcars-bottom-bar {
+    flex: 1; height: 28px; margin-left: 12px; margin-top: 10px;
+    display: flex; gap: 8px;
+}
+.lcars-bottom-end {
+    width: 100px; height: 50px;
+    background: linear-gradient(225deg, var(--gold) 0%, var(--green) 100%);
+    border-radius: 25px 0 0 0;
+    margin-left: 12px;
+}
+
+/* ═══ Presentation Container ═══ */
+.presentation {
+    position: fixed;
+    top: 65px; left: 24px; right: 24px; bottom: 120px;
+    overflow: hidden;
+}
+
+/* ═══ Slides ═══ */
+.slide {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    display: none; opacity: 0;
+    padding: 40px 50px;
+    overflow-y: auto;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    transform: translateY(15px);
+}
+.slide.active {
+    display: flex; flex-direction: column;
+    opacity: 1; transform: translateY(0);
+}
+
+/* ═══ Typography ═══ */
+h1 {
+    font-size: 52px; font-weight: 400; line-height: 1.15;
+    margin-bottom: 20px; color: var(--text);
+}
+h2 {
+    font-size: 32px; font-weight: 500; margin-bottom: 24px; color: var(--text);
+}
+h3 {
+    font-size: 15px; font-weight: 600; margin-bottom: 10px;
+    color: var(--green); letter-spacing: 0.5px;
+}
+p {
+    font-size: 16px; line-height: 1.7; color: var(--text-dim);
+    margin-bottom: 14px; max-width: 680px; font-weight: 400;
+}
+.accent { color: var(--green); font-weight: 500; }
+.warm { color: var(--gold); font-weight: 500; }
+
+.title-slide h1 {
+    font-size: 68px; margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--green) 0%, var(--gold) 25%, var(--green) 50%, var(--gold) 75%, var(--green) 100%);
+    background-size: 200% 200%;
+    animation: gradient-shift 8s ease infinite;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.title-slide .subtitle {
+    font-size: 22px; color: var(--text-dim); font-weight: 300;
+    margin-bottom: 8px;
+}
+.title-slide .author {
+    font-size: 14px; color: var(--green); font-weight: 400;
+    margin-top: 12px;
+}
+
+/* ═══ Cards / Tables ═══ */
+.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+.card {
+    background: var(--bg-light); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+    animation: pulse-soft 6s ease-in-out infinite;
+}
+.card h3 { margin-bottom: 8px; }
+
+table {
+    border-collapse: collapse; margin: 16px 0; font-size: 14px;
+}
+th, td {
+    padding: 8px 16px; text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+th { color: var(--green); font-weight: 600; font-size: 12px; letter-spacing: 0.5px; }
+td { color: var(--text-dim); }
+
+.formula {
+    background: var(--bg-light); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 20px; margin: 12px 0;
+    font-size: 18px; color: var(--text); display: inline-block;
+}
+
+/* ═══ Canvas containers ═══ */
+.canvas-wrap {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    min-height: 200px; position: relative;
+}
+.canvas-wrap canvas {
+    border-radius: 8px; max-width: 100%; max-height: 100%;
+}
+
+/* ═══ Navigation ═══ */
+.nav-toggle {
+    position: fixed; bottom: 70px; right: 30px;
+    width: 50px; height: 50px; border-radius: 50%;
+    background: var(--green); border: 2px solid var(--gold);
+    color: var(--bg); font-size: 20px; cursor: pointer; z-index: 200;
+    box-shadow: 0 0 20px rgba(106,154,106,0.5);
+    transition: all 0.3s ease;
+}
+.nav-toggle:hover { transform: scale(1.1); box-shadow: 0 0 30px rgba(106,154,106,0.7); }
+
+.nav-map {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(20,25,20,0.95); z-index: 150;
+    backdrop-filter: blur(10px);
+    display: none; align-items: center; justify-content: center;
+}
+.nav-map.open { display: flex; }
+.nav-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px;
+    max-width: 600px;
+}
+.nav-item {
+    width: 100px; height: 80px; border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; background: var(--bg-light);
+    border: 2px solid var(--border); transition: all 0.3s ease;
+    font-size: 11px; color: var(--text-dim); text-align: center; padding: 8px;
+}
+.nav-item:hover { border-color: var(--green); box-shadow: 0 0 20px rgba(106,154,106,0.4); color: var(--text); }
+.nav-item.active { background: var(--green); border-color: var(--gold); color: var(--bg); font-weight: 600; }
+.nav-item .num { font-size: 18px; font-weight: 600; color: var(--green); margin-bottom: 4px; }
+.nav-item.active .num { color: var(--bg); }
+
+.counter {
+    position: fixed; bottom: 58px; right: 32px;
+    font-size: 12px; color: var(--text-dim); z-index: 101;
+}
+.counter span { color: var(--green); font-weight: 500; }
+
+/* ═══ Language toggle ═══ */
+.lang-toggle {
+    position: fixed; top: 60px; right: 30px;
+    font-size: 12px; color: var(--text-dim); cursor: pointer; z-index: 200;
+    background: var(--bg-light); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 10px;
+}
+.lang-toggle:hover { color: var(--green); border-color: var(--green); }
+
+/* ═══ Links slide ═══ */
+.link-list { list-style: none; margin-top: 16px; }
+.link-list li {
+    margin-bottom: 12px; padding: 12px 16px;
+    background: var(--bg-light); border: 1px solid var(--border);
+    border-radius: 8px; transition: border-color 0.3s;
+}
+.link-list li:hover { border-color: var(--green); }
+.link-list a { color: var(--green); text-decoration: none; font-weight: 500; font-size: 15px; }
+.link-list .desc { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<!-- LCARS Top Frame -->
+<div class="lcars-top">
+    <div class="lcars-top-corner"></div>
+    <div class="lcars-top-bar">
+        <div class="lcars-pill" style="flex:3; background: linear-gradient(90deg, var(--green), var(--green-dark))"></div>
+        <div class="lcars-pill" style="flex:1; background: var(--gold)"></div>
+        <div class="lcars-pill" style="flex:2; background: linear-gradient(90deg, var(--green-dark), var(--green))"></div>
+        <div class="lcars-pill" style="flex:1; background: var(--gold); animation-delay: 2s"></div>
+        <div class="lcars-pill" style="flex:2; background: var(--green)"></div>
+    </div>
+    <div class="lcars-top-end"></div>
+</div>
+
+<!-- LCARS Bottom Frame -->
+<div class="lcars-bottom">
+    <div class="lcars-bottom-corner"></div>
+    <div class="lcars-bottom-bar">
+        <div class="lcars-pill" style="flex:2; background: var(--gold); animation-delay: 1s"></div>
+        <div class="lcars-pill" style="flex:3; background: linear-gradient(90deg, var(--green), var(--green-dark))"></div>
+        <div class="lcars-pill" style="flex:1; background: var(--gold); animation-delay: 3s"></div>
+        <div class="lcars-pill" style="flex:2; background: var(--green)"></div>
+    </div>
+    <div class="lcars-bottom-end"></div>
+</div>
+
+<!-- Language Toggle -->
+<div class="lang-toggle" onclick="toggleLang()" id="langBtn">EN / FR</div>
+
+<!-- Slide Counter -->
+<div class="counter"><span id="cur">1</span> / <span id="tot">10</span></div>
+
+<!-- Navigation Toggle -->
+<button class="nav-toggle" onclick="toggleMap()" title="Map (M)">&#9776;</button>
+
+<!-- Navigation Map -->
+<div class="nav-map" id="navMap">
+    <div class="nav-grid" id="navGrid"></div>
+</div>
+
+<!-- ═══════════════ PRESENTATION ═══════════════ -->
+<div class="presentation">
+
+<!-- SLIDE 1: Title -->
+<div class="slide title-slide active">
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:center">
+        <h3>PARAXIOM RESEARCH</h3>
+        <h1 data-en="Toric Code on T²" data-fr="Code Torique sur T²">Toric Code on T²</h1>
+        <p class="subtitle" data-en="Topological quantum error correction via anyonic braiding on the torus" data-fr="Correction d'erreur quantique topologique par tressage anyonique sur le tore">Topological quantum error correction via anyonic braiding on the torus</p>
+        <p class="author">Sylvain Cormier &middot; Paraxiom Technologies Inc. &middot; 2026</p>
+    </div>
+</div>
+
+<!-- SLIDE 2: The Problem -->
+<div class="slide">
+    <h3 data-en="THE PROBLEM" data-fr="LE PROBLEME">THE PROBLEM</h3>
+    <h2 data-en="Why Quantum Bits Need Topological Protection" data-fr="Pourquoi les qubits ont besoin de protection topologique">Why Quantum Bits Need Topological Protection</h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3 data-en="DECOHERENCE" data-fr="DECOHERENCE">DECOHERENCE</h3>
+            <p data-en="Physical qubits lose quantum information to their environment within microseconds. Every gate operation introduces errors." data-fr="Les qubits physiques perdent leur information quantique en microsecondes. Chaque opération de porte introduit des erreurs.">Physical qubits lose quantum information to their environment within microseconds. Every gate operation introduces errors.</p>
+        </div>
+        <div class="card">
+            <h3 data-en="ERROR ACCUMULATION" data-fr="ACCUMULATION D'ERREURS">ERROR ACCUMULATION</h3>
+            <p data-en="Classical repetition codes fail for quantum data — the no-cloning theorem prevents naive redundancy. Errors compound exponentially." data-fr="Les codes de repetition classiques echouent pour les donnees quantiques — le theoreme de non-clonage empeche la redondance naive.">Classical repetition codes fail for quantum data — the no-cloning theorem prevents naive redundancy. Errors compound exponentially.</p>
+        </div>
+        <div class="card">
+            <h3 data-en="LOCAL vs GLOBAL" data-fr="LOCAL vs GLOBAL">LOCAL vs GLOBAL</h3>
+            <p data-en="Local errors (single-qubit) are common. Logical errors (code-breaking) require non-local, correlated chains. Topology enforces this gap." data-fr="Les erreurs locales (qubit unique) sont frequentes. Les erreurs logiques necessitent des chaines non-locales. La topologie impose cette separation.">Local errors (single-qubit) are common. Logical errors (code-breaking) require non-local, correlated chains. Topology enforces this gap.</p>
+        </div>
+        <div class="card">
+            <h3 data-en="THE SOLUTION: T²" data-fr="LA SOLUTION: T²">THE SOLUTION: T²</h3>
+            <p data-en="Place qubits on a torus. Non-contractible cycles become logical operators. Error correction = syndrome matching. Protection grows exponentially with lattice size." data-fr="Placer les qubits sur un tore. Les cycles non-contractibles deviennent des operateurs logiques. La protection croit exponentiellement.">Place qubits on a torus. Non-contractible cycles become logical operators. Error correction = syndrome matching. Protection grows exponentially with lattice size.</p>
+        </div>
+    </div>
+</div>
+
+<!-- SLIDE 3: Toric Lattice -->
+<div class="slide">
+    <h3 data-en="LATTICE GEOMETRY" data-fr="GEOMETRIE DU RESEAU">LATTICE GEOMETRY</h3>
+    <h2 data-en="The Toric Lattice on T²" data-fr="Le Reseau Torique sur T²">The Toric Lattice on T²</h2>
+    <p data-en="N×N square lattice with periodic boundaries. Qubits live on edges (2N² total). Vertices define A_v stabilizers, plaquettes define B_p stabilizers." data-fr="Reseau carre N×N avec conditions periodiques. Les qubits vivent sur les aretes (2N² total). Les sommets definissent les stabilisateurs A_v, les plaquettes B_p.">N×N square lattice with periodic boundaries. Qubits live on edges (2N² total). Vertices define A_v stabilizers, plaquettes define B_p stabilizers.</p>
+    <div class="canvas-wrap">
+        <canvas id="latticeCanvas" width="600" height="420"></canvas>
+    </div>
+</div>
+
+<!-- SLIDE 4: Stabilizers & Syndromes -->
+<div class="slide">
+    <h3 data-en="STABILIZERS" data-fr="STABILISATEURS">STABILIZERS</h3>
+    <h2 data-en="Stabilizers & Syndrome Measurement" data-fr="Stabilisateurs & Mesure de Syndrome">Stabilizers & Syndrome Measurement</h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3>VERTEX STABILIZER A_v</h3>
+            <div class="formula">A_v = <span class="accent">X</span><sub>e1</sub> <span class="accent">X</span><sub>e2</sub> <span class="accent">X</span><sub>e3</sub> <span class="accent">X</span><sub>e4</sub></div>
+            <p data-en="Product of X on 4 edges touching vertex v. Eigenvalue -1 signals an e-particle (Z error detected)." data-fr="Produit de X sur les 4 aretes touchant le sommet v. La valeur propre -1 signale une particule-e.">Product of X on 4 edges touching vertex v. Eigenvalue -1 signals an e-particle (Z error detected).</p>
+        </div>
+        <div class="card">
+            <h3>PLAQUETTE STABILIZER B_p</h3>
+            <div class="formula">B_p = <span class="warm">Z</span><sub>e1</sub> <span class="warm">Z</span><sub>e2</sub> <span class="warm">Z</span><sub>e3</sub> <span class="warm">Z</span><sub>e4</sub></div>
+            <p data-en="Product of Z on 4 edges bounding plaquette p. Eigenvalue -1 signals an m-particle (X error detected)." data-fr="Produit de Z sur les 4 aretes bordant la plaquette p. La valeur propre -1 signale une particule-m.">Product of Z on 4 edges bounding plaquette p. Eigenvalue -1 signals an m-particle (X error detected).</p>
+        </div>
+    </div>
+    <div style="margin-top: 20px">
+        <h3 data-en="KEY PROPERTIES" data-fr="PROPRIETES CLES">KEY PROPERTIES</h3>
+        <table>
+            <tr><th data-en="Property" data-fr="Propriete">Property</th><th data-en="Value" data-fr="Valeur">Value</th></tr>
+            <tr><td data-en="All stabilizers commute" data-fr="Tous les stabilisateurs commutent">All stabilizers commute</td><td>[A_v, B_p] = 0</td></tr>
+            <tr><td data-en="Anyon count always even" data-fr="Nombre d'anyons toujours pair">Anyon count always even</td><td>#e mod 2 = 0, #m mod 2 = 0</td></tr>
+            <tr><td data-en="Code space dimension" data-fr="Dimension de l'espace de code">Code space dimension</td><td>4 (2 logical qubits)</td></tr>
+        </table>
+    </div>
+</div>
+
+<!-- SLIDE 5: Anyons -->
+<div class="slide">
+    <h3 data-en="ANYONIC EXCITATIONS" data-fr="EXCITATIONS ANYONIQUES">ANYONIC EXCITATIONS</h3>
+    <h2 data-en="e-Particles & m-Particles" data-fr="Particules-e & Particules-m">e-Particles & m-Particles</h2>
+    <p data-en="Errors create anyonic excitations in pairs. Same-type anyons fuse to vacuum; cross-type fusion produces a fermion." data-fr="Les erreurs creent des excitations anyoniques par paires. Les anyons du meme type fusionnent vers le vide; la fusion croisee produit un fermion.">Errors create anyonic excitations in pairs. Same-type anyons fuse to vacuum; cross-type fusion produces a fermion.</p>
+    <div class="card-grid">
+        <div class="card">
+            <h3 style="color: var(--green)">e (ELECTRIC CHARGE)</h3>
+            <p data-en="Created by Z errors. Detected at vertices (A_v = -1). Move e by applying Z on adjacent edges." data-fr="Cree par des erreurs Z. Detecte aux sommets (A_v = -1). Deplacer e en appliquant Z sur les aretes adjacentes.">Created by Z errors. Detected at vertices (A_v = -1). Move e by applying Z on adjacent edges.</p>
+        </div>
+        <div class="card">
+            <h3 style="color: var(--gold)">m (MAGNETIC FLUX)</h3>
+            <p data-en="Created by X errors. Detected at plaquettes (B_p = -1). Move m by applying X on adjacent edges." data-fr="Cree par des erreurs X. Detecte aux plaquettes (B_p = -1). Deplacer m en appliquant X sur les aretes adjacentes.">Created by X errors. Detected at plaquettes (B_p = -1). Move m by applying X on adjacent edges.</p>
+        </div>
+    </div>
+    <div style="margin-top: 20px">
+        <h3 data-en="FUSION RULES (Z₂ × Z₂)" data-fr="REGLES DE FUSION (Z₂ × Z₂)">FUSION RULES (Z₂ × Z₂)</h3>
+        <table>
+            <tr><th>Fusion</th><th data-en="Result" data-fr="Resultat">Result</th><th data-en="Interpretation" data-fr="Interpretation">Interpretation</th></tr>
+            <tr><td><span class="accent">e</span> × <span class="accent">e</span></td><td data-en="Vacuum" data-fr="Vide">Vacuum</td><td data-en="Error correction (pair annihilation)" data-fr="Correction d'erreur (annihilation de paire)">Error correction (pair annihilation)</td></tr>
+            <tr><td><span class="warm">m</span> × <span class="warm">m</span></td><td data-en="Vacuum" data-fr="Vide">Vacuum</td><td data-en="Error correction (pair annihilation)" data-fr="Correction d'erreur (annihilation de paire)">Error correction (pair annihilation)</td></tr>
+            <tr><td><span class="accent">e</span> × <span class="warm">m</span></td><td data-en="Fermion (ε)" data-fr="Fermion (ε)">Fermion (ε)</td><td data-en="Composite excitation" data-fr="Excitation composite">Composite excitation</td></tr>
+        </table>
+    </div>
+</div>
+
+<!-- SLIDE 6: Braiding -->
+<div class="slide">
+    <h3 data-en="BRAIDING STATISTICS" data-fr="STATISTIQUES DE TRESSAGE">BRAIDING STATISTICS</h3>
+    <h2 data-en="Braiding e Around m" data-fr="Tresser e Autour de m">Braiding e Around m</h2>
+    <p data-en="When an e-particle completes a loop enclosing an m-particle, the wavefunction acquires phase (-1). This is computed from Pauli anticommutation: XZ = -ZX on shared qubits." data-fr="Quand une particule-e complete une boucle autour d'une particule-m, la fonction d'onde acquiert la phase (-1). Calcule via l'anticommutation de Pauli: XZ = -ZX.">When an e-particle completes a loop enclosing an m-particle, the wavefunction acquires phase (-1). This is computed from Pauli anticommutation: XZ = -ZX on shared qubits.</p>
+    <div class="canvas-wrap">
+        <canvas id="braidCanvas" width="600" height="350"></canvas>
+    </div>
+    <div class="formula" style="text-align:center; width:100%">
+        Phase = (-1)<sup style="color:var(--red)">crossings</sup> &nbsp; | &nbsp;
+        <span class="accent">e</span> around <span class="warm">m</span> : crossings = 1 &rarr; phase = <span style="color:var(--red); font-weight:600">-1</span>
+    </div>
+</div>
+
+<!-- SLIDE 7: Logical Operators -->
+<div class="slide">
+    <h3 data-en="LOGICAL OPERATORS" data-fr="OPERATEURS LOGIQUES">LOGICAL OPERATORS</h3>
+    <h2 data-en="Non-Contractible Cycles on T²" data-fr="Cycles Non-Contractibles sur T²">Non-Contractible Cycles on T²</h2>
+    <div class="card-grid">
+        <div class="card">
+            <h3 style="color: var(--green)" data-en="Z̄₁ — HORIZONTAL CYCLE" data-fr="Z̄₁ — CYCLE HORIZONTAL">Z̄₁ — HORIZONTAL CYCLE</h3>
+            <p data-en="Z on all horizontal edges in a row. Wraps around T² horizontally. Cannot be created by local errors — requires N errors." data-fr="Z sur toutes les aretes horizontales d'une rangee. Enveloppe T² horizontalement. Necessite N erreurs.">Z on all horizontal edges in a row. Wraps around T² horizontally. Cannot be created by local errors — requires N errors.</p>
+        </div>
+        <div class="card">
+            <h3 style="color: var(--gold)" data-en="X̄₁ — VERTICAL CO-CYCLE" data-fr="X̄₁ — CO-CYCLE VERTICAL">X̄₁ — VERTICAL CO-CYCLE</h3>
+            <p data-en="X on all vertical edges in a column. Wraps around T² vertically. Anticommutes with Z̄₁ — they share exactly 1 edge." data-fr="X sur toutes les aretes verticales d'une colonne. Anticommute avec Z̄₁ — ils partagent exactement 1 arete.">X on all vertical edges in a column. Wraps around T² vertically. Anticommutes with Z̄₁ — they share exactly 1 edge.</p>
+        </div>
+    </div>
+    <div style="margin-top:20px">
+        <div class="formula">{<span class="accent">Z̄₁</span>, <span class="warm">X̄₁</span>} = 0 &nbsp;&nbsp; | &nbsp;&nbsp; Code distance d = N &nbsp;&nbsp; | &nbsp;&nbsp; H₁(T², Z₂) = Z₂ × Z₂ &rarr; 2 logical qubits</div>
+        <p style="margin-top:12px" data-en="Verified for all lattice sizes N = 4, 8, 12, 16, 20 in simulation." data-fr="Verifie pour toutes les tailles de reseau N = 4, 8, 12, 16, 20 en simulation.">Verified for all lattice sizes N = 4, 8, 12, 16, 20 in simulation.</p>
+    </div>
+</div>
+
+<!-- SLIDE 8: Threshold -->
+<div class="slide">
+    <h3 data-en="THRESHOLD" data-fr="SEUIL">THRESHOLD</h3>
+    <h2 data-en="Phase Transition at p_c ≈ 9%" data-fr="Transition de Phase a p_c ≈ 9%">Phase Transition at p<sub>c</sub> ≈ 9%</h2>
+    <p data-en="Below threshold: larger lattice → exponentially lower logical error rate. Above threshold: errors overwhelm the code. The crossing point is a topological phase transition." data-fr="Sous le seuil: reseau plus grand → taux d'erreur logique exponentiellement plus bas. Au-dessus: les erreurs submergent le code.">Below threshold: larger lattice → exponentially lower logical error rate. Above threshold: errors overwhelm the code. The crossing point is a topological phase transition.</p>
+    <div class="canvas-wrap">
+        <canvas id="thresholdCanvas" width="650" height="340"></canvas>
+    </div>
+    <div class="formula">
+        P<sub>L</sub> ~ exp(-α(p) · N) &nbsp; for &nbsp; p < p<sub>c</sub> &nbsp;&nbsp; | &nbsp;&nbsp;
+        <span data-en="Doubling N squares the protection factor" data-fr="Doubler N met au carre le facteur de protection">Doubling N squares the protection factor</span>
+    </div>
+</div>
+
+<!-- SLIDE 9: T² Unification -->
+<div class="slide">
+    <h3 data-en="UNIFICATION" data-fr="UNIFICATION">UNIFICATION</h3>
+    <h2 data-en="One Torus, Three Domains" data-fr="Un Tore, Trois Domaines">One Torus, Three Domains</h2>
+    <p data-en="The same T² geometry provides protection across quantum error correction, distributed consensus, and machine learning. This is not analogy — it is the same spectral gap, the same non-contractible cycles, the same topological invariants." data-fr="La meme geometrie T² fournit une protection en correction d'erreur quantique, consensus distribue et apprentissage automatique. Ce n'est pas une analogie — c'est le meme gap spectral.">The same T² geometry provides protection across quantum error correction, distributed consensus, and machine learning. This is not analogy — it is the same spectral gap, the same non-contractible cycles, the same topological invariants.</p>
+    <div class="card-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top: 24px">
+        <div class="card">
+            <h3 data-en="QUANTUM ERROR CORRECTION" data-fr="CORRECTION D'ERREUR QUANTIQUE">QUANTUM ERROR CORRECTION</h3>
+            <p data-en="T² lattice → code distance d=N. Non-contractible cycles = logical operators. Exponential suppression of errors." data-fr="Reseau T² → distance de code d=N. Cycles non-contractibles = operateurs logiques.">T² lattice → code distance d=N. Non-contractible cycles = logical operators. Exponential suppression of errors.</p>
+            <div class="formula" style="font-size:14px">toric-code-sim</div>
+        </div>
+        <div class="card">
+            <h3 data-en="CONSENSUS" data-fr="CONSENSUS">CONSENSUS</h3>
+            <p data-en="Tonnetz T² → Proof of Coherence. Spectral gap of torus Laplacian bounds validator drift. Byzantine fault tolerance from topology." data-fr="Tonnetz T² → Preuve de Coherence. Le gap spectral du Laplacien torique borne la derive des validateurs.">Tonnetz T² → Proof of Coherence. Spectral gap of torus Laplacian bounds validator drift. Byzantine fault tolerance from topology.</p>
+            <div class="formula" style="font-size:14px">topological-coherence</div>
+        </div>
+        <div class="card">
+            <h3 data-en="MACHINE LEARNING" data-fr="APPRENTISSAGE AUTOMATIQUE">MACHINE LEARNING</h3>
+            <p data-en="Toroidal logit bias → +40% drift reduction, +6.8% TruthfulQA. Torus attention masks filter non-resonant modes via spectral alignment." data-fr="Biais logit toroidal → +40% reduction de derive, +6.8% TruthfulQA. Les masques d'attention toroidaux filtrent les modes non-resonants.">Toroidal logit bias → +40% drift reduction, +6.8% TruthfulQA. Torus attention masks filter non-resonant modes via spectral alignment.</p>
+            <div class="formula" style="font-size:14px">DOI: 10.5281/zenodo.18516477</div>
+        </div>
+    </div>
+</div>
+
+<!-- SLIDE 10: Links -->
+<div class="slide">
+    <h3 data-en="LINKS & REFERENCES" data-fr="LIENS & REFERENCES">LINKS & REFERENCES</h3>
+    <h2 data-en="Explore Further" data-fr="Explorer Davantage">Explore Further</h2>
+    <ul class="link-list">
+        <li>
+            <a href="https://github.com/Paraxiom" target="_blank">github.com/Paraxiom</a>
+            <div class="desc" data-en="toric-code-sim, topological-coherence, qssh, and 45 other repositories" data-fr="toric-code-sim, topological-coherence, qssh, et 45 autres depots">toric-code-sim, topological-coherence, qssh, and 45 other repositories</div>
+        </li>
+        <li>
+            <a href="https://doi.org/10.5281/zenodo.18516477" target="_blank">Toroidal Logit Bias (Zenodo)</a>
+            <div class="desc" data-en="+40% error reduction, +6.8% TruthfulQA across 4 models — February 2026" data-fr="+40% reduction d'erreur, +6.8% TruthfulQA sur 4 modeles — Fevrier 2026">+40% error reduction, +6.8% TruthfulQA across 4 models — February 2026</div>
+        </li>
+        <li>
+            <a href="https://doi.org/10.5281/zenodo.14538933" target="_blank">Topological Coherence (Zenodo)</a>
+            <div class="desc" data-en="Unified theory: Tonnetz toroidal manifold for consensus, ML, and QEC" data-fr="Theorie unifiee: variete toroidale de Tonnetz pour le consensus, le ML et la QEC">Unified theory: Tonnetz toroidal manifold for consensus, ML, and QEC</div>
+        </li>
+        <li>
+            <a href="https://doi.org/10.1016/S0003-4916(02)00018-0" target="_blank">Kitaev (2003) — Fault-tolerant quantum computation by anyons</a>
+            <div class="desc" data-en="The foundational paper on the toric code and anyonic quantum computation" data-fr="L'article fondateur sur le code torique et le calcul quantique anyonique">The foundational paper on the toric code and anyonic quantum computation</div>
+        </li>
+        <li>
+            <a href="https://paraxiom.org" target="_blank">paraxiom.org</a>
+            <div class="desc" data-en="Paraxiom Technologies Inc. — Quantum, PQC, and distributed systems" data-fr="Paraxiom Technologies Inc. — Quantique, PQC et systemes distribues">Paraxiom Technologies Inc. — Quantum, PQC, and distributed systems</div>
+        </li>
+        <li>
+            <a href="mailto:sylvain@paraxiom.org">sylvain@paraxiom.org</a>
+            <div class="desc" data-en="Consulting and collaboration inquiries" data-fr="Demandes de consultation et de collaboration">Consulting and collaboration inquiries</div>
+        </li>
+    </ul>
+</div>
+
+</div><!-- /presentation -->
+
+<script>
+// ═══ Slide Engine ═══
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+let current = 0;
+let lang = 'en';
+
+function goTo(n) {
+    if (n < 0 || n >= total) return;
+    slides[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    document.getElementById('cur').textContent = current + 1;
+    updateNavItems();
+    closeMap();
+    // Trigger canvas draws for specific slides
+    if (current === 2) drawLattice();
+    if (current === 5) startBraidAnimation();
+    if (current === 7) drawThreshold();
+}
+
+function next() { goTo(current + 1); }
+function prev() { goTo(current - 1); }
+
+// ═══ Keyboard Navigation ═══
+document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+    else if (e.key === 'm' || e.key === 'M') { toggleMap(); }
+    else if (e.key === 'Escape') { closeMap(); }
+});
+
+// ═══ Navigation Map ═══
+const navNames = ['Title','Problem','Lattice','Stabilizers','Anyons','Braiding','Logical Ops','Threshold','Unification','Links'];
+const navGrid = document.getElementById('navGrid');
+navNames.forEach((name, i) => {
+    const item = document.createElement('div');
+    item.className = 'nav-item' + (i === 0 ? ' active' : '');
+    item.innerHTML = `<div class="num">${i + 1}</div><span>${name}</span>`;
+    item.onclick = () => goTo(i);
+    navGrid.appendChild(item);
+});
+
+function updateNavItems() {
+    document.querySelectorAll('.nav-item').forEach((el, i) => {
+        el.classList.toggle('active', i === current);
+    });
+}
+
+function toggleMap() { document.getElementById('navMap').classList.toggle('open'); }
+function closeMap() { document.getElementById('navMap').classList.remove('open'); }
+
+// ═══ Language Toggle ═══
+function toggleLang() {
+    lang = lang === 'en' ? 'fr' : 'en';
+    document.querySelectorAll('[data-en]').forEach(el => {
+        el.textContent = el.getAttribute('data-' + lang);
+    });
+}
+
+// ═══ Canvas: Toric Lattice (Slide 3) ═══
+let latticeTime = 0;
+function drawLattice() {
+    const c = document.getElementById('latticeCanvas');
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    const W = c.width, H = c.height;
+    const N = 6, spacing = 50, ox = 80, oy = 50;
+
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        // Plaquette shading
+        for (let r = 0; r < N - 1; r++) {
+            for (let cl = 0; cl < N - 1; cl++) {
+                const x = ox + cl * spacing, y = oy + r * spacing;
+                ctx.fillStyle = (r + cl) % 2 === 0 ? 'rgba(106,154,106,0.06)' : 'rgba(160,138,98,0.04)';
+                ctx.fillRect(x, y, spacing, spacing);
+            }
+        }
+
+        // Edges
+        for (let r = 0; r < N; r++) {
+            for (let cl = 0; cl < N; cl++) {
+                const x = ox + cl * spacing, y = oy + r * spacing;
+                // Horizontal
+                if (cl < N - 1) {
+                    ctx.strokeStyle = '#6a9a6a';
+                    ctx.lineWidth = 2;
+                    ctx.globalAlpha = 0.6;
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + spacing, y); ctx.stroke();
+                }
+                // Vertical
+                if (r < N - 1) {
+                    ctx.strokeStyle = '#a08a62';
+                    ctx.lineWidth = 2;
+                    ctx.globalAlpha = 0.6;
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + spacing); ctx.stroke();
+                }
+            }
+        }
+        ctx.globalAlpha = 1;
+
+        // Wrap indicators (top-bottom and left-right)
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = '#a08a62'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.4;
+        // Bottom wrap
+        for (let cl = 0; cl < N; cl++) {
+            const x = ox + cl * spacing;
+            ctx.beginPath();
+            ctx.moveTo(x, oy + (N - 1) * spacing);
+            ctx.lineTo(x, oy + (N - 1) * spacing + 25);
+            ctx.stroke();
+        }
+        // Right wrap
+        for (let r = 0; r < N; r++) {
+            const y = oy + r * spacing;
+            ctx.beginPath();
+            ctx.moveTo(ox + (N - 1) * spacing, y);
+            ctx.lineTo(ox + (N - 1) * spacing + 25, y);
+            ctx.stroke();
+        }
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+
+        // Vertices
+        for (let r = 0; r < N; r++) {
+            for (let cl = 0; cl < N; cl++) {
+                const x = ox + cl * spacing, y = oy + r * spacing;
+                const pulse = 1 + 0.15 * Math.sin(latticeTime * 0.02 + r * 0.5 + cl * 0.7);
+                ctx.beginPath();
+                ctx.arc(x, y, 4 * pulse, 0, Math.PI * 2);
+                ctx.fillStyle = '#dad7cd';
+                ctx.fill();
+            }
+        }
+
+        // Labels
+        ctx.font = '12px Outfit, sans-serif';
+        ctx.fillStyle = '#8a9a8a';
+        ctx.fillText('Periodic boundary →', ox + (N - 1) * spacing + 30, oy + 15);
+        ctx.fillText('Periodic boundary ↓', ox + 5, oy + (N - 1) * spacing + 40);
+
+        // A_v label
+        ctx.fillStyle = '#dad7cd'; ctx.font = '13px Outfit';
+        ctx.fillText('A_v', ox + spacing + 8, oy + spacing - 8);
+        // B_p label
+        ctx.fillStyle = '#6a9a6a'; ctx.font = '13px Outfit';
+        ctx.fillText('B_p', ox + spacing / 2 - 10, oy + spacing / 2 + 5);
+
+        // Legend
+        const lx = W - 180, ly = 30;
+        ctx.font = '11px Outfit'; ctx.fillStyle = '#8a9a8a';
+        ctx.strokeStyle = '#6a9a6a'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 20, ly); ctx.stroke();
+        ctx.fillText('H-edge (qubit)', lx + 26, ly + 4);
+        ctx.strokeStyle = '#a08a62';
+        ctx.beginPath(); ctx.moveTo(lx, ly + 18); ctx.lineTo(lx + 20, ly + 18); ctx.stroke();
+        ctx.fillText('V-edge (qubit)', lx + 26, ly + 22);
+        ctx.beginPath(); ctx.arc(lx + 10, ly + 36, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#dad7cd'; ctx.fill();
+        ctx.fillStyle = '#8a9a8a'; ctx.fillText('Vertex (A_v)', lx + 26, ly + 40);
+
+        latticeTime++;
+        requestAnimationFrame(draw);
+    }
+    draw();
+}
+
+// ═══ Canvas: Braiding Animation (Slide 6) ═══
+let braidTime = 0;
+let braidRunning = false;
+
+function startBraidAnimation() {
+    if (braidRunning) return;
+    braidRunning = true;
+    braidTime = 0;
+
+    const c = document.getElementById('braidCanvas');
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    const W = c.width, H = c.height;
+    const sp = 70, ox = 100, oy = 40;
+    const N = 5;
+
+    // Path: rectangular loop around center plaquette
+    const pathVerts = [
+        [1, 1], [2, 1], [3, 1],  // right
+        [3, 2], [3, 3],          // down
+        [2, 3], [1, 3],          // left
+        [1, 2], [1, 1]           // up, back to start
+    ];
+    const totalSteps = pathVerts.length - 1;
+
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+
+        // Grid
+        ctx.globalAlpha = 0.25;
+        for (let r = 0; r < N; r++) {
+            for (let cl = 0; cl < N; cl++) {
+                const x = ox + cl * sp, y = oy + r * sp;
+                if (cl < N - 1) {
+                    ctx.strokeStyle = '#4a6a4a'; ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + sp, y); ctx.stroke();
+                }
+                if (r < N - 1) {
+                    ctx.strokeStyle = '#4a6a4a'; ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + sp); ctx.stroke();
+                }
+            }
+        }
+        ctx.globalAlpha = 1;
+
+        // Vertices
+        ctx.fillStyle = '#555';
+        for (let r = 0; r < N; r++) {
+            for (let cl = 0; cl < N; cl++) {
+                ctx.beginPath();
+                ctx.arc(ox + cl * sp, oy + r * sp, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // m-particle at center of loop
+        const mx = ox + 2 * sp, my = oy + 2 * sp;
+        ctx.beginPath(); ctx.arc(mx, my, 16, 0, Math.PI * 2);
+        ctx.strokeStyle = '#a08a62'; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.beginPath(); ctx.arc(mx, my, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#a08a62'; ctx.fill();
+        ctx.font = '15px Outfit'; ctx.fillStyle = '#a08a62';
+        ctx.fillText('m', mx - 5, my - 22);
+
+        // Animate e-particle along path
+        const progress = (braidTime % 300) / 300; // 0..1 loop
+        const floatStep = progress * totalSteps;
+        const stepIdx = Math.floor(floatStep);
+        const frac = floatStep - stepIdx;
+        const fromV = pathVerts[Math.min(stepIdx, totalSteps - 1)];
+        const toV = pathVerts[Math.min(stepIdx + 1, totalSteps)];
+
+        // Draw completed path segments (green trail)
+        ctx.strokeStyle = '#6a9a6a'; ctx.lineWidth = 3; ctx.globalAlpha = 0.5;
+        for (let i = 0; i < stepIdx && i < totalSteps; i++) {
+            const a = pathVerts[i], b = pathVerts[i + 1];
+            ctx.beginPath();
+            ctx.moveTo(ox + a[0] * sp, oy + a[1] * sp);
+            ctx.lineTo(ox + b[0] * sp, oy + b[1] * sp);
+            ctx.stroke();
+        }
+        // Current segment partial
+        if (stepIdx < totalSteps) {
+            const a = fromV, b = toV;
+            ctx.beginPath();
+            ctx.moveTo(ox + a[0] * sp, oy + a[1] * sp);
+            ctx.lineTo(
+                ox + (a[0] + (b[0] - a[0]) * frac) * sp,
+                oy + (a[1] + (b[1] - a[1]) * frac) * sp
+            );
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        // XZ overlap highlight (vertical edge between (2,1)-(2,2))
+        if (stepIdx >= 3 || (stepIdx === 2 && frac > 0.5)) {
+            ctx.strokeStyle = '#c06060'; ctx.lineWidth = 4; ctx.globalAlpha = 0.6;
+            ctx.beginPath();
+            ctx.moveTo(ox + 2 * sp, oy + 1 * sp);  // approximate shared edge
+            ctx.lineTo(ox + 2 * sp, oy + 2 * sp);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.font = '11px Outfit'; ctx.fillStyle = '#c06060';
+            ctx.fillText('XZ', ox + 2 * sp + 6, oy + 1.5 * sp);
+        }
+
+        // e-particle current position
+        const ex = ox + (fromV[0] + (toV[0] - fromV[0]) * frac) * sp;
+        const ey = oy + (fromV[1] + (toV[1] - fromV[1]) * frac) * sp;
+        ctx.beginPath(); ctx.arc(ex, ey, 12, 0, Math.PI * 2);
+        ctx.strokeStyle = '#6a9a6a'; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.beginPath(); ctx.arc(ex, ey, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#6a9a6a'; ctx.fill();
+        ctx.font = '14px Outfit'; ctx.fillStyle = '#6a9a6a';
+        ctx.fillText('e', ex - 4, ey - 16);
+
+        // Phase readout
+        const phaseText = progress > 0.95 ? 'Phase = -1' : `Braiding ${Math.round(progress * 100)}%`;
+        const phaseColor = progress > 0.95 ? '#c06060' : '#8a9a8a';
+        ctx.font = '14px Outfit'; ctx.fillStyle = phaseColor;
+        ctx.fillText(phaseText, W - 160, 30);
+
+        braidTime++;
+        if (current === 5) requestAnimationFrame(draw);
+        else braidRunning = false;
+    }
+    draw();
+}
+
+// ═══ Canvas: Threshold Chart (Slide 8) ═══
+let thresholdDrawn = false;
+
+function drawThreshold() {
+    if (thresholdDrawn) return;
+    thresholdDrawn = true;
+
+    const c = document.getElementById('thresholdCanvas');
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    const W = c.width, H = c.height;
+    const pad = { left: 65, right: 30, top: 25, bottom: 45 };
+    const gw = W - pad.left - pad.right;
+    const gh = H - pad.top - pad.bottom;
+
+    function px(p) { return pad.left + (p / 0.20) * gw; }
+    function py(pl) { return pad.top + (1 - pl) * gh; }
+
+    // Simulated threshold data (representative of greedy decoder)
+    const data = {
+        4:  [[0,0],[0.02,0.01],[0.04,0.04],[0.06,0.12],[0.08,0.25],[0.09,0.35],[0.10,0.48],[0.12,0.62],[0.14,0.74],[0.16,0.84],[0.18,0.91],[0.20,0.95]],
+        6:  [[0,0],[0.02,0.005],[0.04,0.02],[0.06,0.08],[0.08,0.22],[0.09,0.34],[0.10,0.50],[0.12,0.68],[0.14,0.82],[0.16,0.90],[0.18,0.95],[0.20,0.97]],
+        8:  [[0,0],[0.02,0.002],[0.04,0.01],[0.06,0.05],[0.08,0.18],[0.09,0.33],[0.10,0.52],[0.12,0.73],[0.14,0.87],[0.16,0.94],[0.18,0.97],[0.20,0.99]],
+        10: [[0,0],[0.02,0.001],[0.04,0.005],[0.06,0.03],[0.08,0.14],[0.09,0.32],[0.10,0.55],[0.12,0.78],[0.14,0.91],[0.16,0.96],[0.18,0.98],[0.20,0.99]],
+        12: [[0,0],[0.02,0.0005],[0.04,0.003],[0.06,0.02],[0.08,0.11],[0.09,0.31],[0.10,0.57],[0.12,0.82],[0.14,0.93],[0.16,0.97],[0.18,0.99],[0.20,0.99]]
+    };
+
+    const colors = {4:'rgba(106,154,106,0.5)',6:'rgba(106,154,106,0.65)',8:'rgba(106,154,106,0.8)',10:'rgba(160,138,98,0.85)',12:'rgba(160,138,98,1)'};
+    const widths = {4:1.5, 6:1.8, 8:2.1, 10:2.4, 12:2.8};
+
+    let drawProgress = 0;
+    const maxProgress = 60;
+
+    function animate() {
+        ctx.clearRect(0, 0, W, H);
+
+        // Grid
+        ctx.strokeStyle = '#333'; ctx.lineWidth = 0.5;
+        for (let pl = 0.2; pl <= 1.0; pl += 0.2) {
+            ctx.beginPath(); ctx.moveTo(pad.left, py(pl)); ctx.lineTo(W - pad.right, py(pl)); ctx.stroke();
+        }
+
+        // Axes
+        ctx.strokeStyle = '#8a9a8a'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pad.left, pad.top); ctx.lineTo(pad.left, H - pad.bottom); ctx.lineTo(W - pad.right, H - pad.bottom); ctx.stroke();
+
+        // Labels
+        ctx.font = '11px Outfit'; ctx.fillStyle = '#8a9a8a';
+        ctx.fillText('P_L', 15, pad.top + gh / 2);
+        ctx.fillText('Physical Error Rate p', pad.left + gw / 2 - 50, H - 5);
+        // Y ticks
+        for (let pl = 0; pl <= 1.0; pl += 0.2) {
+            ctx.fillText(pl.toFixed(1), pad.left - 30, py(pl) + 4);
+        }
+        // X ticks
+        for (let p = 0; p <= 0.20; p += 0.04) {
+            ctx.fillText((p * 100).toFixed(0) + '%', px(p) - 8, H - pad.bottom + 16);
+        }
+
+        // Threshold line
+        ctx.setLineDash([6, 4]);
+        ctx.strokeStyle = '#c06060'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.6;
+        ctx.beginPath(); ctx.moveTo(px(0.09), pad.top); ctx.lineTo(px(0.09), H - pad.bottom); ctx.stroke();
+        ctx.setLineDash([]); ctx.globalAlpha = 1;
+        ctx.fillStyle = '#c06060'; ctx.font = '12px Outfit';
+        ctx.fillText('p_c ≈ 9%', px(0.09) - 22, pad.top - 5);
+
+        // Draw curves with progressive reveal
+        const revealFrac = Math.min(drawProgress / maxProgress, 1);
+        const pointsToShow = Math.floor(revealFrac * 12);
+
+        for (const [n, pts] of Object.entries(data)) {
+            ctx.strokeStyle = colors[n]; ctx.lineWidth = widths[n];
+            ctx.beginPath();
+            for (let i = 0; i < Math.min(pts.length, pointsToShow + 1); i++) {
+                const x = px(pts[i][0]), y = py(pts[i][1]);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+
+        // Legend
+        const lx = W - 130, ly = pad.top + 10;
+        ctx.font = '10px Outfit';
+        let yi = 0;
+        for (const n of [4, 6, 8, 10, 12]) {
+            ctx.strokeStyle = colors[n]; ctx.lineWidth = widths[n];
+            ctx.beginPath(); ctx.moveTo(lx, ly + yi); ctx.lineTo(lx + 20, ly + yi); ctx.stroke();
+            ctx.fillStyle = '#8a9a8a';
+            ctx.fillText('N = ' + n, lx + 25, ly + yi + 4);
+            yi += 16;
+        }
+
+        drawProgress++;
+        if (drawProgress <= maxProgress + 5) requestAnimationFrame(animate);
+    }
+    animate();
+}
+
+// ═══ Init ═══
+document.getElementById('tot').textContent = total;
+// Auto-draw lattice if starting on slide 3
+if (current === 2) drawLattice();
+</script>
+</body>
+</html>
