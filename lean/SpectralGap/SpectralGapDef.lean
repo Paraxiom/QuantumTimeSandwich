@@ -135,20 +135,18 @@ theorem spectralGap_mono (N : Nat) (hN : N ≥ 3) :
 theorem spectralGap_at_two_pi : 2 - 2 * Real.cos (2 * Real.pi) = 0 := by
   rw [Real.cos_two_pi]; ring
 
-/-! ## Eigenvalue formula (DEFERRED) -/
+/-! ## Eigenvalue formula
 
-/-- **DEFERRED**: The spectral gap formula λ₁ = 2 - 2cos(2π/N) is indeed
-    the smallest nonzero eigenvalue of the graph Laplacian of C_N.
+    The spectral gap formula λ₁ = 2 - 2cos(2π/N) is an eigenvalue of the
+    graph Laplacian L = D - A for the cycle graph C_N.
 
-    Full proof requires:
-    1. Constructing the discrete Fourier basis on Z/NZ
-    2. Showing these are eigenvectors of the Laplacian
-    3. Computing the corresponding eigenvalues
-    4. Showing 2-2cos(2π/N) is the minimum nonzero one
+    Proved in SpectralGap.FourierBasis via discrete Fourier analysis:
+    the character χ₁(x) = ζ^x (where ζ = exp(2πi/N)) is a nonzero
+    eigenvector of the Laplacian with eigenvalue spectralGap N.
 
-    Tracked: PROOF_STRATEGY.md Phase 4. -/
-theorem spectralGap_is_eigenvalue (_N : Nat) (_hN : _N ≥ 3) :
-    True := by
-  sorry -- DEFERRED: requires discrete Fourier transform on Fin N
+    Note: minimality (that λ₁ is the SMALLEST nonzero eigenvalue)
+    requires the full Fourier basis completeness argument and is
+    left as a strengthening for future work. The eigenvector property
+    alone establishes that spectralGap N IS an eigenvalue. -/
 
 end SpectralGap

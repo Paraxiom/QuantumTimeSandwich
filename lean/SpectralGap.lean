@@ -6,3 +6,4 @@ import SpectralGap.ZModDistance
 import SpectralGap.CycleGraph
 import SpectralGap.Torus
 import SpectralGap.SpectralGapDef
+import SpectralGap.FourierBasis
