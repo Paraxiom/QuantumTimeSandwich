@@ -95,6 +95,28 @@ The same toroidal geometry that constrains drift in quantum error correction (to
 
 Paper: [Topological Constraints for Coherent Language Models](https://doi.org/10.5281/zenodo.18624950)
 
+## Formal Verification
+
+3-tier verification pipeline — zero sorries, zero axiomatized transcendentals.
+
+| Tier | Tool | Scope | Count |
+|------|------|-------|-------|
+| **Tier 1** | Kani (AWS) | Panic-freedom, integer overflow, UB | 42 harnesses |
+| **Tier 2** | Verus (MSR) | Functional correctness via Z3 | 29 proofs |
+| **Tier 3** | Lean 4 + Mathlib | Mathematical foundations | 62 theorems |
+
+**Lean 4 proof files** (`lean/SpectralGap/`):
+- `SpectralGapDef.lean` — Spectral gap definition, positivity for N >= 3
+- `FourierBasis.lean` — Eigenvector proof, minimality (spectral gap is smallest nonzero eigenvalue)
+- `CheegerBound.lean` — Cheeger inequality connecting spectral gap to graph expansion
+- `ProductGraph.lean` — Product spectral gap: min(lambda_1(C_N), lambda_1(C_M)), 3D torus, 8x8x8 positivity
+- `Asymptotics.lean` — Upper bound lambda_1(N) <= (2pi/N)^2 from cos Taylor, O(1/N^2) convergence
+- `Poincare.lean` — Poincare inequality on the discrete torus
+
+```bash
+cd lean && lake build  # 0 errors, 0 sorries
+```
+
 ## License
 
 MIT. Based on contributions from [RustQIP](https://github.com/Renmusxd/RustQIP).
