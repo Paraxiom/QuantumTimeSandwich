@@ -53,5 +53,8 @@ pub mod covariant;
 pub mod cnt_physics;
 pub mod cnt_bridge;
 pub mod logit_drift;
+pub mod lindblad;
+pub mod noise;
+pub mod wilson_comparison;
 pub mod sim_worker;
 pub mod gui;
