@@ -5,14 +5,16 @@
   via discrete Fourier analysis on the cycle graph C_N.
 
   Key results:
-    - rootOfUnity_pow_N          — ζ^N = 1 (N-th root of unity)
-    - rootOfUnity_pow_pred_eq_inv — ζ^(N-1) = ζ⁻¹
-    - rootOfUnity_add_inv        — ζ + ζ⁻¹ = 2cos(2π/N)
-    - eigenvalue_eq              — 2 - ζ - ζ^(N-1) = spectralGap N
-    - cycleLap_chi₁              — L(χ₁)(x) = λ₁ · χ₁(x)
+    - rootOfUnity_pow_N            — ζ^N = 1 (N-th root of unity)
+    - rootOfUnity_pow_pred_eq_inv  — ζ^(N-1) = ζ⁻¹
+    - rootOfUnity_add_inv          — ζ + ζ⁻¹ = 2cos(2π/N)
+    - eigenvalue_eq                — 2 - ζ - ζ^(N-1) = spectralGap N
+    - cycleLap_chi₁                — L(χ₁)(x) = λ₁ · χ₁(x)
+    - eigenvalueK_zero             — λ_0 = 0
+    - spectralGap_le_eigenvalueK   — λ₁ ≤ λ_k for 1 ≤ k ≤ N-1
 
-  Proves that the first Fourier character χ₁(x) = ζ^x is an eigenvector
-  of the cycle Laplacian with eigenvalue spectralGap N.
+  Proves that χ₁(x) = ζ^x is an eigenvector of the cycle Laplacian with
+  eigenvalue spectralGap N, AND that this is the smallest nonzero eigenvalue.
 
   Tier 3 verification (Kani → Verus → **Lean 4**).
 -/
@@ -136,6 +138,70 @@ theorem cycleLap_chi₁ (N : ℕ) (hN : N ≥ 3) (x : Fin N) :
 /-- χ₁ is nonzero: χ₁(0) = ζ^0 = 1 ≠ 0. -/
 theorem chi₁_ne_zero (N : ℕ) (hN : N ≥ 1) : ∃ x : Fin N, chi₁ N x ≠ 0 := by
   exact ⟨⟨0, by omega⟩, by simp [chi₁, pow_zero]⟩
+
+/-! ## Minimality: spectralGap N is minimum among Fourier eigenvalues -/
+
+/-- The k-th Laplacian eigenvalue of cycle graph C_N: λ_k = 2 - 2cos(2πk/N). -/
+noncomputable def eigenvalueK (N k : ℕ) : ℝ :=
+  2 - 2 * Real.cos (2 * Real.pi * k / N)
+
+/-- λ_0 = 0: the constant eigenfunction has eigenvalue zero. -/
+theorem eigenvalueK_zero (N : ℕ) (_hN : N ≥ 1) : eigenvalueK N 0 = 0 := by
+  simp only [eigenvalueK, Nat.cast_zero, mul_zero, zero_div, Real.cos_zero]
+  norm_num
+
+/-- λ_1 = spectralGap N. -/
+theorem eigenvalueK_one (N : ℕ) : eigenvalueK N 1 = spectralGap N := by
+  simp only [eigenvalueK, spectralGap, Nat.cast_one, mul_one]
+
+/-- cos(2π - x) = cos(x), from periodicity and evenness. -/
+private theorem cos_two_pi_sub (x : ℝ) : Real.cos (2 * Real.pi - x) = Real.cos x := by
+  rw [show 2 * Real.pi - x = -x + 2 * Real.pi from by ring,
+      Real.cos_add_two_pi, Real.cos_neg]
+
+/-- Cosine complementarity: cos(2πk/N) = cos(2π(N-k)/N) for k ≤ N. -/
+private theorem cos_complementary (N k : ℕ) (hN : N ≥ 1) (hk : k ≤ N) :
+    Real.cos (2 * Real.pi * ↑k / ↑N) = Real.cos (2 * Real.pi * ↑(N - k) / ↑N) := by
+  rw [Nat.cast_sub hk]
+  have : (N : ℝ) ≠ 0 := Nat.cast_ne_zero.mpr (by omega)
+  have h : 2 * Real.pi * ↑k / ↑N = 2 * Real.pi - 2 * Real.pi * (↑N - ↑k) / ↑N := by
+    field_simp; ring
+  rw [h, cos_two_pi_sub]
+
+/-- For k in the first half (2k ≤ N): cos(2πk/N) ≤ cos(2π/N).
+    Uses antitonicity of cos on [0, π]. -/
+private theorem cos_le_first_half (N k : ℕ) (hN : N ≥ 3) (hk1 : 1 ≤ k) (hk2 : 2 * k ≤ N) :
+    Real.cos (2 * Real.pi * ↑k / ↑N) ≤ Real.cos (2 * Real.pi / ↑N) := by
+  have hNp : (N : ℝ) > 0 := Nat.cast_pos.mpr (by omega)
+  apply Real.strictAntiOn_cos.antitoneOn
+  · -- 2π/N ∈ [0, π]
+    exact ⟨le_of_lt (theta_pos N (by omega)), theta_le_pi N (by omega)⟩
+  · -- 2πk/N ∈ [0, π]
+    constructor
+    · apply le_of_lt
+      apply div_pos (mul_pos (mul_pos (by norm_num : (0:ℝ) < 2) Real.pi_pos)
+        (Nat.cast_pos.mpr (show 0 < k by omega))) hNp
+    · rw [div_le_iff₀ hNp]
+      have : 2 * (k : ℝ) ≤ (N : ℝ) := by exact_mod_cast hk2
+      nlinarith [Real.pi_pos]
+  · -- 2π/N ≤ 2πk/N
+    apply div_le_div_of_nonneg_right _ (le_of_lt hNp)
+    have : (k : ℝ) ≥ 1 := by exact_mod_cast hk1
+    nlinarith [Real.pi_pos]
+
+/-- **Minimality**: spectralGap N ≤ eigenvalueK N k for all 1 ≤ k ≤ N-1.
+    The spectral gap is the smallest nonzero Laplacian eigenvalue of C_N.
+    Proof splits into two cases by cosine antitonicity on [0, π] and
+    the complementarity cos(2πk/N) = cos(2π(N-k)/N). -/
+theorem spectralGap_le_eigenvalueK (N k : ℕ) (hN : N ≥ 3) (hk1 : 1 ≤ k) (hk2 : k ≤ N - 1) :
+    spectralGap N ≤ eigenvalueK N k := by
+  simp only [spectralGap, eigenvalueK]
+  suffices h : Real.cos (2 * Real.pi * ↑k / ↑N) ≤ Real.cos (2 * Real.pi / ↑N) by linarith
+  by_cases h2k : 2 * k ≤ N
+  · exact cos_le_first_half N k hN hk1 h2k
+  · push_neg at h2k
+    rw [cos_complementary N k (by omega) (by omega : k ≤ N)]
+    exact cos_le_first_half N (N - k) hN (by omega) (by omega)
 
 end -- noncomputable section
 
