@@ -7,3 +7,5 @@ import SpectralGap.CycleGraph
 import SpectralGap.Torus
 import SpectralGap.SpectralGapDef
 import SpectralGap.FourierBasis
+import SpectralGap.ProductGraph
+import SpectralGap.Asymptotics
