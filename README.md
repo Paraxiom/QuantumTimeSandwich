@@ -103,21 +103,27 @@ Paper: [Topological Constraints for Coherent Language Models](https://doi.org/10
 |------|------|-------|-------|
 | **Tier 1** | Kani (AWS) | Panic-freedom, integer overflow, UB | 42 harnesses |
 | **Tier 2** | Verus (MSR) | Functional correctness via Z3 | 29 proofs |
-| **Tier 3** | Lean 4 + Mathlib | Mathematical foundations | 62 theorems |
+| **Tier 3** | Lean 4 + Mathlib | Mathematical foundations | 48 theorems |
 
 **Lean 4 proof files** (`lean/SpectralGap/`):
-- `SpectralGapDef.lean` — Spectral gap definition, positivity for N >= 3
-- `FourierBasis.lean` — Eigenvector proof, minimality (spectral gap is smallest nonzero eigenvalue)
-- `CheegerBound.lean` — Cheeger inequality connecting spectral gap to graph expansion
-- `ProductGraph.lean` — Product spectral gap: min(lambda_1(C_N), lambda_1(C_M)), 3D torus, 8x8x8 positivity
-- `Asymptotics.lean` — Upper bound lambda_1(N) <= (2pi/N)^2 from cos Taylor, O(1/N^2) convergence
-- `Poincare.lean` — Poincare inequality on the discrete torus
+
+| File | Theorems | Description |
+|------|----------|-------------|
+| `Basic.lean` | 0 | Definitions and foundations |
+| `SpectralGapDef.lean` | 9 | Spectral gap definition, positivity for N >= 3 |
+| `FourierBasis.lean` | 11 | Eigenvector proof, minimality (spectral gap is smallest nonzero eigenvalue) |
+| `CycleGraph.lean` | 3 | Cycle graph properties |
+| `ZModDistance.lean` | 12 | Distance metrics on Z/nZ |
+| `ProductGraph.lean` | 8 | Product spectral gap: min(lambda_1(C_N), lambda_1(C_M)), 3D torus, 8x8x8 positivity |
+| `Asymptotics.lean` | 4 | Upper bound lambda_1(N) <= (2pi/N)^2 from cos Taylor, O(1/N^2) convergence |
+| `Torus.lean` | 1 | Toroidal topology |
+| **Total** | **48** | |
 
 ```bash
 cd lean && lake build  # 0 errors, 0 sorries
 ```
 
-**Paper**: [162 Lean 4 Theorems for Post-Quantum Infrastructure](https://doi.org/10.5281/zenodo.18663125) (Zenodo, Feb 2026)
+**Paper**: [562 Lean 4 Theorems for Post-Quantum Infrastructure](https://doi.org/10.5281/zenodo.18663125) (Zenodo, Feb 2026)
 
 ## License
 
