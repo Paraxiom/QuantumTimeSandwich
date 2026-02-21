@@ -1,4 +1,3 @@
-use crate::unit_circle_states;
 use crate::unit_circle_states::GateType;
 use crate::unit_circle_states::RotationGate;
 use crate::Operation;

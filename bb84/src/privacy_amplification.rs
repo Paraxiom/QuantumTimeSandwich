@@ -1,15 +1,14 @@
 use rand::Rng;
-use ring::digest::{Context, Digest, SHA256};
+use ring::digest::{Context, SHA256};
 
-use ring::digest;
-
+#[allow(dead_code)]
 fn hash_chunk(chunk: &[u8]) -> Vec<u8> {
     let mut context = Context::new(&SHA256);
     context.update(chunk);
     let digest = context.finish();
     digest.as_ref().to_vec()
 }
-
+#[allow(dead_code)]
 fn bools_to_bytes(bools: &[bool]) -> Vec<u8> {
     bools
         .chunks(8)
@@ -22,6 +21,7 @@ fn bools_to_bytes(bools: &[bool]) -> Vec<u8> {
         .collect()
 }
 
+#[allow(dead_code)]
 fn bytes_to_bools(bytes: &[u8]) -> Vec<bool> {
     bytes
         .iter()
@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn test_apply_privacy_amplification() {
         let shared_key = vec![true, false, true, false, true, false, true, false];
-        let amplified_key = apply_privacy_amplification(shared_key);
+        let _amplified_key = apply_privacy_amplification(shared_key);
         // assert the expected outcome
     }
     #[test]

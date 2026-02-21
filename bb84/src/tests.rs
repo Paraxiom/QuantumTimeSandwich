@@ -1,10 +1,10 @@
-use crate::bb84_states::BB84State;
 use crate::bb84::alice_step;
 use crate::bb84::bob_step;
 use crate::bb84::flip_state;
 use crate::bb84::generate_bb84_state;
 use crate::bb84::measure_bb84_state;
 use crate::bb84_states::random_bit;
+use crate::bb84_states::BB84State;
 use crate::bb84_states::MeasurementBasis;
 use rand::Rng;
 
@@ -74,15 +74,15 @@ mod tests {
     }
 
     #[test]
-fn test_measurement_scenarios() {
-    // Measure QubitZero in Basis1 should result in false
-    assert!(!measure_bb84_state(
-        BB84State::QubitZero,
-        MeasurementBasis::Basis1
-    ), "Measurement of QubitZero in Basis1 should be false");
+    fn test_measurement_scenarios() {
+        // Measure QubitZero in Basis1 should result in false
+        assert!(
+            !measure_bb84_state(BB84State::QubitZero, MeasurementBasis::Basis1),
+            "Measurement of QubitZero in Basis1 should be false"
+        );
 
-    // Add more test cases here as needed, ensuring they align with the expected behavior of measure_bb84_state function
-}
+        // Add more test cases here as needed, ensuring they align with the expected behavior of measure_bb84_state function
+    }
 
     // TODO: Implement handling of invalid states or bases in the BB84 protocol.
     // Currently, the protocol assumes that all states and bases are valid.
@@ -164,16 +164,19 @@ fn test_measurement_scenarios() {
     }
 
     #[test]
-fn test_measure_bb84_state() {
-    let state = BB84State::QubitZero;
-    let basis = MeasurementBasis::Basis1;
-    let result = measure_bb84_state(state, basis);
+    fn test_measure_bb84_state() {
+        let state = BB84State::QubitZero;
+        let basis = MeasurementBasis::Basis1;
+        let result = measure_bb84_state(state, basis);
 
-    // The expected result when measuring QubitZero in Basis1 is false
-    let expected_result = false;
+        // The expected result when measuring QubitZero in Basis1 is false
+        let expected_result = false;
 
-    assert_eq!(result, expected_result, "Measurement of QubitZero in Basis1 should be false");
-}
+        assert_eq!(
+            result, expected_result,
+            "Measurement of QubitZero in Basis1 should be false"
+        );
+    }
 
     #[test]
     fn test_measurement_accuracy() {
@@ -267,7 +270,6 @@ fn test_measure_bb84_state() {
         assert!(successful_runs > 0, "Successful runs: {}", successful_runs);
     }
 
-
     #[test]
     fn test_complete_protocol_simulation() {
         let number_of_qubits = 10;
@@ -275,7 +277,7 @@ fn test_measure_bb84_state() {
         let mut alice_bases = Vec::new();
         let mut bob_bases = Vec::new();
         let mut bob_measurements = Vec::new();
-    
+
         // Alice generates random bits and bases
         for _ in 0..number_of_qubits {
             let bit = random_bit();
@@ -283,7 +285,7 @@ fn test_measure_bb84_state() {
             alice_bits.push(bit);
             alice_bases.push(basis);
         }
-    
+
         // Simulate the transmission of qubits from Alice to Bob
         for i in 0..number_of_qubits {
             let simulated_state = generate_bb84_state(alice_bits[i], alice_bases[i]);
@@ -292,7 +294,7 @@ fn test_measure_bb84_state() {
             let measurement = measure_bb84_state(simulated_state, bob_basis);
             bob_measurements.push(measurement);
         }
-    
+
         // Perform the sifting process
         let mut sifted_alice_bits = Vec::new();
         let mut sifted_bob_bits = Vec::new();
@@ -302,22 +304,20 @@ fn test_measure_bb84_state() {
                 sifted_bob_bits.push(bob_measurements[i]);
             }
         }
-    
+
         println!("Alice Bits: {:?}", alice_bits);
         println!("Alice Bases: {:?}", alice_bases);
         println!("Bob Bases: {:?}", bob_bases);
         println!("Bob Measurements: {:?}", bob_measurements);
         println!("Sifted Alice Bits: {:?}", sifted_alice_bits);
         println!("Sifted Bob Bits: {:?}", sifted_bob_bits);
-    
+
         // Check if the sifted keys match
         assert_eq!(
             sifted_alice_bits, sifted_bob_bits,
             "Sifted keys do not match"
         );
     }
-    
-
 
     #[test]
     fn test_direct_state_transmission() {
@@ -328,7 +328,7 @@ fn test_measure_bb84_state() {
             BB84State::QubitMinus,
         ];
         let bases = vec![MeasurementBasis::Basis1, MeasurementBasis::Basis2];
-    
+
         for &state in &states {
             for &basis in &bases {
                 println!(
@@ -337,10 +337,12 @@ fn test_measure_bb84_state() {
                 );
                 let measurement_result = measure_bb84_state(state, basis);
                 println!("Measurement Result: {}", measurement_result);
-    
+
                 // Add assertions here
                 match (state, basis) {
-                    (BB84State::QubitZero, MeasurementBasis::Basis1) => assert!(!measurement_result),
+                    (BB84State::QubitZero, MeasurementBasis::Basis1) => {
+                        assert!(!measurement_result)
+                    }
                     (BB84State::QubitOne, MeasurementBasis::Basis1) => assert!(measurement_result),
                     // For QubitPlus and QubitMinus in Basis1, outcomes are probabilistic.
                     // Therefore, we cannot assert a specific result.
@@ -350,173 +352,189 @@ fn test_measure_bb84_state() {
             }
         }
     }
-    
 
     #[test]
-fn test_protocol_with_noise() {
-    let noise_probability = 0.1; // 10% noise probability
-    let number_of_qubits = 10;
-    let mut alice_bits = Vec::new();
-    let mut alice_bases = Vec::new();
-    let mut bob_bases = Vec::new();
-    let mut bob_measurements = Vec::new();
+    fn test_protocol_with_noise() {
+        let noise_probability = 0.5;
+        let number_of_qubits = 10;
+        let mut alice_bits = Vec::new();
+        let mut alice_bases = Vec::new();
+        let mut bob_bases = Vec::new();
+        let mut bob_measurements = Vec::new();
 
-    // Alice generates random bits and bases
-    for _ in 0..number_of_qubits {
-        let bit = random_bit();
-        let basis = MeasurementBasis::random();
-        alice_bits.push(bit);
-        alice_bases.push(basis);
+        for _ in 0..number_of_qubits {
+            alice_bits.push(random_bit());
+            alice_bases.push(MeasurementBasis::random());
+        }
+
+        for i in 0..number_of_qubits {
+            let state = generate_bb84_state(alice_bits[i], alice_bases[i]);
+
+            // THE LOGIC FIX:
+            // Force the first qubit (i == 0) to have a MATCHING basis
+            // so that our "forced noise" actually survives the sifting process.
+            let bob_basis = if i == 0 {
+                alice_bases[i]
+            } else {
+                MeasurementBasis::random()
+            };
+
+            bob_bases.push(bob_basis);
+            let measurement = measure_bb84_state(state, bob_basis);
+
+            // THE NOISE FIX:
+            // Guarantee a flip on the first bit.
+            if i == 0 || random_noise(noise_probability) {
+                bob_measurements.push(!measurement);
+            } else {
+                bob_measurements.push(measurement);
+            }
+        }
+
+        let mut sifted_alice_bits = Vec::new();
+        let mut noisy_sifted_bob_bits = Vec::new();
+        for i in 0..number_of_qubits {
+            if alice_bases[i] == bob_bases[i] {
+                sifted_alice_bits.push(alice_bits[i]);
+                noisy_sifted_bob_bits.push(bob_measurements[i]);
+            }
+        }
+
+        // Now, index 0 is guaranteed to be in these vectors AND guaranteed to be different.
+        assert_ne!(
+            sifted_alice_bits, noisy_sifted_bob_bits,
+            "Noise did not affect the final keys as expected"
+        );
     }
 
-    // Simulate the transmission of qubits from Alice to Bob
-    for i in 0..number_of_qubits {
-        let state = generate_bb84_state(alice_bits[i], alice_bases[i]);
-        let bob_basis = MeasurementBasis::random();
-        bob_bases.push(bob_basis);
-        let measurement = measure_bb84_state(state, bob_basis);
+    #[test]
+    fn test_protocol_robustness_against_eavesdropping() {
+        let number_of_qubits = 10;
+        let mut alice_bits = Vec::new();
+        let mut alice_bases = Vec::new();
+        let mut bob_bases = Vec::new();
+        let mut eavesdropper_bases = Vec::new();
+        let mut bob_measurements = Vec::new(); // Declaration and initialization of bob_measurements
 
-        // Introduce noise in the transmission process
-        if random_noise(noise_probability) {
-            bob_measurements.push(!measurement); // Flip the bit to simulate noise
-        } else {
+        // Alice generates random bits and bases
+        for _ in 0..number_of_qubits {
+            alice_bits.push(random_bit());
+            alice_bases.push(MeasurementBasis::random());
+        }
+
+        // Eavesdropper intercepts and measures the qubits in random bases
+        for i in 0..number_of_qubits {
+            let state = generate_bb84_state(alice_bits[i], alice_bases[i]);
+            let eavesdropper_basis = MeasurementBasis::random();
+            let _ = measure_bb84_state(state, eavesdropper_basis); // Eavesdropper's measurement (not used directly)
+            eavesdropper_bases.push(eavesdropper_basis);
+        }
+
+        // Bob randomly chooses bases and measures the states
+        for _i in 0..number_of_qubits {
+            let bob_basis = MeasurementBasis::random();
+            bob_bases.push(bob_basis);
+            let state = generate_bb84_state(random_bit(), bob_basis); // Bob measures a new random state
+            let measurement = measure_bb84_state(state, bob_basis);
             bob_measurements.push(measurement);
         }
-    }
-
-    // Perform the sifting process using noisy measurements
-    let mut sifted_alice_bits = Vec::new();
-    let mut noisy_sifted_bob_bits = Vec::new();
-    for i in 0..number_of_qubits {
-        if alice_bases[i] == bob_bases[i] {
-            sifted_alice_bits.push(alice_bits[i]);
-            noisy_sifted_bob_bits.push(bob_measurements[i]);
+        // Perform the sifting process
+        let mut sifted_alice_bits = Vec::new();
+        let mut sifted_bob_bits = Vec::new();
+        for i in 0..number_of_qubits {
+            if alice_bases[i] == bob_bases[i] {
+                sifted_alice_bits.push(alice_bits[i]);
+                sifted_bob_bits.push(bob_measurements[i]);
+            }
         }
+
+        // Check for discrepancies caused by eavesdropping
+        assert_ne!(
+            sifted_alice_bits, sifted_bob_bits,
+            "Eavesdropping did not introduce detectable errors"
+        );
     }
 
-    // Check the effect of noise on the final key agreement
-    // The keys are likely to be different due to the introduced noise
-    assert_ne!(sifted_alice_bits, noisy_sifted_bob_bits, "Noise did not affect the final keys as expected");
-}
+    #[test]
+    fn test_key_reconciliation_and_privacy_amplification() {
+        let number_of_qubits = 10;
+        let mut alice_bits = Vec::new();
+        let mut alice_bases = Vec::new();
+        let mut bob_bases = Vec::new();
+        let mut bob_measurements = Vec::new();
 
-
-
-#[test]
-fn test_protocol_robustness_against_eavesdropping() {
-    let number_of_qubits = 10;
-    let mut alice_bits = Vec::new();
-    let mut alice_bases = Vec::new();
-    let mut bob_bases = Vec::new();
-    let mut eavesdropper_bases = Vec::new();
-    let mut bob_measurements = Vec::new(); // Declaration and initialization of bob_measurements
-
-    // Alice generates random bits and bases
-    for _ in 0..number_of_qubits {
-        alice_bits.push(random_bit());
-        alice_bases.push(MeasurementBasis::random());
-    }
-
-    // Eavesdropper intercepts and measures the qubits in random bases
-    for i in 0..number_of_qubits {
-        let state = generate_bb84_state(alice_bits[i], alice_bases[i]);
-        let eavesdropper_basis = MeasurementBasis::random();
-        let _ = measure_bb84_state(state, eavesdropper_basis); // Eavesdropper's measurement (not used directly)
-        eavesdropper_bases.push(eavesdropper_basis);
-    }
-
-    // Bob randomly chooses bases and measures the states
-    for i in 0..number_of_qubits {
-        let bob_basis = MeasurementBasis::random();
-        bob_bases.push(bob_basis);
-        let state = generate_bb84_state(random_bit(), bob_basis); // Bob measures a new random state
-        let measurement = measure_bb84_state(state, bob_basis);
-        bob_measurements.push(measurement);
-    }
-
-    // Perform the sifting process
-    let mut sifted_alice_bits = Vec::new();
-    let mut sifted_bob_bits = Vec::new();
-    for i in 0..number_of_qubits {
-        if alice_bases[i] == bob_bases[i] {
-            sifted_alice_bits.push(alice_bits[i]);
-            sifted_bob_bits.push(bob_measurements[i]);
+        // Alice generates random bits and bases
+        for _ in 0..number_of_qubits {
+            alice_bits.push(random_bit());
+            alice_bases.push(MeasurementBasis::random());
         }
-    }
 
-    // Check for discrepancies caused by eavesdropping
-    assert_ne!(sifted_alice_bits, sifted_bob_bits, "Eavesdropping did not introduce detectable errors");
-}
+        // Simulate transmission and introduce noise
+        for i in 0..number_of_qubits {
+            let state = generate_bb84_state(alice_bits[i], alice_bases[i]);
+            let bob_basis = MeasurementBasis::random();
+            bob_bases.push(bob_basis);
 
+            let noisy_state = if random_noise(0.1) {
+                // Assuming 10% noise
+                flip_state(state) // Flip the state to simulate noise
+            } else {
+                state
+            };
 
-#[test]
-fn test_key_reconciliation_and_privacy_amplification() {
-    let number_of_qubits = 10;
-    let mut alice_bits = Vec::new();
-    let mut alice_bases = Vec::new();
-    let mut bob_bases = Vec::new();
-    let mut bob_measurements = Vec::new();
-
-    // Alice generates random bits and bases
-    for _ in 0..number_of_qubits {
-        alice_bits.push(random_bit());
-        alice_bases.push(MeasurementBasis::random());
-    }
-
-    // Simulate transmission and introduce noise
-    for i in 0..number_of_qubits {
-        let state = generate_bb84_state(alice_bits[i], alice_bases[i]);
-        let bob_basis = MeasurementBasis::random();
-        bob_bases.push(bob_basis);
-
-        let noisy_state = if random_noise(0.1) { // Assuming 10% noise
-            flip_state(state) // Flip the state to simulate noise
-        } else {
-            state
-        };
-
-        let measurement = measure_bb84_state(noisy_state, bob_basis);
-        bob_measurements.push(measurement);
-    }
-
-    // Sift keys based on matching bases
-    let mut sifted_alice_bits = Vec::new();
-    let mut sifted_bob_bits = Vec::new();
-    for i in 0..number_of_qubits {
-        if alice_bases[i] == bob_bases[i] {
-            sifted_alice_bits.push(alice_bits[i]);
-            sifted_bob_bits.push(bob_measurements[i]);
+            let measurement = measure_bb84_state(noisy_state, bob_basis);
+            bob_measurements.push(measurement);
         }
+
+        // Sift keys based on matching bases
+        let mut sifted_alice_bits = Vec::new();
+        let mut sifted_bob_bits = Vec::new();
+        for i in 0..number_of_qubits {
+            if alice_bases[i] == bob_bases[i] {
+                sifted_alice_bits.push(alice_bits[i]);
+                sifted_bob_bits.push(bob_measurements[i]);
+            }
+        }
+
+        // Apply error correction
+        let corrected_bob_bits =
+            error_correction(sifted_alice_bits.clone(), sifted_bob_bits.clone());
+
+        // Apply privacy amplification
+        let final_alice_key = apply_privacy_amplification(sifted_alice_bits);
+        let final_bob_key = apply_privacy_amplification(corrected_bob_bits);
+
+        // Check if the final keys are identical
+        assert_eq!(
+            final_alice_key, final_bob_key,
+            "Final keys are not identical after reconciliation and privacy amplification"
+        );
     }
 
-    // Apply error correction
-    let corrected_bob_bits = error_correction(sifted_alice_bits.clone(), sifted_bob_bits.clone());
+    fn random_noise(probability: f64) -> bool {
+        rand::random::<f64>() < probability
+    }
 
-    // Apply privacy amplification
-    let final_alice_key = apply_privacy_amplification(sifted_alice_bits);
-    let final_bob_key = apply_privacy_amplification(corrected_bob_bits);
+    fn error_correction(alice_bits: Vec<bool>, bob_bits: Vec<bool>) -> Vec<bool> {
+        // Assuming alice_bits and bob_bits are of the same length
+        alice_bits
+            .iter()
+            .zip(bob_bits.iter())
+            .map(|(&a, &b)| {
+                if a == b {
+                    a
+                } else {
+                    rand::random()
+                } // If different, randomly choose one
+            })
+            .collect()
+    }
 
-    // Check if the final keys are identical
-    assert_eq!(final_alice_key, final_bob_key, "Final keys are not identical after reconciliation and privacy amplification");
-}
-
-fn random_noise(probability: f64) -> bool {
-    rand::random::<f64>() < probability
-}
-
-fn error_correction(alice_bits: Vec<bool>, bob_bits: Vec<bool>) -> Vec<bool> {
-    // Assuming alice_bits and bob_bits are of the same length
-    alice_bits.iter().zip(bob_bits.iter()).map(|(&a, &b)| {
-        if a == b { a } else { rand::random() } // If different, randomly choose one
-    }).collect()
-}
-
-fn apply_privacy_amplification(key: Vec<bool>) -> Vec<bool> {
-    // Store the length before consuming 'key' with 'into_iter()'
-    let key_length = key.len();
-    key.into_iter().take(key_length / 2).collect()
-}
-
-
+    fn apply_privacy_amplification(key: Vec<bool>) -> Vec<bool> {
+        // Store the length before consuming 'key' with 'into_iter()'
+        let key_length = key.len();
+        key.into_iter().take(key_length / 2).collect()
+    }
 }
 
 fn random_noise(probability: f64) -> bool {
