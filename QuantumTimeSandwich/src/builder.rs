@@ -77,26 +77,26 @@ impl<P: Precision> LocalBuilder<P> {
     pub fn simulate_gate_with_state_machine(&mut self, gate: UnitaryMatrixObject<P>) {
         match gate {
             UnitaryMatrixObject::X => {
-                let x_gate = RotationGate::new(Complex::new(PI, 0.0), GateType::PauliX);
+                let _x_gate = RotationGate::new(Complex::new(PI, 0.0), GateType::PauliX);
                 self.state_machine.apply_gate(GateType::PauliX);
             }
             UnitaryMatrixObject::Y => {
-                let y_gate = RotationGate::new(Complex::new(0.0, PI), GateType::PauliY);
+                let _y_gate = RotationGate::new(Complex::new(0.0, PI), GateType::PauliY);
                 self.state_machine.apply_gate(GateType::PauliY);
             }
             UnitaryMatrixObject::Z => {
-                let z_gate = RotationGate::new(Complex::new(PI, 0.0), GateType::PauliZ);
+                let _z_gate = RotationGate::new(Complex::new(PI, 0.0), GateType::PauliZ);
                 self.state_machine.apply_gate(GateType::PauliZ);
             }
             UnitaryMatrixObject::H => {
-                let h_gate = RotationGate::new(
+                let _h_gate = RotationGate::new(
                     Complex::new(PI / std::f64::consts::SQRT_2, 0.0),
                     GateType::Hadamard,
                 );
                 self.state_machine.apply_gate(GateType::Hadamard);
             }
             UnitaryMatrixObject::CNOT => {
-                let cnot_gate = RotationGate::new(Complex::new(0.0, 0.0), GateType::CNOT); // Example, adjust as needed
+                let _cnot_gate = RotationGate::new(Complex::new(0.0, 0.0), GateType::CNOT); // Example, adjust as needed
                 self.state_machine.apply_gate(GateType::CNOT);
             }
             // Add cases for other gates as needed

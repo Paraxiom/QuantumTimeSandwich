@@ -54,17 +54,13 @@ pub fn random_bit() -> bool {
 //     return bit;
 // }
 
+#[allow(dead_code)]
 fn bob_step(state: BB84State, _alice_bit: bool) -> bool {
-    // Bob randomly chooses a basis.
     let basis = MeasurementBasis::random();
-
-    // Bob measures his state in the chosen basis.
     let bit = measure_bb84_state(state, basis);
-
-    // Bob returns the bit that he measured.
     return bit;
 }
-
+#[allow(dead_code)]
 fn main() {
     let basis = Basis::random();
     let value = random_bit();

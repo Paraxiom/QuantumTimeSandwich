@@ -46,7 +46,7 @@ fn determine_optimal_block_size(length: usize) -> usize {
 fn calculate_parity(bits: &[bool]) -> bool {
     bits.iter().filter(|&&bit| bit).count() % 2 == 0
 }
-
+#[allow(dead_code)]
 fn discuss_bit_flip(alice_block: &[bool], bob_block: &[bool]) -> usize {
     // Simulated discussion logic to decide which bit to flip
     // In a real scenario, this would involve communication over a public channel
