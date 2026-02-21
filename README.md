@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/schwartz_storefront_lineup.jpg" alt="Schwartz's Deli, Montreal — the original quantum time sandwich" width="100%">
+</p>
+
 # QuantumTimeSandwich
 
 A Rust quantum computing platform that merges quantum algorithms, cryptographic protocols, and topological simulations.
