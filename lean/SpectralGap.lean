@@ -9,3 +9,4 @@ import SpectralGap.SpectralGapDef
 import SpectralGap.FourierBasis
 import SpectralGap.ProductGraph
 import SpectralGap.Asymptotics
+import SpectralGap.SymplecticForm
