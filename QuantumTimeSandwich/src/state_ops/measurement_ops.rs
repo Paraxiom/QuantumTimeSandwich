@@ -4,7 +4,7 @@ pub(crate) use rayon::prelude::*;
 use crate::utils::extract_bits;
 use crate::{Complex, Precision};
 use num_traits::Zero;
-use quantum_time_sandwich_iterators::{into_iter, iter, iter_mut};
+use QuantumTimeSandwich_iterators::{into_iter, iter, iter_mut};
 use std::cmp::{max, min};
 
 /// Get total magnitude of state.

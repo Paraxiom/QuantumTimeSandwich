@@ -8,5 +8,5 @@ license = "MIT"
 edition = "2021"
 
 [lib]
-name = "quantum_time_sandwich_macros"
+name = "QuantumTimeSandwich_macros"
 proc-macro = true

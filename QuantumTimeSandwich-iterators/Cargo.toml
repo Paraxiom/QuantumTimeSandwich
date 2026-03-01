@@ -10,7 +10,7 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-name = "quantum_time_sandwich_iterators"
+name = "QuantumTimeSandwich_iterators"
 
 [features]
 default = ["parallel"]

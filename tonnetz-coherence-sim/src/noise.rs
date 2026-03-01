@@ -133,12 +133,12 @@ impl NoiseChannel {
 /// using QTS's `apply_matrix` interface. The builder and register are
 /// consumed and returned following QTS's ownership pattern.
 pub fn apply_noise_to_qubit<R: Rng>(
-    builder: &mut quantum_time_sandwich::builder::LocalBuilder<f64>,
-    register: quantum_time_sandwich::builder::Qudit,
+    builder: &mut QuantumTimeSandwich::builder::LocalBuilder<f64>,
+    register: QuantumTimeSandwich::builder::Qudit,
     channel: &NoiseChannel,
     rng: &mut R,
-) -> quantum_time_sandwich::builder::Qudit {
-    use quantum_time_sandwich::prelude::UnitaryBuilder;
+) -> QuantumTimeSandwich::builder::Qudit {
+    use QuantumTimeSandwich::prelude::UnitaryBuilder;
 
     let matrix = channel.sample(rng);
     builder.apply_matrix(register, matrix).unwrap()

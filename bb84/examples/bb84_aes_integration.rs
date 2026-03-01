@@ -2,7 +2,7 @@ use aes::Aes256;
 use aes_gcm::aead::Aead;
 use aes_gcm::KeyInit;
 use aes_gcm::{Aes256Gcm, Key, Nonce};
-use quantum_time_sandwich::prelude::*;
+use QuantumTimeSandwich::prelude::*;
 use rand::RngCore;
 use rand::{rngs::OsRng, Rng};
 use sha2::{Digest, Sha256};

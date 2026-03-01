@@ -14,8 +14,8 @@ use num_complex::Complex;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
-use quantum_time_sandwich::builder::{LocalBuilder, Qudit};
-use quantum_time_sandwich::prelude::*;
+use QuantumTimeSandwich::builder::{LocalBuilder, Qudit};
+use QuantumTimeSandwich::prelude::*;
 
 use crate::coherence::{state_fidelity, CoherenceTracker};
 use crate::noise::NoiseChannel;

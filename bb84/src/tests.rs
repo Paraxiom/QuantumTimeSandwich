@@ -12,7 +12,7 @@ use rand::Rng;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quantum_time_sandwich::prelude::*;
+    use QuantumTimeSandwich::prelude::*;
     #[test]
     fn test_generate_bb84_state() {
         let mut counts = [0, 0, 0, 0]; // Counts for QubitZero, QubitOne, QubitPlus, QubitMinus

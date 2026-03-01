@@ -4,9 +4,9 @@ use crate::types::Representation;
 use crate::utils::*;
 use crate::{Complex, Precision};
 use num_traits::One;
-use quantum_time_sandwich_iterators::iterators::*;
-use quantum_time_sandwich_iterators::matrix_ops::apply_op;
-use quantum_time_sandwich_iterators::utils::{flip_bits, get_bit, get_flat_index, set_bit};
+use QuantumTimeSandwich_iterators::iterators::*;
+use QuantumTimeSandwich_iterators::matrix_ops::apply_op;
+use QuantumTimeSandwich_iterators::utils::{flip_bits, get_bit, get_flat_index, set_bit};
 
 /// Make a Matrix MatrixOp
 pub fn make_matrix_op<P>(indices: Vec<usize>, dat: Vec<P>) -> CircuitResult<MatrixOp<P>> {
@@ -263,7 +263,7 @@ pub fn make_op_matrix<P: Precision>(n: usize, op: &MatrixOp<Complex<P>>) -> Vec<
 #[cfg(test)]
 mod state_ops_tests {
     use super::*;
-    use quantum_time_sandwich_iterators::matrix_ops::get_index;
+    use QuantumTimeSandwich_iterators::matrix_ops::get_index;
 
     #[test]
     fn test_get_bit() {

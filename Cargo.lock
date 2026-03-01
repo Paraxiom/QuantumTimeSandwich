@@ -2774,7 +2774,7 @@ dependencies = [
  "nalgebra",
  "rand",
  "tonnetz-coherence-sim",
- "topological-coherence",
+ "topological-coherence 0.1.2",
  "toric-code-sim",
 ]
 
@@ -3485,7 +3485,14 @@ dependencies = [
  "QuantumTimeSandwich",
  "num-complex 0.4.6",
  "rand",
- "topological-coherence",
+ "topological-coherence 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "topological-coherence"
+version = "0.1.2"
+dependencies = [
+ "libm",
 ]
 
 [[package]]
@@ -3502,7 +3509,7 @@ name = "toric-code-sim"
 version = "0.1.0"
 dependencies = [
  "rand",
- "topological-coherence",
+ "topological-coherence 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

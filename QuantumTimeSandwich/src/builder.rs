@@ -13,7 +13,7 @@ use std::f64::consts::PI;
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroUsize;
 
-use quantum_time_sandwich_iterators::matrix_ops::apply_op_overwrite;
+use QuantumTimeSandwich_iterators::matrix_ops::apply_op_overwrite;
 use std::ops::Neg;
 use unit_circle_state_machine::unit_circle_states::GateType;
 use unit_circle_state_machine::unit_circle_states::RotationGate;

@@ -1,6 +1,6 @@
 use bb84::error_correction;
 use bb84::privacy_amplification;
-use quantum_time_sandwich::prelude::*;
+use QuantumTimeSandwich::prelude::*;
 use rand::{thread_rng, Rng};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
