@@ -25,7 +25,7 @@ egui_plot = "0.31"
 crossbeam-channel = "0.5"
 toric-code-sim = { path = "../toric-code-sim" }
 tonnetz-coherence-sim = { path = "../tonnetz-coherence-sim" }
-topological-coherence = "0.1.2"
+topological-coherence = { path = "../../topological-coherence" }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

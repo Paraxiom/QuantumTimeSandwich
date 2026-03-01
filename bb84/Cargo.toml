@@ -6,9 +6,7 @@ edition = "2021"
 [dependencies]
 rand = { version = "0.8.5" }
 
-# On the left: What your code uses. 
-# Inside the braces: The actual name and path of the folder.
-quantum_time_sandwich = { package = "QuantumTimeSandwich", path = "../QuantumTimeSandwich" }
+QuantumTimeSandwich = { path = "../QuantumTimeSandwich" }
 
 aes = "0.8.4"
 aes-gcm = "0.10.3"
@@ -17,7 +15,3 @@ num-bigint = "0.4"
 num-traits = "0.2"
 sha2 = "0.10.9"
 ring = "0.17.14"
-
-[[bin]]
-name = "bb84_sim"
-path = "src/bb84.rs"

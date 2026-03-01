@@ -3,16 +3,16 @@ use crate::bb84::bob_step;
 use crate::bb84::flip_state;
 use crate::bb84::generate_bb84_state;
 use crate::bb84::measure_bb84_state;
+use crate::bb84_protocol::{Alice, Bob};
 use crate::bb84_states::random_bit;
 use crate::bb84_states::BB84State;
 use crate::bb84_states::MeasurementBasis;
-use crate::bb84_protocol::{Alice, Bob};
 use rand::Rng;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use QuantumTimeSandwich::prelude::*;
+    use quantum_time_sandwich::prelude::*;
     #[test]
     fn test_generate_bb84_state() {
         let mut counts = [0, 0, 0, 0]; // Counts for QubitZero, QubitOne, QubitPlus, QubitMinus
@@ -482,38 +482,41 @@ mod tests {
         let key_length = key.len();
         key.into_iter().take(key_length / 2).collect()
     }
-    
+
     #[test]
     fn test_protocol_with_noise() {
         // Create Alice with 128 qubits
         let alice = Alice::new(128);
         // Create Bob
         let mut bob = Bob::generate_bases(alice.num_qubits());
-        
+
         // Simulate quantum transmission with noise
         let mut successful_siftings = 0;
         for i in 0..alice.num_qubits() {
             let state = generate_bb84_state(alice.bits()[i], alice.bases()[i]);
-            
+
             // Introduce 10% noise probability
             let transmitted_state = if random_noise(0.1) {
                 flip_state(state)
             } else {
                 state
             };
-            
+
             // Bob measures
             let measurement = measure_bb84_state(transmitted_state, bob.bases()[i]);
             bob.add_measurement(measurement);
-            
+
             // Check if bases match (sifting)
             if alice.bases()[i] == bob.bases()[i] {
                 successful_siftings += 1;
             }
         }
-        
+
         // Assert that we have some successful siftings even with noise
-        assert!(successful_siftings > 0, "No successful siftings despite noise introduction");
+        assert!(
+            successful_siftings > 0,
+            "No successful siftings despite noise introduction"
+        );
         println!("Successful siftings with noise: {}", successful_siftings);
     }
 }

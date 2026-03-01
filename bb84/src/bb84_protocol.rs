@@ -1,4 +1,4 @@
-use crate::error_correction::{cascade_correction, ldpc_correction};
+use crate::error_correction::cascade_correction;
 use crate::privacy_amplification::apply_privacy_amplification;
 use rand::Rng;
 
@@ -16,24 +16,30 @@ impl Alice {
         let mut rng = rand::thread_rng();
         let bits: Vec<bool> = (0..num_qubits).map(|_| rng.gen()).collect();
         let bases: Vec<crate::bb84_states::MeasurementBasis> = (0..num_qubits)
-            .map(|_| if rng.gen() { crate::bb84_states::MeasurementBasis::Basis1 } else { crate::bb84_states::MeasurementBasis::Basis2 })
+            .map(|_| {
+                if rng.gen() {
+                    crate::bb84_states::MeasurementBasis::Basis1
+                } else {
+                    crate::bb84_states::MeasurementBasis::Basis2
+                }
+            })
             .collect();
-        
+
         Alice {
             num_qubits,
             bits,
             bases,
         }
     }
-    
+
     pub fn num_qubits(&self) -> usize {
         self.num_qubits
     }
-    
+
     pub fn bits(&self) -> &[bool] {
         &self.bits
     }
-    
+
     pub fn bases(&self) -> &[crate::bb84_states::MeasurementBasis] {
         &self.bases
     }
@@ -54,28 +60,34 @@ impl Bob {
             measurements: Vec::new(),
         }
     }
-    
+
     /// Generate random bases for Bob
     pub fn generate_bases(num_qubits: usize) -> Self {
         let mut rng = rand::thread_rng();
         let bases: Vec<crate::bb84_states::MeasurementBasis> = (0..num_qubits)
-            .map(|_| if rng.gen() { crate::bb84_states::MeasurementBasis::Basis1 } else { crate::bb84_states::MeasurementBasis::Basis2 })
+            .map(|_| {
+                if rng.gen() {
+                    crate::bb84_states::MeasurementBasis::Basis1
+                } else {
+                    crate::bb84_states::MeasurementBasis::Basis2
+                }
+            })
             .collect();
-        
+
         Bob {
             bases,
             measurements: Vec::new(),
         }
     }
-    
+
     pub fn bases(&self) -> &[crate::bb84_states::MeasurementBasis] {
         &self.bases
     }
-    
+
     pub fn measurements(&self) -> &[bool] {
         &self.measurements
     }
-    
+
     pub fn add_measurement(&mut self, bit: bool) {
         self.measurements.push(bit);
     }
@@ -85,10 +97,9 @@ impl Bob {
 
 // After key exchange process
 pub fn finalize_key(raw_key: Vec<bool>) -> Vec<bool> {
-    let corrected_key = cascade_correction(raw_key.clone());
+    let corrected_key = cascade_correction(raw_key.clone(), raw_key);
     // or
     // let corrected_key = ldpc_correction(raw_key);
-    
+
     apply_privacy_amplification(corrected_key)
 }
-

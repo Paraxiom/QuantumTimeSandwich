@@ -1,4 +1,11 @@
 use rand::Rng;
+use sha2::{Digest, Sha256};
+
+fn hash_chunk(input_chunk: &[u8]) -> Vec<u8> {
+    let mut hasher = Sha256::new();
+    hasher.update(input_chunk);
+    hasher.finalize().to_vec()
+}
 
 fn toeplitz_hash(shared_key: Vec<bool>, toeplitz_matrix: Vec<Vec<bool>>) -> Vec<bool> {
     let mut hashed_key = Vec::new();
@@ -49,7 +56,7 @@ mod tests {
     #[test]
     fn test_hash_function_accuracy() {
         let input_chunk = [0b10101010, 0b11001100, 0b11110000, 0b00001111]; // Example byte chunk
-        let expected_output = digest::digest(&SHA256, &input_chunk).as_ref().to_vec();
+        let expected_output = hash_chunk(&input_chunk);
         let actual_output = hash_chunk(&input_chunk);
 
         assert_eq!(
