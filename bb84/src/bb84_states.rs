@@ -1,4 +1,3 @@
-use crate::bb84::measure_bb84_state;
 use rand::prelude::*;
 use rand::Rng;
 
@@ -53,22 +52,3 @@ pub fn random_bit() -> bool {
 //     // Alice returns the bit that she measured.
 //     return bit;
 // }
-
-fn bob_step(state: BB84State, _alice_bit: bool) -> bool {
-    // Bob randomly chooses a basis.
-    let basis = MeasurementBasis::random();
-
-    // Bob measures his state in the chosen basis.
-    let bit = measure_bb84_state(state, basis);
-
-    // Bob returns the bit that he measured.
-    return bit;
-}
-
-fn main() {
-    let basis = Basis::random();
-    let value = random_bit();
-
-    println!("Basis: {:?}", basis);
-    println!("Value: {:?}", value);
-}

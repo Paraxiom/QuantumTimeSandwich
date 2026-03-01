@@ -47,17 +47,6 @@ fn calculate_parity(bits: &[bool]) -> bool {
     bits.iter().filter(|&&bit| bit).count() % 2 == 0
 }
 
-fn discuss_bit_flip(alice_block: &[bool], bob_block: &[bool]) -> usize {
-    // Simulated discussion logic to decide which bit to flip
-    // In a real scenario, this would involve communication over a public channel
-    for (i, (&alice_bit, &bob_bit)) in alice_block.iter().zip(bob_block.iter()).enumerate() {
-        if alice_bit != bob_bit {
-            return i; // Return the index of the first mismatched bit
-        }
-    }
-    0 // Default to first bit if no mismatch is found (unlikely in a real scenario)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

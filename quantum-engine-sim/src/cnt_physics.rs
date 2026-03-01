@@ -555,7 +555,6 @@ pub struct PhysicsResult {
     /// Final phonon occupation after cooling.
     pub n_final: f64,
     /// Piezo enhancement factor.
-    #[allow(dead_code)]
     pub piezo_factor: f64,
     /// Tonnetz spectral gap λ₁.
     pub spectral_gap: f64,

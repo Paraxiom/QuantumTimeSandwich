@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "bb84",
+    "quantum-engine-sim",
+    "QuantumTimeSandwich",
+    "QuantumTimeSandwich-iterators",
+    "QuantumTimeSandwich-macros",
+    "tonnetz-coherence-sim",
+    "toric-code-sim",
+    "toric-doppler-sim",
+    "unit_circle_state_machine",
+]

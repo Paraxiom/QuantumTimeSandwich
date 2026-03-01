@@ -41,9 +41,9 @@ impl Default for PhysicsParams {
             temperature: 300.0,
             omega_m: 2.0 * std::f64::consts::PI * 1.0e9, // 1 GHz
             laser_power: 5.0,
-            detuning: -1.0,    // red-detuned by omega_m
-            kappa: 0.5,        // kappa/2 = 0.5 * omega_m
-            g0: 1.0e6,         // 1 MHz coupling
+            detuning: -1.0, // red-detuned by omega_m
+            kappa: 0.5,     // kappa/2 = 0.5 * omega_m
+            g0: 1.0e6,      // 1 MHz coupling
             piezo_freq: 2.0 * std::f64::consts::PI * 1.0e9,
             piezo_voltage: 0.0,
             tonnetz_grid_size: 6,
@@ -61,9 +61,6 @@ pub struct PhysicsResult {
     pub cooperativity: f64,
     /// Final phonon occupation after cooling.
     pub n_final: f64,
-    /// Piezo enhancement factor.
-    #[allow(dead_code)]
-    pub piezo_factor: f64,
     /// Tonnetz spectral gap λ₁.
     pub spectral_gap: f64,
     /// Total Tonnetz coupling weight.
@@ -123,10 +120,8 @@ pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
     // proportional to the inverse spectral gap (larger grid → smaller gap → more protection)
     // weighted by the total coupling strength and quality factor.
     // This replaces the JS fudge factor √(1 + harmonics * 0.1).
-    let tonnetz_enhancement = 1.0
-        + params.tonnetz_q
-            * (coupling_weight / n_qubits as f64)
-            * (1.0 / spectral_gap);
+    let tonnetz_enhancement =
+        1.0 + params.tonnetz_q * (coupling_weight / n_qubits as f64) * (1.0 / spectral_gap);
 
     // -- Decoherence rates (Bloch-Redfield) --
     // T₁ from optomechanical damping
@@ -150,7 +145,6 @@ pub fn evaluate(params: &PhysicsParams) -> PhysicsResult {
         n_thermal,
         cooperativity,
         n_final,
-        piezo_factor,
         spectral_gap,
         coupling_weight,
         tonnetz_enhancement,

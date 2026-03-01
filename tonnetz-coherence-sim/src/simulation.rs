@@ -84,16 +84,12 @@ fn run_single_trial(config: &SimulationConfig, seed: u64) -> CoherenceTracker {
 
         // Initialize: H on each qubit → |+⟩^⊗n
         let qubits = b.split_all_register(reg);
-        let mut qubit_vec: Vec<Qudit> = qubits
-            .into_iter()
-            .map(|q| b.h(q))
-            .collect();
+        let mut qubit_vec: Vec<Qudit> = qubits.into_iter().map(|q| b.h(q)).collect();
 
         // Apply (t+1) rounds of coupling + noise
         for step in 0..=t {
             // Coupling gates
-            let mut qubit_opts: Vec<Option<Qudit>> =
-                qubit_vec.into_iter().map(Some).collect();
+            let mut qubit_opts: Vec<Option<Qudit>> = qubit_vec.into_iter().map(Some).collect();
 
             for &(i, j, weight) in &edges {
                 if weight < 0.01 || i >= n || j >= n {
@@ -161,8 +157,8 @@ fn apply_weighted_cz(
         let e_neg = Complex::new((theta / 2.0).cos(), -(theta / 2.0).sin());
         let e_pos = Complex::new((theta / 2.0).cos(), (theta / 2.0).sin());
         let matrix = vec![
-            one, zero, zero, zero,   // |00⟩ row
-            zero, one, zero, zero,   // |01⟩ row
+            one, zero, zero, zero, // |00⟩ row
+            zero, one, zero, zero, // |01⟩ row
             zero, zero, e_neg, zero, // |10⟩ row
             zero, zero, zero, e_pos, // |11⟩ row
         ];
@@ -260,10 +256,10 @@ mod tests {
         };
         let result_zero = run_simulation(&config_zero);
         let result_noisy = run_simulation(&config_noisy);
-        let mean_zero: f64 =
-            result_zero.fidelity_curve.iter().sum::<f64>() / result_zero.fidelity_curve.len() as f64;
-        let mean_noisy: f64 =
-            result_noisy.fidelity_curve.iter().sum::<f64>() / result_noisy.fidelity_curve.len() as f64;
+        let mean_zero: f64 = result_zero.fidelity_curve.iter().sum::<f64>()
+            / result_zero.fidelity_curve.len() as f64;
+        let mean_noisy: f64 = result_noisy.fidelity_curve.iter().sum::<f64>()
+            / result_noisy.fidelity_curve.len() as f64;
         assert!(
             mean_noisy <= mean_zero + 0.1,
             "Noisy mean {} should not exceed zero-noise mean {} by much",
@@ -283,11 +279,7 @@ mod tests {
         };
         let result = run_simulation(&config);
         if let Some(&last) = result.fidelity_curve.last() {
-            assert!(
-                last < 0.9,
-                "Fidelity {} should degrade with p=0.5",
-                last
-            );
+            assert!(last < 0.9, "Fidelity {} should degrade with p=0.5", last);
         }
     }
 
@@ -321,14 +313,16 @@ mod tests {
         assert!(
             spectral_gaps[0] > spectral_gaps[1],
             "λ₁(2)={} should > λ₁(3)={}",
-            spectral_gaps[0], spectral_gaps[1]
+            spectral_gaps[0],
+            spectral_gaps[1]
         );
 
         // Coherence time should increase as grid grows (smaller gap → slower decay)
         assert!(
             coherence_times[1] >= coherence_times[0],
             "Coherence time should increase with grid size: t(3×3)={} >= t(2×2)={}",
-            coherence_times[1], coherence_times[0]
+            coherence_times[1],
+            coherence_times[0]
         );
     }
 
@@ -377,7 +371,8 @@ mod tests {
         assert!(
             (time_ratio - gap_ratio).abs() < 1e-10,
             "Time ratio {:.6} should equal gap ratio {:.6}",
-            time_ratio, gap_ratio
+            time_ratio,
+            gap_ratio
         );
     }
 
@@ -407,17 +402,18 @@ mod tests {
         });
 
         // Toroidal mean fidelity should be >= linear (within noise margin)
-        let toroidal_mean: f64 = toroidal.fidelity_curve.iter().sum::<f64>()
-            / toroidal.fidelity_curve.len() as f64;
-        let linear_mean: f64 = linear.fidelity_curve.iter().sum::<f64>()
-            / linear.fidelity_curve.len() as f64;
+        let toroidal_mean: f64 =
+            toroidal.fidelity_curve.iter().sum::<f64>() / toroidal.fidelity_curve.len() as f64;
+        let linear_mean: f64 =
+            linear.fidelity_curve.iter().sum::<f64>() / linear.fidelity_curve.len() as f64;
 
         // Allow some noise margin — the key claim is that toroidal doesn't perform
         // worse than linear, and typically performs better.
         assert!(
             toroidal_mean >= linear_mean - 0.15,
             "Toroidal mean fidelity {:.3} should be >= linear {:.3} (minus margin)",
-            toroidal_mean, linear_mean
+            toroidal_mean,
+            linear_mean
         );
     }
 

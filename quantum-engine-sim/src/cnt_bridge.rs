@@ -33,7 +33,6 @@ pub struct ChartData {
 
 #[derive(Clone, Debug)]
 pub struct ThresholdCurve {
-    #[allow(dead_code)]
     pub n: usize,
     pub points: Vec<(f64, f64)>,
 }

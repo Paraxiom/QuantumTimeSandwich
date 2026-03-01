@@ -33,7 +33,6 @@ pub struct ChartData {
 
 #[derive(Clone, Debug)]
 pub struct ThresholdCurve {
-    #[allow(dead_code)]
     pub n: usize,
     pub points: Vec<(f64, f64)>,
 }
@@ -73,7 +72,6 @@ pub fn run_mc(n: usize, p: f64, trials: usize) -> SimResult {
 }
 
 /// Sweep threshold for multiple lattice sizes.
-#[allow(dead_code)]
 pub fn sweep_threshold(sizes: &[usize], error_rates: &[f64], trials: usize) -> ChartData {
     let curves = sizes
         .iter()
@@ -135,17 +133,7 @@ pub fn recompute_syndromes(snap: &LatticeSnapshot) -> (Vec<(usize, usize)>, Vec<
 /// Quick single-size sweep for responsive UI.
 pub fn quick_sweep(n: usize, p_operating: f64, trials: usize) -> ChartData {
     let rates: Vec<f64> = (1..=20).map(|i| i as f64 * 0.01).collect();
-    let results = threshold_sweep(n, &rates, trials);
-    let curve = ThresholdCurve {
-        n,
-        points: results
-            .iter()
-            .map(|r| (r.p_error, r.logical_error_rate))
-            .collect(),
-    };
-
-    ChartData {
-        curves: vec![curve],
-        operating_p: p_operating,
-    }
+    let mut chart = sweep_threshold(&[n], &rates, trials);
+    chart.operating_p = p_operating;
+    chart
 }

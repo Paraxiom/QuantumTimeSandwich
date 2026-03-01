@@ -2320,6 +2320,8 @@ dependencies = [
 [[package]]
 name = "topological-coherence"
 version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f30faab2464971fc31fb8a8fcd398c39e64503855b746858ba8ecd6f7128f8c"
 dependencies = [
  "libm",
 ]

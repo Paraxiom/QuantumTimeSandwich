@@ -25,20 +25,27 @@ pub fn simulate_eve_attack(state: BB84State) -> BB84State {
     generate_bb84_state(intercepted_bit, eve_basis)
 }
 
-pub fn flip_state(state: BB84State) -> BB84State {
-    match state {
-        BB84State::QubitZero => BB84State::QubitOne,
-        BB84State::QubitOne => BB84State::QubitZero,
-        BB84State::QubitPlus => BB84State::QubitMinus,
-        BB84State::QubitMinus => BB84State::QubitPlus,
+pub fn run_intercept_resend_round() {
+    println!("--- BB84 Intercept-Resend Simulation ---");
+
+    let alice_bit = random_bit();
+    let alice_basis = MeasurementBasis::random();
+    let alice_state = generate_bb84_state(alice_bit, alice_basis);
+    println!("Alice bit: {alice_bit}, basis: {alice_basis:?}");
+
+    let state_after_eve = simulate_eve_attack(alice_state);
+
+    let bob_basis = MeasurementBasis::random();
+    let bob_bit = measure_bb84_state(state_after_eve, bob_basis);
+    println!("Bob basis: {bob_basis:?}, measured bit: {bob_bit}");
+
+    if alice_basis == bob_basis {
+        if alice_bit == bob_bit {
+            println!("Sifting result: bases matched and bit matched.");
+        } else {
+            println!("Sifting result: bases matched but bit mismatched (possible Eve/noise).");
+        }
+    } else {
+        println!("Sifting result: bases mismatched, bit discarded.");
     }
-}
-
-pub fn alice_step() -> Result<(bool, MeasurementBasis), &'static str> {
-    Ok((random_bit(), MeasurementBasis::random()))
-}
-
-pub fn bob_step(state: BB84State, alice_message: (bool, MeasurementBasis)) -> bool {
-    let (_, alice_basis) = alice_message;
-    measure_bb84_state(state, alice_basis)
 }

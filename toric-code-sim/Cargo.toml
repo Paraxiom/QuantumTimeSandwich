@@ -9,7 +9,7 @@ description = "Kitaev toric code simulator — Pauli frame tracking of anyonic e
 rand = "0.8"
 
 [dev-dependencies]
-topological-coherence = { version = "0.1", path = "../../topological-coherence" }
+topological-coherence = "0.1.2"
 
 [[example]]
 name = "anyon_braiding"

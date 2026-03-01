@@ -23,7 +23,7 @@ num-complex = "^0.4"
 rayon = { version = "^1.7", optional = true }
 rand = "^0.8"
 smallvec = "^1.10"
-unit_circle_state_machine = { path = "../unit_circle_state_machine"}
+unit_circle_state_machine = { path = "../unit_circle_state_machine" }
 [dependencies.QuantumTimeSandwich-macros]
 version = "1.0.0"
 path = "../QuantumTimeSandwich-macros"

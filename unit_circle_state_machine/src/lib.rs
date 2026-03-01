@@ -1,4 +1,3 @@
-// lib.rs
 pub mod operation;
 pub mod protocol;
 #[cfg(test)]

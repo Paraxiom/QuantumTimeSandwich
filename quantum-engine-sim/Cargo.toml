@@ -17,9 +17,15 @@ path = "src/bin/gui.rs"
 [dependencies]
 rand = "0.8"
 nalgebra = "0.33"
-eframe = { version = "0.31", default-features = false, features = ["wgpu", "default_fonts"] }
+eframe = { version = "0.31", default-features = false, features = [
+    "wgpu",
+    "default_fonts",
+] }
 egui_plot = "0.31"
 crossbeam-channel = "0.5"
 toric-code-sim = { path = "../toric-code-sim" }
 tonnetz-coherence-sim = { path = "../tonnetz-coherence-sim" }
 topological-coherence = { path = "../../topological-coherence" }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

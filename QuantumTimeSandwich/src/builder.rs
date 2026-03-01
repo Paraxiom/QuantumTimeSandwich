@@ -13,11 +13,11 @@ use std::f64::consts::PI;
 use std::hash::{Hash, Hasher};
 use std::num::NonZeroUsize;
 
+use QuantumTimeSandwich_iterators::matrix_ops::apply_op_overwrite;
 use std::ops::Neg;
 use unit_circle_state_machine::unit_circle_states::GateType;
 use unit_circle_state_machine::unit_circle_states::RotationGate;
 use unit_circle_state_machine::{UnitCircleState, UnitCircleStateMachine};
-use QuantumTimeSandwich_iterators::matrix_ops::apply_op_overwrite;
 
 /// A local circuit builder for constructing circuits out of standard gates.
 /// LocalBuilder breaks complicated multi-register gates, like toffoli, into combinations of simple
@@ -77,27 +77,33 @@ impl<P: Precision> LocalBuilder<P> {
     pub fn simulate_gate_with_state_machine(&mut self, gate: UnitaryMatrixObject<P>) {
         match gate {
             UnitaryMatrixObject::X => {
-                let x_gate = RotationGate::new(Complex::new(PI, 0.0), GateType::PauliX);
-                self.state_machine.apply_gate(GateType::PauliX);
+                self.state_machine.apply_gate(
+                    RotationGate::new(Complex::new(PI, 0.0), GateType::PauliX).get_gate_type(),
+                );
             }
             UnitaryMatrixObject::Y => {
-                let y_gate = RotationGate::new(Complex::new(0.0, PI), GateType::PauliY);
-                self.state_machine.apply_gate(GateType::PauliY);
+                self.state_machine.apply_gate(
+                    RotationGate::new(Complex::new(0.0, PI), GateType::PauliY).get_gate_type(),
+                );
             }
             UnitaryMatrixObject::Z => {
-                let z_gate = RotationGate::new(Complex::new(PI, 0.0), GateType::PauliZ);
-                self.state_machine.apply_gate(GateType::PauliZ);
+                self.state_machine.apply_gate(
+                    RotationGate::new(Complex::new(PI, 0.0), GateType::PauliZ).get_gate_type(),
+                );
             }
             UnitaryMatrixObject::H => {
-                let h_gate = RotationGate::new(
-                    Complex::new(PI / std::f64::consts::SQRT_2, 0.0),
-                    GateType::Hadamard,
+                self.state_machine.apply_gate(
+                    RotationGate::new(
+                        Complex::new(PI / std::f64::consts::SQRT_2, 0.0),
+                        GateType::Hadamard,
+                    )
+                    .get_gate_type(),
                 );
-                self.state_machine.apply_gate(GateType::Hadamard);
             }
             UnitaryMatrixObject::CNOT => {
-                let cnot_gate = RotationGate::new(Complex::new(0.0, 0.0), GateType::CNOT); // Example, adjust as needed
-                self.state_machine.apply_gate(GateType::CNOT);
+                self.state_machine.apply_gate(
+                    RotationGate::new(Complex::new(0.0, 0.0), GateType::CNOT).get_gate_type(),
+                );
             }
             // Add cases for other gates as needed
             _ => eprintln!("Gate not implemented or unhandled: {:?}", gate),

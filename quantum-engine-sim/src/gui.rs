@@ -4,15 +4,19 @@
 use std::f32::consts::PI;
 
 use eframe::egui;
-use egui_plot::{Bar, BarChart, Corner, Legend, Line, MarkerShape, Plot, PlotPoint, PlotPoints,
-    Points, Polygon, Text as PlotText, VLine};
+use egui_plot::{
+    Bar, BarChart, Corner, Legend, Line, MarkerShape, Plot, PlotPoint, PlotPoints, Points, Polygon,
+    Text as PlotText, VLine,
+};
 
 use crate::cnt_bridge::{self, ChartData, LatticeSnapshot};
 use crate::cnt_physics::{BundleGeometry, Material, PhysicsParams, PhysicsResult, ResonatorType};
 use crate::covariant::{DescentResult, DescentStep, NanoDescentTarget, TorusPoint};
 use crate::engine::{EngineConfig, EngineResult};
-use crate::logit_drift::{self, DriftConfig, DriftResult, MaskHeatmap as DriftHeatmap,
-    DriftAnalysisResult, MaskAnalysisResult};
+use crate::logit_drift::{
+    self, DriftAnalysisResult, DriftConfig, DriftResult, MaskAnalysisResult,
+    MaskHeatmap as DriftHeatmap,
+};
 use crate::sim_worker::{ScalingEntry, SimRequest, SimResponse, SimWorker};
 use topological_coherence::MaskType;
 
@@ -301,17 +305,33 @@ fn draw_engine_torus(
 
             let depth_t = ((avg_z + 2.0) / 4.0).clamp(0.0, 1.0);
             let alpha = (18.0 + 22.0 * depth_t) as u8;
-            let r = ((pr as f32 * 0.4 + (20.0 + 50.0 * depth_t) * 0.6)) as u8;
-            let g = ((pg as f32 * 0.4 + (60.0 + 80.0 * depth_t) * 0.6)) as u8;
-            let b = ((pb as f32 * 0.4 + (50.0 + 30.0 * (1.0 - depth_t)) * 0.6)) as u8;
+            let r = (pr as f32 * 0.4 + (20.0 + 50.0 * depth_t) * 0.6) as u8;
+            let g = (pg as f32 * 0.4 + (60.0 + 80.0 * depth_t) * 0.6) as u8;
+            let b = (pb as f32 * 0.4 + (50.0 + 30.0 * (1.0 - depth_t)) * 0.6) as u8;
 
             let mesh = egui::Mesh {
                 indices: vec![0, 1, 2, 0, 2, 3],
                 vertices: vec![
-                    egui::epaint::Vertex { pos: p00, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                    egui::epaint::Vertex { pos: p10, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                    egui::epaint::Vertex { pos: p11, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                    egui::epaint::Vertex { pos: p01, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                    egui::epaint::Vertex {
+                        pos: p00,
+                        uv: egui::epaint::WHITE_UV,
+                        color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                    },
+                    egui::epaint::Vertex {
+                        pos: p10,
+                        uv: egui::epaint::WHITE_UV,
+                        color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                    },
+                    egui::epaint::Vertex {
+                        pos: p11,
+                        uv: egui::epaint::WHITE_UV,
+                        color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                    },
+                    egui::epaint::Vertex {
+                        pos: p01,
+                        uv: egui::epaint::WHITE_UV,
+                        color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                    },
                 ],
                 texture_id: egui::TextureId::default(),
             };
@@ -356,9 +376,15 @@ fn draw_engine_torus(
             let a = 2.0 * PI * s as f32 / segs as f32;
             let b = 2.0 * PI * ((s + 1) % segs) as f32 / segs as f32;
             let (p1, p2) = if cycle_u {
-                (torus_pt(rm, rn, fixed_other, a), torus_pt(rm, rn, fixed_other, b))
+                (
+                    torus_pt(rm, rn, fixed_other, a),
+                    torus_pt(rm, rn, fixed_other, b),
+                )
             } else {
-                (torus_pt(rm, rn, a, fixed_other), torus_pt(rm, rn, b, fixed_other))
+                (
+                    torus_pt(rm, rn, a, fixed_other),
+                    torus_pt(rm, rn, b, fixed_other),
+                )
             };
             let (sc1, _) = project(p1, rot, rect);
             let (sc2, _) = project(p2, rot, rect);
@@ -366,7 +392,10 @@ fn draw_engine_torus(
             let r = (212.0 * pulse + 80.0 * (1.0 - pulse)) as u8;
             let g = (175.0 * pulse + 100.0 * (1.0 - pulse)) as u8;
             let bl = (55.0 * pulse + 30.0 * (1.0 - pulse)) as u8;
-            painter.line_segment([sc1, sc2], egui::Stroke::new(2.8, egui::Color32::from_rgb(r, g, bl)));
+            painter.line_segment(
+                [sc1, sc2],
+                egui::Stroke::new(2.8, egui::Color32::from_rgb(r, g, bl)),
+            );
         }
     }
 
@@ -379,7 +408,11 @@ fn draw_engine_torus(
             let al = depth_alpha(z);
             let phase_v = 0.6 + 0.4 * (time * 2.0 + u + v).sin();
             let br = (210.0 * phase_v) as u8;
-            painter.circle_filled(sp, 2.5, egui::Color32::from_rgba_unmultiplied(br, br, (br as f32 * 0.9) as u8, al));
+            painter.circle_filled(
+                sp,
+                2.5,
+                egui::Color32::from_rgba_unmultiplied(br, br, (br as f32 * 0.9) as u8, al),
+            );
         }
     }
 
@@ -387,12 +420,21 @@ fn draw_engine_torus(
     if matches!(phase, CyclePhase::Extract) {
         let spark_count = 12;
         for i in 0..spark_count {
-            let spark_u = 2.0 * PI * (i as f32 + time * 5.0).rem_euclid(spark_count as f32) / spark_count as f32;
+            let spark_u = 2.0 * PI * (i as f32 + time * 5.0).rem_euclid(spark_count as f32)
+                / spark_count as f32;
             let spark_v = 2.0 * PI * (i as f32 * 0.618 + time * 3.0).rem_euclid(1.0);
             let (sp, _z) = project(torus_pt(rm, rn + 0.06, spark_u, spark_v), rot, rect);
             let spark_alpha = (180.0 * phase_frac.min(1.0 - phase_frac) * 2.0) as u8;
-            painter.circle_filled(sp, 3.5, egui::Color32::from_rgba_unmultiplied(255, 220, 60, spark_alpha));
-            painter.circle_filled(sp, 1.5, egui::Color32::from_rgba_unmultiplied(255, 255, 200, spark_alpha));
+            painter.circle_filled(
+                sp,
+                3.5,
+                egui::Color32::from_rgba_unmultiplied(255, 220, 60, spark_alpha),
+            );
+            painter.circle_filled(
+                sp,
+                1.5,
+                egui::Color32::from_rgba_unmultiplied(255, 255, 200, spark_alpha),
+            );
         }
     }
 
@@ -505,10 +547,26 @@ fn draw_cnt_torus(
             let mesh = egui::Mesh {
                 indices: vec![0, 1, 2, 0, 2, 3],
                 vertices: vec![
-                    egui::epaint::Vertex { pos: p00, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                    egui::epaint::Vertex { pos: p10, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                    egui::epaint::Vertex { pos: p11, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                    egui::epaint::Vertex { pos: p01, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                    egui::epaint::Vertex {
+                        pos: p00,
+                        uv: egui::epaint::WHITE_UV,
+                        color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                    },
+                    egui::epaint::Vertex {
+                        pos: p10,
+                        uv: egui::epaint::WHITE_UV,
+                        color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                    },
+                    egui::epaint::Vertex {
+                        pos: p11,
+                        uv: egui::epaint::WHITE_UV,
+                        color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                    },
+                    egui::epaint::Vertex {
+                        pos: p01,
+                        uv: egui::epaint::WHITE_UV,
+                        color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                    },
                 ],
                 texture_id: egui::TextureId::default(),
             };
@@ -532,7 +590,10 @@ fn draw_cnt_torus(
                 let wr = (TORUS_WIRE.r() as f32 * (0.6 + 0.4 * dt)) as u8;
                 let wg = (TORUS_WIRE.g() as f32 * (0.6 + 0.4 * dt)) as u8;
                 let wb = (TORUS_WIRE.b() as f32 * (0.6 + 0.4 * dt)) as u8;
-                painter.line_segment([s1, s2], egui::Stroke::new(0.7, egui::Color32::from_rgba_unmultiplied(wr, wg, wb, al)));
+                painter.line_segment(
+                    [s1, s2],
+                    egui::Stroke::new(0.7, egui::Color32::from_rgba_unmultiplied(wr, wg, wb, al)),
+                );
             }
         }
     }
@@ -543,9 +604,15 @@ fn draw_cnt_torus(
             let a = 2.0 * PI * s as f32 / segs as f32;
             let b = 2.0 * PI * ((s + 1) % segs) as f32 / segs as f32;
             let (p1, p2) = if cycle_u {
-                (torus_pt(rm, rn, fixed_other, a), torus_pt(rm, rn, fixed_other, b))
+                (
+                    torus_pt(rm, rn, fixed_other, a),
+                    torus_pt(rm, rn, fixed_other, b),
+                )
             } else {
-                (torus_pt(rm, rn, a, fixed_other), torus_pt(rm, rn, b, fixed_other))
+                (
+                    torus_pt(rm, rn, a, fixed_other),
+                    torus_pt(rm, rn, b, fixed_other),
+                )
             };
             let (sc1, _) = project(p1, rot, rect);
             let (sc2, _) = project(p2, rot, rect);
@@ -553,7 +620,10 @@ fn draw_cnt_torus(
             let r = (212.0 * pulse + 80.0 * (1.0 - pulse)) as u8;
             let g = (175.0 * pulse + 100.0 * (1.0 - pulse)) as u8;
             let bl = (55.0 * pulse + 30.0 * (1.0 - pulse)) as u8;
-            painter.line_segment([sc1, sc2], egui::Stroke::new(2.8, egui::Color32::from_rgb(r, g, bl)));
+            painter.line_segment(
+                [sc1, sc2],
+                egui::Stroke::new(2.8, egui::Color32::from_rgb(r, g, bl)),
+            );
         }
     }
 
@@ -569,7 +639,11 @@ fn draw_cnt_torus(
             let al = depth_alpha(z);
             let ph = 0.6 + 0.4 * (time * 2.0 + u + v).sin();
             let br = (210.0 * ph) as u8;
-            painter.circle_filled(sp, 2.5, egui::Color32::from_rgba_unmultiplied(br, br, (br as f32 * 0.9) as u8, al));
+            painter.circle_filled(
+                sp,
+                2.5,
+                egui::Color32::from_rgba_unmultiplied(br, br, (br as f32 * 0.9) as u8, al),
+            );
         }
     }
 
@@ -617,7 +691,10 @@ fn draw_lattice(
 ) {
     let n = snapshot.n;
     let m = 25.0_f32;
-    let inner = egui::Rect::from_min_max(rect.min + egui::vec2(m, m + 14.0), rect.max - egui::vec2(m, m));
+    let inner = egui::Rect::from_min_max(
+        rect.min + egui::vec2(m, m + 14.0),
+        rect.max - egui::vec2(m, m),
+    );
     let sx = inner.width() / n as f32;
     let sy = inner.height() / n as f32;
 
@@ -635,11 +712,23 @@ fn draw_lattice(
     // Row/col labels
     for col in 0..n {
         let x = inner.left() + col as f32 * sx + sx * 0.5;
-        painter.text(egui::pos2(x, inner.top() - 10.0), egui::Align2::CENTER_BOTTOM, format!("{}", col), egui::FontId::monospace(10.0), egui::Color32::from_rgb(100, 100, 95));
+        painter.text(
+            egui::pos2(x, inner.top() - 10.0),
+            egui::Align2::CENTER_BOTTOM,
+            format!("{}", col),
+            egui::FontId::monospace(10.0),
+            egui::Color32::from_rgb(100, 100, 95),
+        );
     }
     for row in 0..n {
         let y = inner.top() + row as f32 * sy + sy * 0.5;
-        painter.text(egui::pos2(inner.left() - 10.0, y), egui::Align2::RIGHT_CENTER, format!("{}", row), egui::FontId::monospace(10.0), egui::Color32::from_rgb(100, 100, 95));
+        painter.text(
+            egui::pos2(inner.left() - 10.0, y),
+            egui::Align2::RIGHT_CENTER,
+            format!("{}", row),
+            egui::FontId::monospace(10.0),
+            egui::Color32::from_rgb(100, 100, 95),
+        );
     }
 
     for row in 0..n {
@@ -651,30 +740,55 @@ fn draw_lattice(
             let hi = row * n + col;
             let hx = snapshot.x_errors.get(hi).copied().unwrap_or(false);
             let hz = snapshot.z_errors.get(hi).copied().unwrap_or(false);
-            let x2 = if col + 1 < n { x + sx } else { inner.left() + sx * 0.5 };
-            painter.line_segment([egui::pos2(x, y), egui::pos2(x2, y)], egui::Stroke::new(2.0, error_color(hx, hz)));
+            let x2 = if col + 1 < n {
+                x + sx
+            } else {
+                inner.left() + sx * 0.5
+            };
+            painter.line_segment(
+                [egui::pos2(x, y), egui::pos2(x2, y)],
+                egui::Stroke::new(2.0, error_color(hx, hz)),
+            );
 
             // Vertical edge
             let vi = n * n + row * n + col;
             let vx = snapshot.x_errors.get(vi).copied().unwrap_or(false);
             let vz = snapshot.z_errors.get(vi).copied().unwrap_or(false);
-            let y2 = if row + 1 < n { y + sy } else { inner.top() + sy * 0.5 };
-            painter.line_segment([egui::pos2(x, y), egui::pos2(x, y2)], egui::Stroke::new(2.0, error_color(vx, vz)));
+            let y2 = if row + 1 < n {
+                y + sy
+            } else {
+                inner.top() + sy * 0.5
+            };
+            painter.line_segment(
+                [egui::pos2(x, y), egui::pos2(x, y2)],
+                egui::Stroke::new(2.0, error_color(vx, vz)),
+            );
 
             // Hover highlight
             if hovered_node == Some((row, col)) {
-                painter.circle_stroke(egui::pos2(x, y), 8.0, egui::Stroke::new(1.5, egui::Color32::WHITE));
+                painter.circle_stroke(
+                    egui::pos2(x, y),
+                    8.0,
+                    egui::Stroke::new(1.5, egui::Color32::WHITE),
+                );
             }
 
             // Vertex marker
             let is_e = snapshot.e_particles.contains(&(row, col));
-            let (vc, vr) = if is_e { (E_PARTICLE_ORANGE, 5.0) } else { (egui::Color32::from_rgb(86, 166, 96), 3.0) };
+            let (vc, vr) = if is_e {
+                (E_PARTICLE_ORANGE, 5.0)
+            } else {
+                (egui::Color32::from_rgb(86, 166, 96), 3.0)
+            };
             painter.circle_filled(egui::pos2(x, y), vr, vc);
 
             // Plaquette marker
             if snapshot.m_particles.contains(&(row, col)) {
                 painter.rect_filled(
-                    egui::Rect::from_center_size(egui::pos2(x + sx * 0.5, y + sy * 0.5), egui::vec2(7.0, 7.0)),
+                    egui::Rect::from_center_size(
+                        egui::pos2(x + sx * 0.5, y + sy * 0.5),
+                        egui::vec2(7.0, 7.0),
+                    ),
                     1.0,
                     WARN_RED,
                 );
@@ -685,10 +799,16 @@ fn draw_lattice(
 
 fn lattice_vertex_pos(rect: egui::Rect, n: usize, row: usize, col: usize) -> egui::Pos2 {
     let m = 25.0_f32;
-    let inner = egui::Rect::from_min_max(rect.min + egui::vec2(m, m + 14.0), rect.max - egui::vec2(m, m));
+    let inner = egui::Rect::from_min_max(
+        rect.min + egui::vec2(m, m + 14.0),
+        rect.max - egui::vec2(m, m),
+    );
     let sx = inner.width() / n as f32;
     let sy = inner.height() / n as f32;
-    egui::pos2(inner.left() + col as f32 * sx + sx * 0.5, inner.top() + row as f32 * sy + sy * 0.5)
+    egui::pos2(
+        inner.left() + col as f32 * sx + sx * 0.5,
+        inner.top() + row as f32 * sy + sy * 0.5,
+    )
 }
 
 fn hit_test_lattice(pos: egui::Pos2, rect: egui::Rect, n: usize) -> Option<(usize, usize)> {
@@ -728,11 +848,6 @@ pub struct QuantumEngineApp {
     descent_start_x: f64,
     descent_start_y: f64,
     show_euclidean: bool,
-    // MC params
-    #[allow(dead_code)]
-    mc_trials: usize,
-    #[allow(dead_code)]
-    mc_error_rate: f64,
     // Engine results
     engine_result: Option<EngineResult>,
     descent_cov: Option<DescentResult>,
@@ -813,15 +928,15 @@ pub struct QuantumEngineApp {
     // Toroidal Engine tab (sphere inside tube)
     te_torus_major: f32,
     te_torus_minor: f32,
-    te_sphere_speed: f64,       // angular velocity around the tube (toroidal)
-    te_spin_speed: f64,         // sphere self-rotation speed
+    te_sphere_speed: f64, // angular velocity around the tube (toroidal)
+    te_spin_speed: f64,   // sphere self-rotation speed
     te_lattice_n: usize,
-    te_sphere_u: f32,           // current toroidal angle of sphere
-    te_sphere_v: f32,           // current poloidal angle of sphere
+    te_sphere_u: f32, // current toroidal angle of sphere
+    te_sphere_v: f32, // current poloidal angle of sphere
     te_show_force: bool,
     te_show_tonnetz: bool,
     te_show_trail: bool,
-    te_trail: Vec<[f32; 3]>,    // trail of recent sphere positions
+    te_trail: Vec<[f32; 3]>, // trail of recent sphere positions
 
     // Visualization state (shared)
     time: f32,
@@ -845,11 +960,21 @@ impl QuantumEngineApp {
         cc.egui_ctx.set_visuals(forest_visuals());
 
         let mut style = (*cc.egui_ctx.style()).clone();
-        style.text_styles.insert(egui::TextStyle::Heading, egui::FontId::proportional(17.0));
-        style.text_styles.insert(egui::TextStyle::Body, egui::FontId::proportional(14.0));
-        style.text_styles.insert(egui::TextStyle::Small, egui::FontId::proportional(12.0));
-        style.text_styles.insert(egui::TextStyle::Monospace, egui::FontId::monospace(13.0));
-        style.text_styles.insert(egui::TextStyle::Button, egui::FontId::proportional(14.0));
+        style
+            .text_styles
+            .insert(egui::TextStyle::Heading, egui::FontId::proportional(17.0));
+        style
+            .text_styles
+            .insert(egui::TextStyle::Body, egui::FontId::proportional(14.0));
+        style
+            .text_styles
+            .insert(egui::TextStyle::Small, egui::FontId::proportional(12.0));
+        style
+            .text_styles
+            .insert(egui::TextStyle::Monospace, egui::FontId::monospace(13.0));
+        style
+            .text_styles
+            .insert(egui::TextStyle::Button, egui::FontId::proportional(14.0));
         cc.egui_ctx.set_style(style);
 
         let worker = SimWorker::spawn();
@@ -867,8 +992,6 @@ impl QuantumEngineApp {
             descent_start_x: 0.95,
             descent_start_y: 0.05,
             show_euclidean: true,
-            mc_trials: 5000,
-            mc_error_rate: 0.03,
             engine_result: None,
             descent_cov: None,
             descent_euc: None,
@@ -997,24 +1120,37 @@ impl QuantumEngineApp {
     }
 
     fn send_engine(&mut self) {
-        self.worker.send(SimRequest::RunEngine { config: self.build_config() });
+        self.worker.send(SimRequest::RunEngine {
+            config: self.build_config(),
+        });
         self.needs_engine = false;
     }
 
     fn send_descent(&mut self) {
         let start = TorusPoint::new(self.descent_start_x, self.descent_start_y);
         let target = TorusPoint::new(0.05, 0.95);
-        self.worker.send(SimRequest::RunDescent { n: self.lattice_n, eta: self.descent_eta, start, target });
+        self.worker.send(SimRequest::RunDescent {
+            n: self.lattice_n,
+            eta: self.descent_eta,
+            start,
+            target,
+        });
         self.needs_descent = false;
     }
 
     fn send_scaling(&mut self) {
-        self.worker.send(SimRequest::RunScaling { config: self.build_config(), sizes: vec![4, 6, 8, 10, 12, 16, 24] });
+        self.worker.send(SimRequest::RunScaling {
+            config: self.build_config(),
+            sizes: vec![4, 6, 8, 10, 12, 16, 24],
+        });
         self.needs_scaling = false;
     }
 
     fn send_convergence(&mut self) {
-        self.worker.send(SimRequest::RunConvergence { sizes: vec![4, 6, 8, 12, 16, 24], eta: 0.001 });
+        self.worker.send(SimRequest::RunConvergence {
+            sizes: vec![4, 6, 8, 12, 16, 24],
+            eta: 0.001,
+        });
         self.needs_convergence = false;
     }
 
@@ -1039,7 +1175,9 @@ impl QuantumEngineApp {
     }
 
     fn send_drift_mc(&mut self) {
-        self.worker.send(SimRequest::RunDriftMC { config: self.drift_config.clone() });
+        self.worker.send(SimRequest::RunDriftMC {
+            config: self.drift_config.clone(),
+        });
         self.needs_drift_mc = false;
     }
 
@@ -1135,7 +1273,10 @@ impl eframe::App for QuantumEngineApp {
                 SimResponse::Engine(result) => {
                     self.engine_result = Some(result);
                 }
-                SimResponse::Descent { euclidean, covariant } => {
+                SimResponse::Descent {
+                    euclidean,
+                    covariant,
+                } => {
                     self.descent_euc = Some(euclidean);
                     self.descent_cov = Some(covariant);
                 }
@@ -1145,14 +1286,21 @@ impl eframe::App for QuantumEngineApp {
                 SimResponse::Convergence(data) => {
                     self.convergence_data = Some(data);
                 }
-                SimResponse::CntEvaluated { physics, p_error, mc_result, snapshot } => {
+                SimResponse::CntEvaluated {
+                    physics,
+                    p_error,
+                    mc_result,
+                    snapshot,
+                } => {
                     self.cnt_p_error = p_error;
                     self.cnt_logical_error_rate = mc_result.logical_error_rate;
                     self.cnt_logical_failures = mc_result.logical_failures;
                     self.cnt_mc_trials_done = mc_result.trials;
                     self.cnt_physics_result = Some(physics);
                     self.cnt_snapshot = Some(snapshot);
-                    if !self.cnt_sweep_pending { self.needs_cnt_sweep = true; }
+                    if !self.cnt_sweep_pending {
+                        self.needs_cnt_sweep = true;
+                    }
                 }
                 SimResponse::CntSweptChart(chart) => {
                     if self.nano_sweep_pending {
@@ -1175,20 +1323,33 @@ impl eframe::App for QuantumEngineApp {
                 SimResponse::MaskAnalysis(result) => {
                     self.mask_analysis = Some(result);
                 }
-                SimResponse::NanoEvaluated { physics, p_error, mc_result, snapshot } => {
+                SimResponse::NanoEvaluated {
+                    physics,
+                    p_error,
+                    mc_result,
+                    snapshot,
+                } => {
                     self.nano_p_error = p_error;
                     self.nano_logical_error_rate = mc_result.logical_error_rate;
                     self.nano_logical_failures = mc_result.logical_failures;
                     self.nano_mc_trials_done = mc_result.trials;
                     self.nano_physics_result = Some(physics);
                     self.nano_snapshot = Some(snapshot);
-                    if !self.nano_sweep_pending { self.needs_nano_sweep = true; }
+                    if !self.nano_sweep_pending {
+                        self.needs_nano_sweep = true;
+                    }
                 }
-                SimResponse::NanoDescent { covariant, euclidean } => {
+                SimResponse::NanoDescent {
+                    covariant,
+                    euclidean,
+                } => {
                     self.nano_descent_cov = Some(covariant);
                     self.nano_descent_euc = Some(euclidean);
                 }
-                SimResponse::DriftDescent { covariant, euclidean } => {
+                SimResponse::DriftDescent {
+                    covariant,
+                    euclidean,
+                } => {
                     self.drift_descent_cov = Some(covariant);
                     self.drift_descent_euc = Some(euclidean);
                 }
@@ -1197,22 +1358,34 @@ impl eframe::App for QuantumEngineApp {
 
         // Fire nanotorus simulations when needed and tab is active
         if self.active_tab == Tab::Nanotorus {
-            if self.needs_nano_eval { self.send_nano_eval(); }
-            if self.needs_nano_sweep && !self.nano_sweep_pending { self.send_nano_sweep(); }
-            if self.needs_nano_descent { self.send_nano_descent(); }
+            if self.needs_nano_eval {
+                self.send_nano_eval();
+            }
+            if self.needs_nano_sweep && !self.nano_sweep_pending {
+                self.send_nano_sweep();
+            }
+            if self.needs_nano_descent {
+                self.send_nano_descent();
+            }
         }
 
         // Fire drift simulations when needed and tab is active
         if self.active_tab == Tab::HallucinationReduction {
-            if self.needs_drift_mc { self.send_drift_mc(); }
-            if self.needs_drift_heatmap { self.send_drift_heatmap(); }
+            if self.needs_drift_mc {
+                self.send_drift_mc();
+            }
+            if self.needs_drift_heatmap {
+                self.send_drift_heatmap();
+            }
             if self.needs_drift_analysis && self.drift_viz_mode == DriftVizMode::DriftAnalysis {
                 self.send_drift_analysis();
             }
             if self.needs_mask_analysis && self.drift_viz_mode == DriftVizMode::MaskAnalysis {
                 self.send_mask_analysis();
             }
-            if self.needs_drift_descent { self.send_drift_descent(); }
+            if self.needs_drift_descent {
+                self.send_drift_descent();
+            }
         }
 
         // ═════ LEFT PANEL: Controls (conditional on tab) ═════
@@ -1225,29 +1398,72 @@ impl eframe::App for QuantumEngineApp {
 
                     // Branding
                     ui.horizontal(|ui| {
-                        ui.colored_label(GOLD_EG, egui::RichText::new("PARAXIOM").strong().size(14.0));
+                        ui.colored_label(
+                            GOLD_EG,
+                            egui::RichText::new("PARAXIOM").strong().size(14.0),
+                        );
                         ui.colored_label(DIM, egui::RichText::new("Technologies").size(12.0));
                     });
                     ui.add_space(2.0);
 
                     // Tab bar
                     ui.horizontal_wrapped(|ui| {
-                        ui.selectable_value(&mut self.active_tab, Tab::VacuumEngine, egui::RichText::new("Vacuum Engine").strong());
-                        ui.selectable_value(&mut self.active_tab, Tab::CntDoppler, egui::RichText::new("CNT Doppler").strong());
-                        ui.selectable_value(&mut self.active_tab, Tab::Nanotorus, egui::RichText::new("Nanotorus").strong().color(TORUS_BLUE));
-                        ui.selectable_value(&mut self.active_tab, Tab::HallucinationReduction, egui::RichText::new("Hallucination").strong());
-                        ui.selectable_value(&mut self.active_tab, Tab::LogoDecoded, egui::RichText::new("Logo Decoded").strong().color(egui::Color32::from_rgb(167, 139, 250)));
-                        ui.selectable_value(&mut self.active_tab, Tab::ToroidalEngine, egui::RichText::new("Toroidal Engine").strong().color(LOGO_RED));
+                        ui.selectable_value(
+                            &mut self.active_tab,
+                            Tab::VacuumEngine,
+                            egui::RichText::new("Vacuum Engine").strong(),
+                        );
+                        ui.selectable_value(
+                            &mut self.active_tab,
+                            Tab::CntDoppler,
+                            egui::RichText::new("CNT Doppler").strong(),
+                        );
+                        ui.selectable_value(
+                            &mut self.active_tab,
+                            Tab::Nanotorus,
+                            egui::RichText::new("Nanotorus").strong().color(TORUS_BLUE),
+                        );
+                        ui.selectable_value(
+                            &mut self.active_tab,
+                            Tab::HallucinationReduction,
+                            egui::RichText::new("Hallucination").strong(),
+                        );
+                        ui.selectable_value(
+                            &mut self.active_tab,
+                            Tab::LogoDecoded,
+                            egui::RichText::new("Logo Decoded")
+                                .strong()
+                                .color(egui::Color32::from_rgb(167, 139, 250)),
+                        );
+                        ui.selectable_value(
+                            &mut self.active_tab,
+                            Tab::ToroidalEngine,
+                            egui::RichText::new("Toroidal Engine")
+                                .strong()
+                                .color(LOGO_RED),
+                        );
                     });
                     ui.separator();
 
                     // Pause/Resume
                     ui.horizontal(|ui| {
-                        let (label, color) = if self.paused { ("RESUME", FOREST_GREEN) } else { ("PAUSE", GOLD_EG) };
-                        if ui.add(egui::Button::new(egui::RichText::new(label).strong().color(color))).clicked() {
+                        let (label, color) = if self.paused {
+                            ("RESUME", FOREST_GREEN)
+                        } else {
+                            ("PAUSE", GOLD_EG)
+                        };
+                        if ui
+                            .add(egui::Button::new(
+                                egui::RichText::new(label).strong().color(color),
+                            ))
+                            .clicked()
+                        {
                             self.paused = !self.paused;
                         }
-                        ui.colored_label(egui::Color32::from_rgb(110, 110, 105), egui::RichText::new("(or Space)").size(11.0));
+                        ui.colored_label(
+                            egui::Color32::from_rgb(110, 110, 105),
+                            egui::RichText::new("(or Space)").size(11.0),
+                        );
                     });
                     ui.add_space(4.0);
 
@@ -1267,30 +1483,26 @@ impl eframe::App for QuantumEngineApp {
             .min_width(220.0)
             .max_width(280.0)
             .show(ctx, |ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    match self.active_tab {
-                        Tab::VacuumEngine => self.draw_engine_results(ui),
-                        Tab::CntDoppler => self.draw_cnt_results(ui),
-                        Tab::Nanotorus => self.draw_nano_results(ui),
-                        Tab::HallucinationReduction => self.draw_drift_results(ui),
-                        Tab::LogoDecoded => self.draw_logo_results(ui),
-                        Tab::ToroidalEngine => self.draw_te_results(ui),
-                    }
+                egui::ScrollArea::vertical().show(ui, |ui| match self.active_tab {
+                    Tab::VacuumEngine => self.draw_engine_results(ui),
+                    Tab::CntDoppler => self.draw_cnt_results(ui),
+                    Tab::Nanotorus => self.draw_nano_results(ui),
+                    Tab::HallucinationReduction => self.draw_drift_results(ui),
+                    Tab::LogoDecoded => self.draw_logo_results(ui),
+                    Tab::ToroidalEngine => self.draw_te_results(ui),
                 });
             });
 
         // ═════ CENTRAL PANEL: Visualizations (conditional on tab) ═════
         egui::CentralPanel::default()
             .frame(egui::Frame::NONE.fill(egui::Color32::from_rgb(20, 24, 20)))
-            .show(ctx, |ui| {
-                match self.active_tab {
-                    Tab::VacuumEngine => self.draw_engine_central(ui),
-                    Tab::CntDoppler => self.draw_cnt_central(ui, ctx),
-                    Tab::Nanotorus => self.draw_nano_central(ui),
-                    Tab::HallucinationReduction => self.draw_drift_central(ui),
-                    Tab::LogoDecoded => self.draw_logo_central(ui),
-                    Tab::ToroidalEngine => self.draw_te_central(ui),
-                }
+            .show(ctx, |ui| match self.active_tab {
+                Tab::VacuumEngine => self.draw_engine_central(ui),
+                Tab::CntDoppler => self.draw_cnt_central(ui, ctx),
+                Tab::Nanotorus => self.draw_nano_central(ui),
+                Tab::HallucinationReduction => self.draw_drift_central(ui),
+                Tab::LogoDecoded => self.draw_logo_central(ui),
+                Tab::ToroidalEngine => self.draw_te_central(ui),
             });
 
         // Status badge (conditional on tab)
@@ -1313,7 +1525,12 @@ impl eframe::App for QuantumEngineApp {
 
 impl QuantumEngineApp {
     fn draw_engine_controls(&mut self, ui: &mut egui::Ui) {
-        ui.colored_label(GOLD_EG, egui::RichText::new("QUANTUM ENGINE VISUALIZER").strong().size(13.0));
+        ui.colored_label(
+            GOLD_EG,
+            egui::RichText::new("QUANTUM ENGINE VISUALIZER")
+                .strong()
+                .size(13.0),
+        );
         dim_label(ui, "Toroidal vacuum engine on T\u{00b2}");
         ui.add_space(4.0);
 
@@ -1321,15 +1538,36 @@ impl QuantumEngineApp {
         section_heading(ui, "PRESETS");
         let mut preset_clicked = false;
         ui.horizontal(|ui| {
-            if ui.add(egui::Button::new(egui::RichText::new("Microwave").color(COMPRESS_BLUE).size(12.0))).clicked() {
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("Microwave")
+                        .color(COMPRESS_BLUE)
+                        .size(12.0),
+                ))
+                .clicked()
+            {
                 self.apply_preset(&EngineConfig::microwave());
                 preset_clicked = true;
             }
-            if ui.add(egui::Button::new(egui::RichText::new("Mid-IR").color(THERMAL_ORANGE).size(12.0))).clicked() {
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("Mid-IR")
+                        .color(THERMAL_ORANGE)
+                        .size(12.0),
+                ))
+                .clicked()
+            {
                 self.apply_preset(&EngineConfig::mid_infrared());
                 preset_clicked = true;
             }
-            if ui.add(egui::Button::new(egui::RichText::new("Optical").color(EXTRACT_GOLD).size(12.0))).clicked() {
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("Optical")
+                        .color(EXTRACT_GOLD)
+                        .size(12.0),
+                ))
+                .clicked()
+            {
                 self.apply_preset(&EngineConfig::optical());
                 preset_clicked = true;
             }
@@ -1338,18 +1576,34 @@ impl QuantumEngineApp {
         // Cavity Parameters
         section_heading(ui, "CAVITY PARAMETERS");
         let mut engine_changed = preset_clicked;
-        let freq_regime = if self.l_min_m > 1e-3 { "Microwave" } else if self.l_min_m > 1e-5 { "Mid-infrared" } else { "Optical" };
+        let freq_regime = if self.l_min_m > 1e-3 {
+            "Microwave"
+        } else if self.l_min_m > 1e-5 {
+            "Mid-infrared"
+        } else {
+            "Optical"
+        };
         dim_label(ui, &format!("Regime: {}", freq_regime));
 
         ui.add_space(4.0);
         ui.label("L_max (m)");
-        dim_label(ui, &format!("Expanded cavity. {}", format_length(self.l_max_m)));
-        engine_changed |= ui.add(egui::Slider::new(&mut self.l_max_m, 1e-6..=0.1).logarithmic(true)).changed();
+        dim_label(
+            ui,
+            &format!("Expanded cavity. {}", format_length(self.l_max_m)),
+        );
+        engine_changed |= ui
+            .add(egui::Slider::new(&mut self.l_max_m, 1e-6..=0.1).logarithmic(true))
+            .changed();
 
         ui.add_space(2.0);
         ui.label("L_min (m)");
-        dim_label(ui, &format!("Compressed cavity. {}", format_length(self.l_min_m)));
-        engine_changed |= ui.add(egui::Slider::new(&mut self.l_min_m, 1e-6..=0.1).logarithmic(true)).changed();
+        dim_label(
+            ui,
+            &format!("Compressed cavity. {}", format_length(self.l_min_m)),
+        );
+        engine_changed |= ui
+            .add(egui::Slider::new(&mut self.l_min_m, 1e-6..=0.1).logarithmic(true))
+            .changed();
 
         if self.l_min_m >= self.l_max_m {
             self.l_min_m = self.l_max_m * 0.98;
@@ -1358,24 +1612,32 @@ impl QuantumEngineApp {
         ui.add_space(2.0);
         ui.label("Temperature (K)");
         dim_label(ui, "Operating temperature.");
-        engine_changed |= ui.add(egui::Slider::new(&mut self.temperature_k, 0.001..=300.0).logarithmic(true)).changed();
+        engine_changed |= ui
+            .add(egui::Slider::new(&mut self.temperature_k, 0.001..=300.0).logarithmic(true))
+            .changed();
 
         ui.add_space(2.0);
         ui.label("\u{03b3} (Hz)");
         dim_label(ui, "Decoherence rate = \u{03c9}/Q.");
-        engine_changed |= ui.add(egui::Slider::new(&mut self.decoherence_rate, 0.1..=1e9).logarithmic(true)).changed();
+        engine_changed |= ui
+            .add(egui::Slider::new(&mut self.decoherence_rate, 0.1..=1e9).logarithmic(true))
+            .changed();
 
         ui.add_space(2.0);
         ui.label("\u{03b4}L/L (10^x)");
         dim_label(ui, "Modulation depth for DCE.");
-        engine_changed |= ui.add(egui::Slider::new(&mut self.modulation_depth_exp, -8.0..=-2.0).step_by(0.5)).changed();
+        engine_changed |= ui
+            .add(egui::Slider::new(&mut self.modulation_depth_exp, -8.0..=-2.0).step_by(0.5))
+            .changed();
 
         // Lattice
         section_heading(ui, "LATTICE");
         ui.add_space(4.0);
         ui.label("N (lattice dimension)");
         dim_label(ui, "N\u{00d7}N torus.");
-        let lattice_changed = ui.add(egui::Slider::new(&mut self.lattice_n, 4..=32)).changed();
+        let lattice_changed = ui
+            .add(egui::Slider::new(&mut self.lattice_n, 4..=32))
+            .changed();
         engine_changed |= lattice_changed;
 
         // Covariant Descent
@@ -1384,25 +1646,46 @@ impl QuantumEngineApp {
         let mut descent_changed = false;
         ui.add_space(4.0);
         ui.label("Learning rate \u{03b7}");
-        descent_changed |= ui.add(egui::Slider::new(&mut self.descent_eta, 0.0001..=0.05).logarithmic(true)).changed();
+        descent_changed |= ui
+            .add(egui::Slider::new(&mut self.descent_eta, 0.0001..=0.05).logarithmic(true))
+            .changed();
         ui.add_space(2.0);
         ui.label("Start x");
-        descent_changed |= ui.add(egui::Slider::new(&mut self.descent_start_x, 0.0..=1.0)).changed();
+        descent_changed |= ui
+            .add(egui::Slider::new(&mut self.descent_start_x, 0.0..=1.0))
+            .changed();
         ui.add_space(2.0);
         ui.label("Start y");
-        descent_changed |= ui.add(egui::Slider::new(&mut self.descent_start_y, 0.0..=1.0)).changed();
+        descent_changed |= ui
+            .add(egui::Slider::new(&mut self.descent_start_y, 0.0..=1.0))
+            .changed();
         ui.add_space(2.0);
         ui.checkbox(&mut self.show_euclidean, "Show Euclidean path");
         descent_changed |= lattice_changed;
 
-        if engine_changed { self.needs_engine = true; self.needs_scaling = true; }
-        if descent_changed { self.needs_descent = true; }
-        if lattice_changed { self.needs_convergence = true; }
+        if engine_changed {
+            self.needs_engine = true;
+            self.needs_scaling = true;
+        }
+        if descent_changed {
+            self.needs_descent = true;
+        }
+        if lattice_changed {
+            self.needs_convergence = true;
+        }
 
-        if self.needs_engine { self.send_engine(); }
-        if self.needs_descent { self.send_descent(); }
-        if self.needs_scaling { self.send_scaling(); }
-        if self.needs_convergence { self.send_convergence(); }
+        if self.needs_engine {
+            self.send_engine();
+        }
+        if self.needs_descent {
+            self.send_descent();
+        }
+        if self.needs_scaling {
+            self.send_scaling();
+        }
+        if self.needs_convergence {
+            self.send_convergence();
+        }
 
         ui.add_space(6.0);
         ui.separator();
@@ -1427,10 +1710,21 @@ impl QuantumEngineApp {
             dim_label(ui, "  Quality factor");
             ui.label(format!("n_th = {:.2e}", r.thermal_photons));
             dim_label(ui, "  Thermal photons");
-            ui.label(format!("\u{03b4}L\u{00b7}\u{03c9}/c = {:.2e}", r.perturbative_param));
+            ui.label(format!(
+                "\u{03b4}L\u{00b7}\u{03c9}/c = {:.2e}",
+                r.perturbative_param
+            ));
 
-            let pert_color = if r.perturbative_param < 0.01 { FOREST_GREEN } else { WARN_RED };
-            let pert_label = if r.perturbative_param < 0.01 { "PERTURBATIVE" } else { "NON-PERTURBATIVE" };
+            let pert_color = if r.perturbative_param < 0.01 {
+                FOREST_GREEN
+            } else {
+                WARN_RED
+            };
+            let pert_label = if r.perturbative_param < 0.01 {
+                "PERTURBATIVE"
+            } else {
+                "NON-PERTURBATIVE"
+            };
             ui.colored_label(pert_color, egui::RichText::new(pert_label).strong());
 
             ui.add_space(6.0);
@@ -1447,7 +1741,11 @@ impl QuantumEngineApp {
             ui.label(format!("Loss:       {:.3e} J", r.cycle.decoherence_loss));
             ui.label(format!("Thermal:    {:.3e} J", r.cycle.thermal_noise));
             ui.separator();
-            let net_color = if r.cycle.net_work > 0.0 { FOREST_GREEN } else { WARN_RED };
+            let net_color = if r.cycle.net_work > 0.0 {
+                FOREST_GREEN
+            } else {
+                WARN_RED
+            };
             ui.colored_label(net_color, format!("Net work:   {:.3e} J", r.cycle.net_work));
             ui.label(format!("Power:      {:.3e} W", r.power_output));
 
@@ -1455,20 +1753,36 @@ impl QuantumEngineApp {
             section_heading(ui, "EFFICIENCY");
             ui.label(format!("\u{03b7} = {:.4e}", r.cycle.efficiency));
             dim_label(ui, "  With topological protection");
-            ui.label(format!("\u{03b7}\u{2080} = {:.4e}", r.efficiency_unprotected));
+            ui.label(format!(
+                "\u{03b7}\u{2080} = {:.4e}",
+                r.efficiency_unprotected
+            ));
             dim_label(ui, "  Without protection");
             if r.cycle.efficiency != 0.0 && r.efficiency_unprotected != 0.0 {
                 let ratio = r.cycle.efficiency / r.efficiency_unprotected;
                 let rc = if ratio > 1.0 { FOREST_GREEN } else { WARN_RED };
-                ui.colored_label(rc, format!("\u{03b7}/\u{03b7}\u{2080} = {:.2}\u{00d7}", ratio));
+                ui.colored_label(
+                    rc,
+                    format!("\u{03b7}/\u{03b7}\u{2080} = {:.2}\u{00d7}", ratio),
+                );
             }
 
             ui.add_space(6.0);
             section_heading(ui, "COHERENCE");
-            let ec = if r.coherence_enhancement > 1.0 { FOREST_GREEN } else { GOLD_EG };
-            ui.colored_label(ec, format!("Enhancement: {:.2}\u{00d7}", r.coherence_enhancement));
+            let ec = if r.coherence_enhancement > 1.0 {
+                FOREST_GREEN
+            } else {
+                GOLD_EG
+            };
+            ui.colored_label(
+                ec,
+                format!("Enhancement: {:.2}\u{00d7}", r.coherence_enhancement),
+            );
             dim_label(ui, "  Tonnetz vs bare T\u{2082}");
-            ui.label(format!("Unruh a_min: {:.2e} m/s\u{00b2}", r.unruh_acceleration_threshold));
+            ui.label(format!(
+                "Unruh a_min: {:.2e} m/s\u{00b2}",
+                r.unruh_acceleration_threshold
+            ));
         } else {
             dim_label(ui, "Computing...");
         }
@@ -1477,14 +1791,20 @@ impl QuantumEngineApp {
         ui.add_space(6.0);
         section_heading(ui, "DESCENT COMPARISON");
         if let Some(ref cov) = self.descent_cov {
-            let conv_str = match cov.convergence_step { Some(s) => format!("step {}", s), None => "not converged".to_string() };
+            let conv_str = match cov.convergence_step {
+                Some(s) => format!("step {}", s),
+                None => "not converged".to_string(),
+            };
             ui.colored_label(FOREST_GREEN, "Covariant (T\u{00b2}):");
             ui.label(format!("  Loss: {:.6}", cov.final_loss));
             ui.label(format!("  Conv: {}", conv_str));
             ui.label(format!("  Rate: {:.6}", cov.measured_rate));
         }
         if let Some(ref euc) = self.descent_euc {
-            let conv_str = match euc.convergence_step { Some(s) => format!("step {}", s), None => "not converged".to_string() };
+            let conv_str = match euc.convergence_step {
+                Some(s) => format!("step {}", s),
+                None => "not converged".to_string(),
+            };
             ui.colored_label(WARN_RED, "Euclidean (flat):");
             ui.label(format!("  Loss: {:.6}", euc.final_loss));
             ui.label(format!("  Conv: {}", conv_str));
@@ -1495,12 +1815,23 @@ impl QuantumEngineApp {
     fn draw_engine_central(&self, ui: &mut egui::Ui) {
         let full = ui.available_rect_before_wrap();
         let torus_h = (full.height() * 0.55).max(200.0);
-        let torus_rect = egui::Rect::from_min_max(full.min, egui::pos2(full.max.x, full.min.y + torus_h));
-        let chart_area = egui::Rect::from_min_max(egui::pos2(full.min.x, full.min.y + torus_h), full.max);
+        let torus_rect =
+            egui::Rect::from_min_max(full.min, egui::pos2(full.max.x, full.min.y + torus_h));
+        let chart_area =
+            egui::Rect::from_min_max(egui::pos2(full.min.x, full.min.y + torus_h), full.max);
         let col_w = chart_area.width() / 3.0;
-        let chart1 = egui::Rect::from_min_max(chart_area.min, egui::pos2(chart_area.min.x + col_w, chart_area.max.y));
-        let chart2 = egui::Rect::from_min_max(egui::pos2(chart_area.min.x + col_w, chart_area.min.y), egui::pos2(chart_area.min.x + 2.0 * col_w, chart_area.max.y));
-        let chart3 = egui::Rect::from_min_max(egui::pos2(chart_area.min.x + 2.0 * col_w, chart_area.min.y), chart_area.max);
+        let chart1 = egui::Rect::from_min_max(
+            chart_area.min,
+            egui::pos2(chart_area.min.x + col_w, chart_area.max.y),
+        );
+        let chart2 = egui::Rect::from_min_max(
+            egui::pos2(chart_area.min.x + col_w, chart_area.min.y),
+            egui::pos2(chart_area.min.x + 2.0 * col_w, chart_area.max.y),
+        );
+        let chart3 = egui::Rect::from_min_max(
+            egui::pos2(chart_area.min.x + 2.0 * col_w, chart_area.min.y),
+            chart_area.max,
+        );
 
         let torus_response = ui.allocate_rect(torus_rect, egui::Sense::click_and_drag());
         if torus_response.dragged() {
@@ -1511,86 +1842,249 @@ impl QuantumEngineApp {
         {
             let painter = ui.painter();
             let (phase, _) = cycle_phase(self.time);
-            let phase_name = match phase { CyclePhase::Compress => "COMPRESS", CyclePhase::Extract => "EXTRACT", CyclePhase::Expand => "EXPAND", CyclePhase::Idle => "IDLE" };
-            let phase_col = match phase { CyclePhase::Compress => COMPRESS_BLUE, CyclePhase::Extract => EXTRACT_GOLD, CyclePhase::Expand => EXPAND_GREEN, CyclePhase::Idle => DIM };
-            painter.text(torus_rect.center_top() + egui::vec2(0.0, 12.0), egui::Align2::CENTER_TOP, format!("3D TORUS (T\u{00b2}) \u{2014} {0}\u{00d7}{0} lattice", self.lattice_n), egui::FontId::proportional(13.0), HEADING_CLR);
-            painter.text(torus_rect.center_top() + egui::vec2(0.0, 28.0), egui::Align2::CENTER_TOP, format!("Engine phase: {}", phase_name), egui::FontId::proportional(11.0), phase_col);
+            let phase_name = match phase {
+                CyclePhase::Compress => "COMPRESS",
+                CyclePhase::Extract => "EXTRACT",
+                CyclePhase::Expand => "EXPAND",
+                CyclePhase::Idle => "IDLE",
+            };
+            let phase_col = match phase {
+                CyclePhase::Compress => COMPRESS_BLUE,
+                CyclePhase::Extract => EXTRACT_GOLD,
+                CyclePhase::Expand => EXPAND_GREEN,
+                CyclePhase::Idle => DIM,
+            };
+            painter.text(
+                torus_rect.center_top() + egui::vec2(0.0, 12.0),
+                egui::Align2::CENTER_TOP,
+                format!(
+                    "3D TORUS (T\u{00b2}) \u{2014} {0}\u{00d7}{0} lattice",
+                    self.lattice_n
+                ),
+                egui::FontId::proportional(13.0),
+                HEADING_CLR,
+            );
+            painter.text(
+                torus_rect.center_top() + egui::vec2(0.0, 28.0),
+                egui::Align2::CENTER_TOP,
+                format!("Engine phase: {}", phase_name),
+                egui::FontId::proportional(11.0),
+                phase_col,
+            );
 
             let cov_steps = self.descent_cov.as_ref().map(|d| d.steps.as_slice());
             let euc_steps = self.descent_euc.as_ref().map(|d| d.steps.as_slice());
-            draw_engine_torus(painter, torus_rect, self.rotation, self.lattice_n, self.time, cov_steps, euc_steps, self.show_euclidean);
+            draw_engine_torus(
+                painter,
+                torus_rect,
+                self.rotation,
+                self.lattice_n,
+                self.time,
+                cov_steps,
+                euc_steps,
+                self.show_euclidean,
+            );
 
-            painter.text(chart1.center_top() + egui::vec2(0.0, 4.0), egui::Align2::CENTER_TOP, "ENGINE CYCLE ENERGY", egui::FontId::proportional(11.0), HEADING_CLR);
-            painter.text(chart2.center_top() + egui::vec2(0.0, 4.0), egui::Align2::CENTER_TOP, "CONVERGENCE RATE vs \u{03bb}\u{2081}", egui::FontId::proportional(11.0), HEADING_CLR);
-            painter.text(chart3.center_top() + egui::vec2(0.0, 4.0), egui::Align2::CENTER_TOP, "SCALING: \u{03b7}, DCE, Enhancement vs N", egui::FontId::proportional(11.0), HEADING_CLR);
+            painter.text(
+                chart1.center_top() + egui::vec2(0.0, 4.0),
+                egui::Align2::CENTER_TOP,
+                "ENGINE CYCLE ENERGY",
+                egui::FontId::proportional(11.0),
+                HEADING_CLR,
+            );
+            painter.text(
+                chart2.center_top() + egui::vec2(0.0, 4.0),
+                egui::Align2::CENTER_TOP,
+                "CONVERGENCE RATE vs \u{03bb}\u{2081}",
+                egui::FontId::proportional(11.0),
+                HEADING_CLR,
+            );
+            painter.text(
+                chart3.center_top() + egui::vec2(0.0, 4.0),
+                egui::Align2::CENTER_TOP,
+                "SCALING: \u{03b7}, DCE, Enhancement vs N",
+                egui::FontId::proportional(11.0),
+                HEADING_CLR,
+            );
         }
 
         // Chart 1: Energy Budget
-        let chart1_inner = egui::Rect::from_min_max(chart1.min + egui::vec2(8.0, 20.0), chart1.max - egui::vec2(8.0, 5.0));
+        let chart1_inner = egui::Rect::from_min_max(
+            chart1.min + egui::vec2(8.0, 20.0),
+            chart1.max - egui::vec2(8.0, 5.0),
+        );
         ui.allocate_new_ui(egui::UiBuilder::new().max_rect(chart1_inner), |ui| {
-            Plot::new("energy_budget").width(chart1_inner.width()).height(chart1_inner.height()).y_axis_label("Energy (J)").show_axes(true).allow_zoom(true).allow_drag(true).legend(Legend::default().position(Corner::RightTop)).show(ui, |plot_ui| {
-                if let Some(ref r) = self.engine_result {
-                    let bars = vec![
-                        Bar::new(0.0, r.cycle.work_compression).name("W_compress").fill(COMPRESS_BLUE),
-                        Bar::new(1.0, r.cycle.energy_extracted).name("E_extract").fill(EXTRACT_GOLD),
-                        Bar::new(2.0, r.cycle.decoherence_loss).name("Decoherence").fill(LOSS_RED),
-                        Bar::new(3.0, r.cycle.thermal_noise).name("Thermal").fill(THERMAL_ORANGE),
-                        Bar::new(4.0, r.cycle.net_work.max(0.0)).name("Net work").fill(FOREST_GREEN),
-                    ];
-                    plot_ui.bar_chart(BarChart::new(bars).width(0.7));
-                }
-            });
+            Plot::new("energy_budget")
+                .width(chart1_inner.width())
+                .height(chart1_inner.height())
+                .y_axis_label("Energy (J)")
+                .show_axes(true)
+                .allow_zoom(true)
+                .allow_drag(true)
+                .legend(Legend::default().position(Corner::RightTop))
+                .show(ui, |plot_ui| {
+                    if let Some(ref r) = self.engine_result {
+                        let bars = vec![
+                            Bar::new(0.0, r.cycle.work_compression)
+                                .name("W_compress")
+                                .fill(COMPRESS_BLUE),
+                            Bar::new(1.0, r.cycle.energy_extracted)
+                                .name("E_extract")
+                                .fill(EXTRACT_GOLD),
+                            Bar::new(2.0, r.cycle.decoherence_loss)
+                                .name("Decoherence")
+                                .fill(LOSS_RED),
+                            Bar::new(3.0, r.cycle.thermal_noise)
+                                .name("Thermal")
+                                .fill(THERMAL_ORANGE),
+                            Bar::new(4.0, r.cycle.net_work.max(0.0))
+                                .name("Net work")
+                                .fill(FOREST_GREEN),
+                        ];
+                        plot_ui.bar_chart(BarChart::new(bars).width(0.7));
+                    }
+                });
         });
 
         // Chart 2: Convergence Rate vs λ₁
-        let chart2_inner = egui::Rect::from_min_max(chart2.min + egui::vec2(8.0, 20.0), chart2.max - egui::vec2(8.0, 5.0));
+        let chart2_inner = egui::Rect::from_min_max(
+            chart2.min + egui::vec2(8.0, 20.0),
+            chart2.max - egui::vec2(8.0, 5.0),
+        );
         ui.allocate_new_ui(egui::UiBuilder::new().max_rect(chart2_inner), |ui| {
-            Plot::new("convergence_chart").width(chart2_inner.width()).height(chart2_inner.height()).x_axis_label("\u{03bb}\u{2081}").y_axis_label("Measured rate").show_axes(true).allow_zoom(true).allow_drag(true).legend(Legend::default().position(Corner::LeftTop)).show(ui, |plot_ui| {
-                if let Some(ref data) = self.convergence_data {
-                    let pts: PlotPoints = data.iter().map(|&(_, l, m)| [l, m]).collect();
-                    plot_ui.points(Points::new(pts).color(FOREST_GREEN).radius(5.0).name("rate vs \u{03bb}\u{2081}"));
-                    for &(n, l, m) in data {
-                        plot_ui.text(PlotText::new(PlotPoint::new(l, m), egui::RichText::new(format!("N={}", n)).size(9.0).color(DIM)).anchor(egui::Align2::LEFT_BOTTOM));
-                    }
-                    if let Some(&(_, l0, m0)) = data.first() {
-                        if l0 > 0.0 {
-                            let k = m0 / l0;
-                            let max_l = data.iter().map(|&(_, l, _)| l).fold(0.0_f64, f64::max);
-                            plot_ui.line(Line::new(PlotPoints::from(vec![[0.0, 0.0], [max_l, k * max_l]])).color(GOLD_EG).width(1.5).name("rate \u{221d} \u{03bb}\u{2081}"));
+            Plot::new("convergence_chart")
+                .width(chart2_inner.width())
+                .height(chart2_inner.height())
+                .x_axis_label("\u{03bb}\u{2081}")
+                .y_axis_label("Measured rate")
+                .show_axes(true)
+                .allow_zoom(true)
+                .allow_drag(true)
+                .legend(Legend::default().position(Corner::LeftTop))
+                .show(ui, |plot_ui| {
+                    if let Some(ref data) = self.convergence_data {
+                        let pts: PlotPoints = data.iter().map(|&(_, l, m)| [l, m]).collect();
+                        plot_ui.points(
+                            Points::new(pts)
+                                .color(FOREST_GREEN)
+                                .radius(5.0)
+                                .name("rate vs \u{03bb}\u{2081}"),
+                        );
+                        for &(n, l, m) in data {
+                            plot_ui.text(
+                                PlotText::new(
+                                    PlotPoint::new(l, m),
+                                    egui::RichText::new(format!("N={}", n)).size(9.0).color(DIM),
+                                )
+                                .anchor(egui::Align2::LEFT_BOTTOM),
+                            );
+                        }
+                        if let Some(&(_, l0, m0)) = data.first() {
+                            if l0 > 0.0 {
+                                let k = m0 / l0;
+                                let max_l = data.iter().map(|&(_, l, _)| l).fold(0.0_f64, f64::max);
+                                plot_ui.line(
+                                    Line::new(PlotPoints::from(vec![
+                                        [0.0, 0.0],
+                                        [max_l, k * max_l],
+                                    ]))
+                                    .color(GOLD_EG)
+                                    .width(1.5)
+                                    .name("rate \u{221d} \u{03bb}\u{2081}"),
+                                );
+                            }
                         }
                     }
-                }
-            });
+                });
         });
 
         // Chart 3: Scaling Study
-        let chart3_inner = egui::Rect::from_min_max(chart3.min + egui::vec2(8.0, 20.0), chart3.max - egui::vec2(8.0, 5.0));
+        let chart3_inner = egui::Rect::from_min_max(
+            chart3.min + egui::vec2(8.0, 20.0),
+            chart3.max - egui::vec2(8.0, 5.0),
+        );
         ui.allocate_new_ui(egui::UiBuilder::new().max_rect(chart3_inner), |ui| {
-            Plot::new("scaling_chart").width(chart3_inner.width()).height(chart3_inner.height()).x_axis_label("N").show_axes(true).allow_zoom(true).allow_drag(true).legend(Legend::default().position(Corner::LeftTop)).show(ui, |plot_ui| {
-                if let Some(ref data) = self.scaling_data {
-                    let enh_line: PlotPoints = data.iter().map(|e| [e.n as f64, e.coherence_enhancement]).collect();
-                    let enh_scatter: PlotPoints = data.iter().map(|e| [e.n as f64, e.coherence_enhancement]).collect();
-                    plot_ui.line(Line::new(enh_line).color(FOREST_GREEN).width(2.0).name("Enhancement (\u{00d7})"));
-                    plot_ui.points(Points::new(enh_scatter).color(FOREST_GREEN).radius(4.0).name("Enhancement"));
-                    let max_dce = data.iter().map(|e| e.dce_pair_rate).fold(0.0_f64, f64::max);
-                    if max_dce > 0.0 {
-                        let dce_pts: PlotPoints = data.iter().map(|e| [e.n as f64, e.dce_pair_rate / max_dce * data.iter().map(|x| x.coherence_enhancement).fold(0.0_f64, f64::max)]).collect();
-                        plot_ui.line(Line::new(dce_pts).color(GOLD_EG).width(2.0).name("DCE (normalized)"));
+            Plot::new("scaling_chart")
+                .width(chart3_inner.width())
+                .height(chart3_inner.height())
+                .x_axis_label("N")
+                .show_axes(true)
+                .allow_zoom(true)
+                .allow_drag(true)
+                .legend(Legend::default().position(Corner::LeftTop))
+                .show(ui, |plot_ui| {
+                    if let Some(ref data) = self.scaling_data {
+                        let enh_line: PlotPoints = data
+                            .iter()
+                            .map(|e| [e.n as f64, e.coherence_enhancement])
+                            .collect();
+                        let enh_scatter: PlotPoints = data
+                            .iter()
+                            .map(|e| [e.n as f64, e.coherence_enhancement])
+                            .collect();
+                        plot_ui.line(
+                            Line::new(enh_line)
+                                .color(FOREST_GREEN)
+                                .width(2.0)
+                                .name("Enhancement (\u{00d7})"),
+                        );
+                        plot_ui.points(
+                            Points::new(enh_scatter)
+                                .color(FOREST_GREEN)
+                                .radius(4.0)
+                                .name("Enhancement"),
+                        );
+                        let max_dce = data.iter().map(|e| e.dce_pair_rate).fold(0.0_f64, f64::max);
+                        if max_dce > 0.0 {
+                            let dce_pts: PlotPoints = data
+                                .iter()
+                                .map(|e| {
+                                    [
+                                        e.n as f64,
+                                        e.dce_pair_rate / max_dce
+                                            * data
+                                                .iter()
+                                                .map(|x| x.coherence_enhancement)
+                                                .fold(0.0_f64, f64::max),
+                                    ]
+                                })
+                                .collect();
+                            plot_ui.line(
+                                Line::new(dce_pts)
+                                    .color(GOLD_EG)
+                                    .width(2.0)
+                                    .name("DCE (normalized)"),
+                            );
+                        }
+                        let max_gap = data.iter().map(|e| e.spectral_gap).fold(0.0_f64, f64::max);
+                        let max_enh = data
+                            .iter()
+                            .map(|e| e.coherence_enhancement)
+                            .fold(0.0_f64, f64::max);
+                        if max_gap > 0.0 {
+                            let gap_pts: PlotPoints = data
+                                .iter()
+                                .map(|e| [e.n as f64, e.spectral_gap / max_gap * max_enh])
+                                .collect();
+                            plot_ui.line(
+                                Line::new(gap_pts)
+                                    .color(egui::Color32::from_rgb(200, 200, 190))
+                                    .width(1.5)
+                                    .name("\u{03bb}\u{2081} (scaled)"),
+                            );
+                        }
                     }
-                    let max_gap = data.iter().map(|e| e.spectral_gap).fold(0.0_f64, f64::max);
-                    let max_enh = data.iter().map(|e| e.coherence_enhancement).fold(0.0_f64, f64::max);
-                    if max_gap > 0.0 {
-                        let gap_pts: PlotPoints = data.iter().map(|e| [e.n as f64, e.spectral_gap / max_gap * max_enh]).collect();
-                        plot_ui.line(Line::new(gap_pts).color(egui::Color32::from_rgb(200, 200, 190)).width(1.5).name("\u{03bb}\u{2081} (scaled)"));
-                    }
-                }
-            });
+                });
         });
     }
 
     fn draw_engine_status(&self, ctx: &egui::Context) {
         if let Some(ref r) = self.engine_result {
-            let (st, sc) = if r.perturbative_param < 0.01 { ("PERTURBATIVE", FOREST_GREEN) } else { ("NON-PERTURBATIVE", WARN_RED) };
+            let (st, sc) = if r.perturbative_param < 0.01 {
+                ("PERTURBATIVE", FOREST_GREEN)
+            } else {
+                ("NON-PERTURBATIVE", WARN_RED)
+            };
             let frame = egui::Frame {
                 fill: egui::Color32::from_rgba_unmultiplied(22, 28, 22, 230),
                 corner_radius: egui::CornerRadius::from(6),
@@ -1598,12 +2092,26 @@ impl QuantumEngineApp {
                 stroke: egui::Stroke::new(2.0, sc),
                 ..Default::default()
             };
-            egui::Window::new("status").title_bar(false).resizable(false).movable(false).frame(frame).anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0]).show(ctx, |ui| {
-                ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
-                ui.label(format!("\u{03b7}={:.2e}  \u{03bb}\u{2081}={:.4}  enhance={:.1}\u{00d7}", r.cycle.efficiency, r.cycle.spectral_gap, r.coherence_enhancement));
-                dim_label(ui, &format!("P={:.2e}W  n_th={:.1e}", r.power_output, r.thermal_photons));
-                if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
-            });
+            egui::Window::new("status")
+                .title_bar(false)
+                .resizable(false)
+                .movable(false)
+                .frame(frame)
+                .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
+                .show(ctx, |ui| {
+                    ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
+                    ui.label(format!(
+                        "\u{03b7}={:.2e}  \u{03bb}\u{2081}={:.4}  enhance={:.1}\u{00d7}",
+                        r.cycle.efficiency, r.cycle.spectral_gap, r.coherence_enhancement
+                    ));
+                    dim_label(
+                        ui,
+                        &format!("P={:.2e}W  n_th={:.1e}", r.power_output, r.thermal_photons),
+                    );
+                    if self.paused {
+                        ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0));
+                    }
+                });
         }
     }
 }
@@ -1614,14 +2122,26 @@ impl QuantumEngineApp {
 
 impl QuantumEngineApp {
     fn draw_cnt_controls(&mut self, ui: &mut egui::Ui) {
-        ui.colored_label(GOLD_EG, egui::RichText::new("DOPPLER-TORIC SIMULATOR").strong().size(13.0));
+        ui.colored_label(
+            GOLD_EG,
+            egui::RichText::new("DOPPLER-TORIC SIMULATOR")
+                .strong()
+                .size(13.0),
+        );
         dim_label(ui, "Physical layer \u{2192} logical layer bridge");
         ui.add_space(4.0);
 
         section_heading(ui, "PRESETS");
         let mut preset_changed = false;
         ui.horizontal(|ui| {
-            if ui.add(egui::Button::new(egui::RichText::new("Optimal").color(FOREST_GREEN).size(12.0))).clicked() {
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("Optimal")
+                        .color(FOREST_GREEN)
+                        .size(12.0),
+                ))
+                .clicked()
+            {
                 // Short SWCNT in dilution fridge + high laser + strong Tonnetz
                 self.cnt_params.resonator_type = ResonatorType::Nanotube;
                 self.cnt_params.material = Material::Carbon;
@@ -1641,7 +2161,12 @@ impl QuantumEngineApp {
                 self.cnt_gate_time_ns = 50.0;
                 preset_changed = true;
             }
-            if ui.add(egui::Button::new(egui::RichText::new("Room Temp").color(WARN_RED).size(12.0))).clicked() {
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("Room Temp").color(WARN_RED).size(12.0),
+                ))
+                .clicked()
+            {
                 self.cnt_params = PhysicsParams::default();
                 self.cnt_lattice_n = 6;
                 self.cnt_mc_trials = 500;
@@ -1658,11 +2183,25 @@ impl QuantumEngineApp {
                 .selected_text(self.cnt_params.material.label())
                 .show_ui(ui, |ui| {
                     ui.selectable_value(&mut self.cnt_params.material, Material::Carbon, "Carbon");
-                    ui.selectable_value(&mut self.cnt_params.material, Material::BoronNitride, "Boron Nitride");
-                    ui.selectable_value(&mut self.cnt_params.material, Material::MoS2, "MoS\u{2082}");
-                    ui.selectable_value(&mut self.cnt_params.material, Material::SiliconCarbide, "Silicon Carbide");
+                    ui.selectable_value(
+                        &mut self.cnt_params.material,
+                        Material::BoronNitride,
+                        "Boron Nitride",
+                    );
+                    ui.selectable_value(
+                        &mut self.cnt_params.material,
+                        Material::MoS2,
+                        "MoS\u{2082}",
+                    );
+                    ui.selectable_value(
+                        &mut self.cnt_params.material,
+                        Material::SiliconCarbide,
+                        "Silicon Carbide",
+                    );
                 });
-            if self.cnt_params.material != prev { changed = true; }
+            if self.cnt_params.material != prev {
+                changed = true;
+            }
             let desc = match self.cnt_params.material {
                 Material::Carbon => "E=1.0 TPa, \u{03c1}=2200 kg/m\u{00b3}",
                 Material::BoronNitride => "E=0.8 TPa, \u{03c1}=2100, low charge noise",
@@ -1680,18 +2219,31 @@ impl QuantumEngineApp {
         ui.add_space(4.0);
         ui.label("Length (nm)");
         dim_label(ui, "Shorter \u{2192} higher frequency.");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.cnt_length_nm, 100.0..=5000.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(
+                egui::Slider::new(&mut self.cnt_params.cnt_length_nm, 100.0..=5000.0)
+                    .logarithmic(true),
+            )
+            .changed();
 
         ui.add_space(2.0);
         ui.label("Tube Diameter (nm)");
         dim_label(ui, "SWCNT ~1\u{2013}2nm, MWCNT ~5\u{2013}50nm.");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.cnt_diameter_nm, 0.5..=50.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(
+                egui::Slider::new(&mut self.cnt_params.cnt_diameter_nm, 0.5..=50.0)
+                    .logarithmic(true),
+            )
+            .changed();
 
         ui.add_space(2.0);
         ui.label("Walls");
         dim_label(ui, "1=SWCNT, 2+=MWCNT. More walls \u{2192} lower Q.");
         let mut walls_f = self.cnt_params.num_walls as f64;
-        if ui.add(egui::Slider::new(&mut walls_f, 1.0..=10.0).step_by(1.0)).changed() {
+        if ui
+            .add(egui::Slider::new(&mut walls_f, 1.0..=10.0).step_by(1.0))
+            .changed()
+        {
             self.cnt_params.num_walls = walls_f as usize;
             changed = true;
         }
@@ -1699,13 +2251,23 @@ impl QuantumEngineApp {
         ui.add_space(2.0);
         ui.label("Cavity Finesse");
         dim_label(ui, "Higher \u{2192} narrower linewidth, better resolved.");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.cavity_finesse, 100.0..=100000.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(
+                egui::Slider::new(&mut self.cnt_params.cavity_finesse, 100.0..=100000.0)
+                    .logarithmic(true),
+            )
+            .changed();
 
         // Show derived quantities
         if let Some(ref phys) = self.cnt_physics_result {
             ui.add_space(2.0);
-            dim_label(ui, &format!("  f_m = {:.2} GHz  g\u{2080} = {:.0} kHz  Q = {:.0}",
-                phys.freq_ghz, phys.g0_khz, phys.q_mech));
+            dim_label(
+                ui,
+                &format!(
+                    "  f_m = {:.2} GHz  g\u{2080} = {:.0} kHz  Q = {:.0}",
+                    phys.freq_ghz, phys.g0_khz, phys.q_mech
+                ),
+            );
         }
 
         section_heading(ui, "DOPPLER COOLING");
@@ -1714,72 +2276,115 @@ impl QuantumEngineApp {
         ui.add_space(4.0);
         ui.label("Temperature (K)");
         dim_label(ui, "Bath temperature. Lower = fewer thermal phonons.");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.temperature, 0.01..=300.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(
+                egui::Slider::new(&mut self.cnt_params.temperature, 0.01..=300.0).logarithmic(true),
+            )
+            .changed();
 
         ui.add_space(2.0);
         ui.label("Laser Power (mW)");
-        dim_label(ui, "Drives intracavity photon number \u{2192} cooperativity.");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.laser_power, 0.1..=50.0).logarithmic(true)).changed();
+        dim_label(
+            ui,
+            "Drives intracavity photon number \u{2192} cooperativity.",
+        );
+        changed |= ui
+            .add(egui::Slider::new(&mut self.cnt_params.laser_power, 0.1..=50.0).logarithmic(true))
+            .changed();
 
         ui.add_space(2.0);
         ui.label("Detuning (\u{00d7}\u{03c9}_m)");
         dim_label(ui, "Red detuning (-1 = optimal sideband cooling).");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.detuning, -3.0..=0.0)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.cnt_params.detuning, -3.0..=0.0))
+            .changed();
 
         ui.add_space(2.0);
         ui.label("\u{03ba}/2 (\u{00d7}\u{03c9}_m)");
         dim_label(ui, "Cavity half-linewidth.");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.kappa, 0.01..=2.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.cnt_params.kappa, 0.01..=2.0).logarithmic(true))
+            .changed();
 
         ui.add_space(2.0);
         ui.label("Piezo Voltage (V)");
         dim_label(ui, "Piezoelectric drive near mechanical resonance.");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.piezo_voltage, 0.0..=10.0)).changed();
+        changed |= ui
+            .add(egui::Slider::new(
+                &mut self.cnt_params.piezo_voltage,
+                0.0..=10.0,
+            ))
+            .changed();
 
         section_heading(ui, "TONNETZ COHERENCE FILTER");
         dim_label(ui, "Toroidal topology suppresses dephasing noise.");
         ui.add_space(4.0);
         ui.label("Grid Size (N)");
-        dim_label(ui, "N\u{00d7}N Tonnetz torus. Larger \u{2192} stronger suppression.");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.tonnetz_grid_size, 3..=16)).changed();
+        dim_label(
+            ui,
+            "N\u{00d7}N Tonnetz torus. Larger \u{2192} stronger suppression.",
+        );
+        changed |= ui
+            .add(egui::Slider::new(
+                &mut self.cnt_params.tonnetz_grid_size,
+                3..=16,
+            ))
+            .changed();
         ui.add_space(2.0);
         ui.label("Q Factor");
         dim_label(ui, "Quality factor. Higher = more enhancement.");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_params.tonnetz_q, 1.0..=200.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.cnt_params.tonnetz_q, 1.0..=200.0).logarithmic(true))
+            .changed();
 
         section_heading(ui, "LOGICAL LAYER: Toric Code");
         dim_label(ui, "Kitaev toric code + greedy decoder.");
         ui.add_space(4.0);
         ui.label("Lattice N");
         dim_label(ui, "N\u{00d7}N torus with 2N\u{00b2} physical qubits.");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_lattice_n, 3..=12)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.cnt_lattice_n, 3..=12))
+            .changed();
         ui.add_space(2.0);
         ui.label("MC Trials");
         dim_label(ui, "Monte Carlo error-correction trials.");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_mc_trials, 50..=5000).logarithmic(true)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.cnt_mc_trials, 50..=5000).logarithmic(true))
+            .changed();
         ui.add_space(2.0);
         ui.label("Gate Time (ns)");
         dim_label(ui, "p = gate_time / T\u{2082}");
-        changed |= ui.add(egui::Slider::new(&mut self.cnt_gate_time_ns, 10.0..=1000.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.cnt_gate_time_ns, 10.0..=1000.0).logarithmic(true))
+            .changed();
 
         if changed {
             self.needs_cnt_eval = true;
             self.needs_cnt_sweep = true;
         }
-        if self.needs_cnt_eval { self.send_cnt_eval(); }
-        if self.needs_cnt_sweep && !self.cnt_sweep_pending { self.send_cnt_sweep(); }
+        if self.needs_cnt_eval {
+            self.send_cnt_eval();
+        }
+        if self.needs_cnt_sweep && !self.cnt_sweep_pending {
+            self.send_cnt_sweep();
+        }
 
         ui.add_space(6.0);
         ui.separator();
         dim_label(ui, "PIPELINE:");
         dim_label(ui, "  Temp,Laser \u{2192} Doppler \u{2192} n_final");
-        dim_label(ui, "  Tonnetz(\u{03bb}\u{2081},Q) \u{2192} T\u{2082} enhancement");
+        dim_label(
+            ui,
+            "  Tonnetz(\u{03bb}\u{2081},Q) \u{2192} T\u{2082} enhancement",
+        );
         dim_label(ui, "  T\u{2082} \u{2192} p = t_gate/T\u{2082}");
         dim_label(ui, "  p \u{2192} Toric code MC \u{2192} P_L");
     }
 
     fn draw_cnt_results(&self, ui: &mut egui::Ui) {
-        let heading = self.cnt_physics_result.as_ref()
+        let heading = self
+            .cnt_physics_result
+            .as_ref()
             .map(|p| p.resonator_label)
             .unwrap_or("CNT RESONATOR");
         section_heading(ui, heading);
@@ -1789,13 +2394,23 @@ impl QuantumEngineApp {
             dim_label(ui, "  Mechanical frequency");
             ui.label(format!("g\u{2080}: {:.0} kHz", phys.g0_khz));
             dim_label(ui, "  Optomechanical coupling");
-            let qc = if phys.q_mech > 1e5 { FOREST_GREEN } else { GOLD_EG };
+            let qc = if phys.q_mech > 1e5 {
+                FOREST_GREEN
+            } else {
+                GOLD_EG
+            };
             ui.colored_label(qc, format!("Q: {:.0}", phys.q_mech));
             dim_label(ui, "  Mechanical quality factor");
             ui.label(format!("\u{0394}\u{03c9}: {:.2}", phys.mech_spectral_gap));
-            dim_label(ui, "  Mechanical spectral gap (\u{03c9}\u{2083}/\u{03c9}\u{2082})");
+            dim_label(
+                ui,
+                "  Mechanical spectral gap (\u{03c9}\u{2083}/\u{03c9}\u{2082})",
+            );
             if phys.resonator_label == "NANOTORUS" {
-                dim_label(ui, "  T\u{00b2} modes: winding numbers (m,n). Q enhanced by");
+                dim_label(
+                    ui,
+                    "  T\u{00b2} modes: winding numbers (m,n). Q enhanced by",
+                );
                 dim_label(ui, "  elimination of clamping losses.");
             }
 
@@ -1814,21 +2429,38 @@ impl QuantumEngineApp {
             dim_label(ui, "  Spectral gap");
             ui.label(format!("\u{03a3}w: {:.1}", phys.coupling_weight));
             dim_label(ui, "  Total coupling weight");
-            let enh_c = if phys.tonnetz_enhancement > 5.0 { FOREST_GREEN } else { GOLD_EG };
-            ui.colored_label(enh_c, format!("Enhancement: {:.1}\u{00d7}", phys.tonnetz_enhancement));
+            let enh_c = if phys.tonnetz_enhancement > 5.0 {
+                FOREST_GREEN
+            } else {
+                GOLD_EG
+            };
+            ui.colored_label(
+                enh_c,
+                format!("Enhancement: {:.1}\u{00d7}", phys.tonnetz_enhancement),
+            );
             dim_label(ui, "  Dephasing suppression factor");
 
             ui.add_space(6.0);
             section_heading(ui, "COHERENCE TIMES");
             ui.label(format!("T\u{2081}: {:.0} ns", phys.t1_ns));
             dim_label(ui, "  Relaxation time");
-            let t2c = if phys.t2_ns > self.cnt_gate_time_ns * 10.0 { FOREST_GREEN } else { WARN_RED };
-            ui.colored_label(t2c, format!("T\u{2082}: {:.0} ns  (with Tonnetz)", phys.t2_ns));
+            let t2c = if phys.t2_ns > self.cnt_gate_time_ns * 10.0 {
+                FOREST_GREEN
+            } else {
+                WARN_RED
+            };
+            ui.colored_label(
+                t2c,
+                format!("T\u{2082}: {:.0} ns  (with Tonnetz)", phys.t2_ns),
+            );
             dim_label(ui, "  Phase coherence time");
             ui.label(format!("T\u{2082} bare: {:.0} ns", phys.t2_bare_ns));
             let imp = phys.t2_ns - phys.t2_bare_ns;
             let imp_c = if imp > 100.0 { FOREST_GREEN } else { GOLD_EG };
-            ui.colored_label(imp_c, format!("\u{0394}T\u{2082}: +{:.0} ns improvement", imp));
+            ui.colored_label(
+                imp_c,
+                format!("\u{0394}T\u{2082}: +{:.0} ns improvement", imp),
+            );
         }
 
         ui.add_space(6.0);
@@ -1838,8 +2470,15 @@ impl QuantumEngineApp {
         let margin = 0.09 - self.cnt_p_error;
         let mc = if margin > 0.0 { FOREST_GREEN } else { WARN_RED };
         ui.colored_label(mc, format!("Margin: {:.1}%", margin * 100.0));
-        if margin > 0.0 { dim_label(ui, "  BELOW threshold \u{2713}"); } else { ui.colored_label(WARN_RED, "  ABOVE threshold!"); }
-        ui.label(format!("P_L = {:.3}  ({}/{})", self.cnt_logical_error_rate, self.cnt_logical_failures, self.cnt_mc_trials_done));
+        if margin > 0.0 {
+            dim_label(ui, "  BELOW threshold \u{2713}");
+        } else {
+            ui.colored_label(WARN_RED, "  ABOVE threshold!");
+        }
+        ui.label(format!(
+            "P_L = {:.3}  ({}/{})",
+            self.cnt_logical_error_rate, self.cnt_logical_failures, self.cnt_mc_trials_done
+        ));
         dim_label(ui, "  Logical error rate");
 
         ui.add_space(8.0);
@@ -1872,8 +2511,12 @@ impl QuantumEngineApp {
             self.rotation[1] += delta.x * 0.008;
             self.auto_rotate = false;
         }
-        if torus_response.double_clicked() { self.auto_rotate = true; }
-        if torus_response.hovered() { torus_response.on_hover_text("Drag to rotate | Double-click to reset"); }
+        if torus_response.double_clicked() {
+            self.auto_rotate = true;
+        }
+        if torus_response.hovered() {
+            torus_response.on_hover_text("Drag to rotate | Double-click to reset");
+        }
 
         // Lattice hover
         let lattice_n_for_hit = self.cnt_snapshot.as_ref().map(|s| s.n);
@@ -1888,7 +2531,9 @@ impl QuantumEngineApp {
         }
 
         // Tooltip
-        let tooltip_text = if let (Some((row, col)), Some(ref snap)) = (self.cnt_hovered_node, &self.cnt_snapshot) {
+        let tooltip_text = if let (Some((row, col)), Some(ref snap)) =
+            (self.cnt_hovered_node, &self.cnt_snapshot)
+        {
             let n = snap.n;
             let hi = row * n + col;
             let vi = n * n + row * n + col;
@@ -1898,16 +2543,32 @@ impl QuantumEngineApp {
             let vz = snap.z_errors.get(vi).copied().unwrap_or(false);
             let is_e = snap.e_particles.contains(&(row, col));
             let is_m = snap.m_particles.contains(&(row, col));
-            Some(format!("Vertex ({}, {})\nH-edge: X={} Z={}\nV-edge: X={} Z={}\n{}{}", row, col, if hx { "err" } else { "ok" }, if hz { "err" } else { "ok" }, if vx { "err" } else { "ok" }, if vz { "err" } else { "ok" }, if is_e { "e-particle " } else { "" }, if is_m { "m-particle" } else { "" }))
-        } else { None };
-        if let Some(tip) = tooltip_text { lat_response.clone().on_hover_text(tip); }
+            Some(format!(
+                "Vertex ({}, {})\nH-edge: X={} Z={}\nV-edge: X={} Z={}\n{}{}",
+                row,
+                col,
+                if hx { "err" } else { "ok" },
+                if hz { "err" } else { "ok" },
+                if vx { "err" } else { "ok" },
+                if vz { "err" } else { "ok" },
+                if is_e { "e-particle " } else { "" },
+                if is_m { "m-particle" } else { "" }
+            ))
+        } else {
+            None
+        };
+        if let Some(tip) = tooltip_text {
+            lat_response.clone().on_hover_text(tip);
+        }
 
         // Left-click toggle
         if lat_response.clicked() {
             if let Some((row, col)) = self.cnt_hovered_node {
                 if let Some(ref mut snap) = self.cnt_snapshot {
                     let hi = row * snap.n + col;
-                    if let Some(v) = snap.x_errors.get_mut(hi) { *v = !*v; }
+                    if let Some(v) = snap.x_errors.get_mut(hi) {
+                        *v = !*v;
+                    }
                     let (e, m) = cnt_bridge::recompute_syndromes(snap);
                     snap.e_particles = e;
                     snap.m_particles = m;
@@ -1924,36 +2585,48 @@ impl QuantumEngineApp {
                 if ui.button("Toggle X error (H-edge)").clicked() {
                     if let Some(ref mut snap) = self.cnt_snapshot {
                         let hi = row * snap.n + col;
-                        if let Some(v) = snap.x_errors.get_mut(hi) { *v = !*v; }
+                        if let Some(v) = snap.x_errors.get_mut(hi) {
+                            *v = !*v;
+                        }
                         let (e, m) = cnt_bridge::recompute_syndromes(snap);
-                        snap.e_particles = e; snap.m_particles = m;
+                        snap.e_particles = e;
+                        snap.m_particles = m;
                     }
                     ui.close_menu();
                 }
                 if ui.button("Toggle Z error (H-edge)").clicked() {
                     if let Some(ref mut snap) = self.cnt_snapshot {
                         let hi = row * snap.n + col;
-                        if let Some(v) = snap.z_errors.get_mut(hi) { *v = !*v; }
+                        if let Some(v) = snap.z_errors.get_mut(hi) {
+                            *v = !*v;
+                        }
                         let (e, m) = cnt_bridge::recompute_syndromes(snap);
-                        snap.e_particles = e; snap.m_particles = m;
+                        snap.e_particles = e;
+                        snap.m_particles = m;
                     }
                     ui.close_menu();
                 }
                 if ui.button("Toggle X error (V-edge)").clicked() {
                     if let Some(ref mut snap) = self.cnt_snapshot {
                         let vi = snap.n * snap.n + row * snap.n + col;
-                        if let Some(v) = snap.x_errors.get_mut(vi) { *v = !*v; }
+                        if let Some(v) = snap.x_errors.get_mut(vi) {
+                            *v = !*v;
+                        }
                         let (e, m) = cnt_bridge::recompute_syndromes(snap);
-                        snap.e_particles = e; snap.m_particles = m;
+                        snap.e_particles = e;
+                        snap.m_particles = m;
                     }
                     ui.close_menu();
                 }
                 if ui.button("Toggle Z error (V-edge)").clicked() {
                     if let Some(ref mut snap) = self.cnt_snapshot {
                         let vi = snap.n * snap.n + row * snap.n + col;
-                        if let Some(v) = snap.z_errors.get_mut(vi) { *v = !*v; }
+                        if let Some(v) = snap.z_errors.get_mut(vi) {
+                            *v = !*v;
+                        }
                         let (e, m) = cnt_bridge::recompute_syndromes(snap);
-                        snap.e_particles = e; snap.m_particles = m;
+                        snap.e_particles = e;
+                        snap.m_particles = m;
                     }
                     ui.close_menu();
                 }
@@ -1965,59 +2638,154 @@ impl QuantumEngineApp {
         // Drawing
         let painter = ui.painter();
 
-        painter.text(torus_rect.center_top() + egui::vec2(0.0, 12.0), egui::Align2::CENTER_TOP, format!("3D TORUS (T\u{00b2})  \u{2014}  Tonnetz {0}\u{00d7}{0}", self.cnt_params.tonnetz_grid_size), egui::FontId::proportional(13.0), HEADING_CLR);
-        painter.text(lat_rect.center_top() + egui::vec2(0.0, 12.0), egui::Align2::CENTER_TOP, format!("{0}\u{00d7}{0} TORIC CODE  \u{2014}  Pauli frame snapshot", self.cnt_lattice_n), egui::FontId::proportional(13.0), HEADING_CLR);
+        painter.text(
+            torus_rect.center_top() + egui::vec2(0.0, 12.0),
+            egui::Align2::CENTER_TOP,
+            format!(
+                "3D TORUS (T\u{00b2})  \u{2014}  Tonnetz {0}\u{00d7}{0}",
+                self.cnt_params.tonnetz_grid_size
+            ),
+            egui::FontId::proportional(13.0),
+            HEADING_CLR,
+        );
+        painter.text(
+            lat_rect.center_top() + egui::vec2(0.0, 12.0),
+            egui::Align2::CENTER_TOP,
+            format!(
+                "{0}\u{00d7}{0} TORIC CODE  \u{2014}  Pauli frame snapshot",
+                self.cnt_lattice_n
+            ),
+            egui::FontId::proportional(13.0),
+            HEADING_CLR,
+        );
 
-        draw_cnt_torus(painter, torus_rect, self.rotation, self.cnt_params.tonnetz_grid_size, self.cnt_snapshot.as_ref(), self.time);
+        draw_cnt_torus(
+            painter,
+            torus_rect,
+            self.rotation,
+            self.cnt_params.tonnetz_grid_size,
+            self.cnt_snapshot.as_ref(),
+            self.time,
+        );
         if let Some(ref snap) = self.cnt_snapshot {
             draw_lattice(painter, lat_rect, snap, self.cnt_hovered_node);
         }
 
         // Threshold chart
-        painter.text(bot.center_top() + egui::vec2(0.0, 4.0), egui::Align2::CENTER_TOP, "THRESHOLD CURVE  \u{2014}  physical error rate p vs logical error rate P_L", egui::FontId::proportional(12.0), HEADING_CLR);
+        painter.text(
+            bot.center_top() + egui::vec2(0.0, 4.0),
+            egui::Align2::CENTER_TOP,
+            "THRESHOLD CURVE  \u{2014}  physical error rate p vs logical error rate P_L",
+            egui::FontId::proportional(12.0),
+            HEADING_CLR,
+        );
 
-        let chart_inner = egui::Rect::from_min_max(bot.min + egui::vec2(10.0, 22.0), bot.max - egui::vec2(10.0, 5.0));
+        let chart_inner = egui::Rect::from_min_max(
+            bot.min + egui::vec2(10.0, 22.0),
+            bot.max - egui::vec2(10.0, 5.0),
+        );
         let p_error = self.cnt_p_error;
         let logical_error_rate = self.cnt_logical_error_rate;
 
         ui.allocate_new_ui(egui::UiBuilder::new().max_rect(chart_inner), |ui| {
             let plot = Plot::new("cnt_threshold_chart")
-                .width(chart_inner.width()).height(chart_inner.height())
-                .x_axis_label("p (physical error rate)").y_axis_label("P_L")
-                .include_x(0.0).include_x(0.2).include_y(0.0).include_y(1.0)
-                .show_axes(true).allow_zoom(true).allow_drag(true).allow_scroll(true)
+                .width(chart_inner.width())
+                .height(chart_inner.height())
+                .x_axis_label("p (physical error rate)")
+                .y_axis_label("P_L")
+                .include_x(0.0)
+                .include_x(0.2)
+                .include_y(0.0)
+                .include_y(1.0)
+                .show_axes(true)
+                .allow_zoom(true)
+                .allow_drag(true)
+                .allow_scroll(true)
                 .legend(Legend::default().position(Corner::LeftTop))
                 .label_formatter(move |name, value| {
-                    if !name.is_empty() { format!("{}\np = {:.4}\nP_L = {:.4}", name, value.x, value.y) }
-                    else { format!("p = {:.4}\nP_L = {:.4}", value.x, value.y) }
+                    if !name.is_empty() {
+                        format!("{}\np = {:.4}\nP_L = {:.4}", name, value.x, value.y)
+                    } else {
+                        format!("p = {:.4}\nP_L = {:.4}", value.x, value.y)
+                    }
                 });
 
             plot.show(ui, |plot_ui| {
                 // Correctable zone
-                let zone_pts: PlotPoints = vec![[0.0, 0.0], [0.09, 0.0], [0.09, 1.0], [0.0, 1.0]].into_iter().collect();
-                plot_ui.polygon(Polygon::new(zone_pts).fill_color(egui::Color32::from_rgba_unmultiplied(86, 166, 96, 20)).stroke(egui::Stroke::NONE).name("Correctable zone"));
+                let zone_pts: PlotPoints = vec![[0.0, 0.0], [0.09, 0.0], [0.09, 1.0], [0.0, 1.0]]
+                    .into_iter()
+                    .collect();
+                plot_ui.polygon(
+                    Polygon::new(zone_pts)
+                        .fill_color(egui::Color32::from_rgba_unmultiplied(86, 166, 96, 20))
+                        .stroke(egui::Stroke::NONE)
+                        .name("Correctable zone"),
+                );
 
-                let colors = [FOREST_GREEN, GOLD_EG, egui::Color32::from_rgb(200, 200, 190), X_ERROR_RED];
-                let markers = [MarkerShape::Circle, MarkerShape::Diamond, MarkerShape::Square, MarkerShape::Up];
+                let colors = [
+                    FOREST_GREEN,
+                    GOLD_EG,
+                    egui::Color32::from_rgb(200, 200, 190),
+                    X_ERROR_RED,
+                ];
+                let markers = [
+                    MarkerShape::Circle,
+                    MarkerShape::Diamond,
+                    MarkerShape::Square,
+                    MarkerShape::Up,
+                ];
 
                 if let Some(ref cd) = self.cnt_chart_data {
                     for (i, curve) in cd.curves.iter().enumerate() {
                         let pts: PlotPoints = curve.points.iter().map(|&(p, pl)| [p, pl]).collect();
-                        let scatter_pts: PlotPoints = curve.points.iter().map(|&(p, pl)| [p, pl]).collect();
+                        let scatter_pts: PlotPoints =
+                            curve.points.iter().map(|&(p, pl)| [p, pl]).collect();
                         let color = colors[i % colors.len()];
                         let marker = markers[i % markers.len()];
                         let name = format!("N={}", curve.n);
                         plot_ui.line(Line::new(pts).color(color).width(2.0).name(&name));
-                        plot_ui.points(Points::new(scatter_pts).color(color).shape(marker).radius(3.5).name(&name));
+                        plot_ui.points(
+                            Points::new(scatter_pts)
+                                .color(color)
+                                .shape(marker)
+                                .radius(3.5)
+                                .name(&name),
+                        );
                     }
                 }
 
                 if p_error > 0.0 {
-                    plot_ui.vline(VLine::new(p_error).color(egui::Color32::WHITE).width(1.5).name("Operating point"));
-                    plot_ui.text(PlotText::new(PlotPoint::new(p_error, logical_error_rate.max(0.05)), egui::RichText::new(format!("p={:.4}", p_error)).size(10.0).color(egui::Color32::WHITE)).anchor(egui::Align2::LEFT_BOTTOM));
+                    plot_ui.vline(
+                        VLine::new(p_error)
+                            .color(egui::Color32::WHITE)
+                            .width(1.5)
+                            .name("Operating point"),
+                    );
+                    plot_ui.text(
+                        PlotText::new(
+                            PlotPoint::new(p_error, logical_error_rate.max(0.05)),
+                            egui::RichText::new(format!("p={:.4}", p_error))
+                                .size(10.0)
+                                .color(egui::Color32::WHITE),
+                        )
+                        .anchor(egui::Align2::LEFT_BOTTOM),
+                    );
                 }
-                plot_ui.vline(VLine::new(0.09).color(egui::Color32::from_rgba_unmultiplied(230, 70, 70, 120)).width(1.0).name("Threshold ~9%"));
-                plot_ui.text(PlotText::new(PlotPoint::new(0.092, 0.92), egui::RichText::new("p_th ~ 9%").size(10.0).color(X_ERROR_RED)).anchor(egui::Align2::LEFT_TOP));
+                plot_ui.vline(
+                    VLine::new(0.09)
+                        .color(egui::Color32::from_rgba_unmultiplied(230, 70, 70, 120))
+                        .width(1.0)
+                        .name("Threshold ~9%"),
+                );
+                plot_ui.text(
+                    PlotText::new(
+                        PlotPoint::new(0.092, 0.92),
+                        egui::RichText::new("p_th ~ 9%")
+                            .size(10.0)
+                            .color(X_ERROR_RED),
+                    )
+                    .anchor(egui::Align2::LEFT_TOP),
+                );
             });
         });
 
@@ -2027,7 +2795,11 @@ impl QuantumEngineApp {
     fn draw_cnt_status(&self, ctx: &egui::Context) {
         if let Some(ref phys) = self.cnt_physics_result {
             // Primary: error correctability
-            let (st, sc) = if self.cnt_p_error < 0.09 { ("CORRECTABLE", FOREST_GREEN) } else { ("TOO NOISY", WARN_RED) };
+            let (st, sc) = if self.cnt_p_error < 0.09 {
+                ("CORRECTABLE", FOREST_GREEN)
+            } else {
+                ("TOO NOISY", WARN_RED)
+            };
             // Secondary: coherence — must check absolute T₂, not just enhancement factor
             let (coh_st, coh_sc) = if phys.t2_ns < 1.0 {
                 ("NEGLIGIBLE", WARN_RED)
@@ -2045,16 +2817,40 @@ impl QuantumEngineApp {
                 stroke: egui::Stroke::new(2.0, sc),
                 ..Default::default()
             };
-            egui::Window::new("cnt_status").title_bar(false).resizable(false).movable(false).frame(frame).anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0]).show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
-                    ui.separator();
-                    ui.colored_label(coh_sc, egui::RichText::new(format!("Coherence {}", coh_st)).strong().size(13.0));
+            egui::Window::new("cnt_status")
+                .title_bar(false)
+                .resizable(false)
+                .movable(false)
+                .frame(frame)
+                .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
+                .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
+                        ui.separator();
+                        ui.colored_label(
+                            coh_sc,
+                            egui::RichText::new(format!("Coherence {}", coh_st))
+                                .strong()
+                                .size(13.0),
+                        );
+                    });
+                    ui.label(format!(
+                        "T\u{2082}={:.0}ns  p={:.4}  P_L={:.3}",
+                        phys.t2_ns, self.cnt_p_error, self.cnt_logical_error_rate
+                    ));
+                    dim_label(
+                        ui,
+                        &format!(
+                            "{}: +{:.0}ns ({:.0}\u{00d7})",
+                            phys.resonator_label,
+                            phys.t2_ns - phys.t2_bare_ns,
+                            phys.tonnetz_enhancement
+                        ),
+                    );
+                    if self.paused {
+                        ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0));
+                    }
                 });
-                ui.label(format!("T\u{2082}={:.0}ns  p={:.4}  P_L={:.3}", phys.t2_ns, self.cnt_p_error, self.cnt_logical_error_rate));
-                dim_label(ui, &format!("{}: +{:.0}ns ({:.0}\u{00d7})", phys.resonator_label, phys.t2_ns - phys.t2_bare_ns, phys.tonnetz_enhancement));
-                if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
-            });
         }
     }
 }
@@ -2065,7 +2861,12 @@ impl QuantumEngineApp {
 
 impl QuantumEngineApp {
     fn draw_drift_controls(&mut self, ui: &mut egui::Ui) {
-        ui.colored_label(GOLD_EG, egui::RichText::new("HALLUCINATION REDUCTION").strong().size(13.0));
+        ui.colored_label(
+            GOLD_EG,
+            egui::RichText::new("HALLUCINATION REDUCTION")
+                .strong()
+                .size(13.0),
+        );
         dim_label(ui, "Toroidal logit bias on T\u{00b2}");
         ui.add_space(4.0);
 
@@ -2076,14 +2877,28 @@ impl QuantumEngineApp {
 
         ui.label("Grid Size N");
         let mut n_f = self.drift_config.grid_n as f64;
-        if ui.add(egui::Slider::new(&mut n_f, 4.0..=24.0).step_by(1.0).suffix("")).changed() {
+        if ui
+            .add(
+                egui::Slider::new(&mut n_f, 4.0..=24.0)
+                    .step_by(1.0)
+                    .suffix(""),
+            )
+            .changed()
+        {
             self.drift_config.grid_n = n_f as usize;
             changed = true;
         }
 
         ui.label("Walk Steps");
         let mut steps_f = self.drift_config.num_steps as f64;
-        if ui.add(egui::Slider::new(&mut steps_f, 100.0..=5000.0).logarithmic(true).suffix("")).changed() {
+        if ui
+            .add(
+                egui::Slider::new(&mut steps_f, 100.0..=5000.0)
+                    .logarithmic(true)
+                    .suffix(""),
+            )
+            .changed()
+        {
             self.drift_config.num_steps = steps_f as usize;
             changed = true;
         }
@@ -2093,27 +2908,45 @@ impl QuantumEngineApp {
 
         ui.label("Mask Type");
         ui.horizontal(|ui| {
-            if ui.selectable_label(self.drift_config.mask_type == MaskType::HardCutoff, "Hard").clicked() {
+            if ui
+                .selectable_label(self.drift_config.mask_type == MaskType::HardCutoff, "Hard")
+                .clicked()
+            {
                 self.drift_config.mask_type = MaskType::HardCutoff;
                 changed = true;
             }
-            if ui.selectable_label(self.drift_config.mask_type == MaskType::SoftExponential, "Soft").clicked() {
+            if ui
+                .selectable_label(
+                    self.drift_config.mask_type == MaskType::SoftExponential,
+                    "Soft",
+                )
+                .clicked()
+            {
                 self.drift_config.mask_type = MaskType::SoftExponential;
                 changed = true;
             }
-            if ui.selectable_label(self.drift_config.mask_type == MaskType::Hybrid, "Hybrid").clicked() {
+            if ui
+                .selectable_label(self.drift_config.mask_type == MaskType::Hybrid, "Hybrid")
+                .clicked()
+            {
                 self.drift_config.mask_type = MaskType::Hybrid;
                 changed = true;
             }
         });
 
         ui.label("Radius r");
-        if ui.add(egui::Slider::new(&mut self.drift_config.radius, 1.0..=8.0).step_by(0.5)).changed() {
+        if ui
+            .add(egui::Slider::new(&mut self.drift_config.radius, 1.0..=8.0).step_by(0.5))
+            .changed()
+        {
             changed = true;
         }
 
         ui.label("Decay \u{03b1}");
-        if ui.add(egui::Slider::new(&mut self.drift_config.alpha, 0.1..=2.0).step_by(0.1)).changed() {
+        if ui
+            .add(egui::Slider::new(&mut self.drift_config.alpha, 0.1..=2.0).step_by(0.1))
+            .changed()
+        {
             changed = true;
         }
 
@@ -2122,7 +2955,10 @@ impl QuantumEngineApp {
 
         ui.label("Drift Threshold");
         let mut thresh_f = self.drift_config.drift_threshold as f64;
-        if ui.add(egui::Slider::new(&mut thresh_f, 1.0..=8.0).step_by(1.0)).changed() {
+        if ui
+            .add(egui::Slider::new(&mut thresh_f, 1.0..=8.0).step_by(1.0))
+            .changed()
+        {
             self.drift_config.drift_threshold = thresh_f as usize;
             changed = true;
         }
@@ -2130,14 +2966,23 @@ impl QuantumEngineApp {
         // ── Visualization Mode ──
         section_heading(ui, "VISUALIZATION");
         ui.horizontal(|ui| {
-            if ui.selectable_label(self.drift_viz_mode == DriftVizMode::Overview, "Overview").clicked() {
+            if ui
+                .selectable_label(self.drift_viz_mode == DriftVizMode::Overview, "Overview")
+                .clicked()
+            {
                 self.drift_viz_mode = DriftVizMode::Overview;
             }
-            if ui.selectable_label(self.drift_viz_mode == DriftVizMode::DriftAnalysis, "Drift").clicked() {
+            if ui
+                .selectable_label(self.drift_viz_mode == DriftVizMode::DriftAnalysis, "Drift")
+                .clicked()
+            {
                 self.drift_viz_mode = DriftVizMode::DriftAnalysis;
                 if self.needs_drift_analysis { /* will fire in update */ }
             }
-            if ui.selectable_label(self.drift_viz_mode == DriftVizMode::MaskAnalysis, "Mask").clicked() {
+            if ui
+                .selectable_label(self.drift_viz_mode == DriftVizMode::MaskAnalysis, "Mask")
+                .clicked()
+            {
                 self.drift_viz_mode = DriftVizMode::MaskAnalysis;
                 if self.needs_mask_analysis { /* will fire in update */ }
             }
@@ -2157,17 +3002,31 @@ impl QuantumEngineApp {
 
         ui.add_space(4.0);
         ui.label("Learning rate \u{03b7}");
-        descent_changed |= ui.add(egui::Slider::new(&mut self.drift_descent_eta, 0.0001..=0.05).logarithmic(true)).changed();
+        descent_changed |= ui
+            .add(egui::Slider::new(&mut self.drift_descent_eta, 0.0001..=0.05).logarithmic(true))
+            .changed();
         ui.add_space(2.0);
         ui.label("Start x (radius)");
-        descent_changed |= ui.add(egui::Slider::new(&mut self.drift_descent_start.0, 0.0..=1.0)).changed();
+        descent_changed |= ui
+            .add(egui::Slider::new(
+                &mut self.drift_descent_start.0,
+                0.0..=1.0,
+            ))
+            .changed();
         ui.add_space(2.0);
         ui.label("Start y (alpha)");
-        descent_changed |= ui.add(egui::Slider::new(&mut self.drift_descent_start.1, 0.0..=1.0)).changed();
+        descent_changed |= ui
+            .add(egui::Slider::new(
+                &mut self.drift_descent_start.1,
+                0.0..=1.0,
+            ))
+            .changed();
         ui.add_space(2.0);
         ui.checkbox(&mut self.drift_show_descent_euc, "Show Euclidean path");
 
-        if descent_changed { self.needs_drift_descent = true; }
+        if descent_changed {
+            self.needs_drift_descent = true;
+        }
 
         // ── Mechanism ──
         ui.add_space(8.0);
@@ -2198,8 +3057,16 @@ impl QuantumEngineApp {
             });
 
             ui.add_space(4.0);
-            let rf_color = if dr.reduction_factor > 1.5 { FOREST_GREEN } else { GOLD_EG };
-            ui.colored_label(rf_color, egui::RichText::new(format!("Reduction: {:.1}\u{00d7}", dr.reduction_factor)).strong());
+            let rf_color = if dr.reduction_factor > 1.5 {
+                FOREST_GREEN
+            } else {
+                GOLD_EG
+            };
+            ui.colored_label(
+                rf_color,
+                egui::RichText::new(format!("Reduction: {:.1}\u{00d7}", dr.reduction_factor))
+                    .strong(),
+            );
         } else {
             dim_label(ui, "Computing...");
         }
@@ -2218,7 +3085,10 @@ impl QuantumEngineApp {
         let gap_t = crate::coherence::spectral_gap(crate::coherence::Topology::Toroidal, n_sq);
         let gap_l = crate::coherence::spectral_gap(crate::coherence::Topology::Linear, n_sq);
         let advantage = gap_t / gap_l;
-        ui.colored_label(FOREST_GREEN, format!("T\u{00b2} / chain: {:.1}\u{00d7}", advantage));
+        ui.colored_label(
+            FOREST_GREEN,
+            format!("T\u{00b2} / chain: {:.1}\u{00d7}", advantage),
+        );
         dim_label(ui, "Toroidal topology protects coherence");
         dim_label(ui, &format!("{} qubits on T\u{00b2} vs linear chain", n_sq));
 
@@ -2230,13 +3100,19 @@ impl QuantumEngineApp {
             MaskType::Hybrid => "Hybrid",
         };
         ui.label(format!("Type: {}", mask_name));
-        ui.label(format!("r = {:.1}, \u{03b1} = {:.1}", self.drift_config.radius, self.drift_config.alpha));
+        ui.label(format!(
+            "r = {:.1}, \u{03b1} = {:.1}",
+            self.drift_config.radius, self.drift_config.alpha
+        ));
 
         // ── Descent Results ──
         if self.drift_descent_cov.is_some() || self.drift_descent_euc.is_some() {
             section_heading(ui, "DESCENT");
             if let Some(ref cov) = self.drift_descent_cov {
-                let conv_str = match cov.convergence_step { Some(s) => format!("step {}", s), None => "running".to_string() };
+                let conv_str = match cov.convergence_step {
+                    Some(s) => format!("step {}", s),
+                    None => "running".to_string(),
+                };
                 ui.colored_label(FOREST_GREEN, "Covariant (T\u{00b2}):");
                 ui.label(format!("  Loss: {:.4}", cov.final_loss));
                 ui.label(format!("  Conv: {}", conv_str));
@@ -2260,8 +3136,17 @@ impl QuantumEngineApp {
         ui.add_space(2.0);
         for entry in logit_drift::benchmark_data() {
             ui.horizontal(|ui| {
-                let color = if entry.delta_pp >= 2.0 { FOREST_GREEN } else { LABEL_CLR };
-                ui.colored_label(color, egui::RichText::new(format!("+{:.1}pp", entry.delta_pp)).strong().size(12.0));
+                let color = if entry.delta_pp >= 2.0 {
+                    FOREST_GREEN
+                } else {
+                    LABEL_CLR
+                };
+                ui.colored_label(
+                    color,
+                    egui::RichText::new(format!("+{:.1}pp", entry.delta_pp))
+                        .strong()
+                        .size(12.0),
+                );
                 ui.label(egui::RichText::new(entry.model).size(11.0));
             });
         }
@@ -2273,7 +3158,8 @@ impl QuantumEngineApp {
         let bottom_h = total_rect.height() - top_h;
 
         // ═══ TOP: 3D torus with drift trajectories ═══
-        let torus_rect = egui::Rect::from_min_size(total_rect.min, egui::vec2(total_rect.width(), top_h));
+        let torus_rect =
+            egui::Rect::from_min_size(total_rect.min, egui::vec2(total_rect.width(), top_h));
         let painter = ui.painter_at(torus_rect);
 
         // Draw static torus (reuse CNT-style — no phase modulation)
@@ -2291,11 +3177,29 @@ impl QuantumEngineApp {
             let rm = 1.0f32;
             let rn = 0.45f32;
             if let Some(ref cov) = self.drift_descent_cov {
-                draw_descent_path(&painter, torus_rect, self.rotation, rm, rn, &cov.steps, true, self.time);
+                draw_descent_path(
+                    &painter,
+                    torus_rect,
+                    self.rotation,
+                    rm,
+                    rn,
+                    &cov.steps,
+                    true,
+                    self.time,
+                );
             }
             if self.drift_show_descent_euc {
                 if let Some(ref euc) = self.drift_descent_euc {
-                    draw_descent_path(&painter, torus_rect, self.rotation, rm, rn, &euc.steps, false, self.time);
+                    draw_descent_path(
+                        &painter,
+                        torus_rect,
+                        self.rotation,
+                        rm,
+                        rn,
+                        &euc.steps,
+                        false,
+                        self.time,
+                    );
                 }
             }
         }
@@ -2378,7 +3282,9 @@ impl QuantumEngineApp {
                 let e1 = egui::vec2(s10.x - s00.x, s10.y - s00.y);
                 let e2 = egui::vec2(s01.x - s00.x, s01.y - s00.y);
                 let cross = e1.x * e2.y - e1.y * e2.x;
-                if cross < 0.0 { continue; }
+                if cross < 0.0 {
+                    continue;
+                }
 
                 let alpha = depth_alpha(z00);
                 let base_g = 40 + (alpha as u16 * 30 / 200) as u8;
@@ -2400,7 +3306,13 @@ impl QuantumEngineApp {
                 let (a, za) = project(torus_pt(r_maj, r_min, u, v0), rot, rect);
                 let (b, _) = project(torus_pt(r_maj, r_min, u, v1), rot, rect);
                 let al = depth_alpha(za);
-                painter.line_segment([a, b], egui::Stroke::new(0.5, egui::Color32::from_rgba_unmultiplied(60, 125, 85, al / 2)));
+                painter.line_segment(
+                    [a, b],
+                    egui::Stroke::new(
+                        0.5,
+                        egui::Color32::from_rgba_unmultiplied(60, 125, 85, al / 2),
+                    ),
+                );
             }
         }
         for j in 0..=segs {
@@ -2411,7 +3323,13 @@ impl QuantumEngineApp {
                 let (a, za) = project(torus_pt(r_maj, r_min, u0, v), rot, rect);
                 let (b, _) = project(torus_pt(r_maj, r_min, u1, v), rot, rect);
                 let al = depth_alpha(za);
-                painter.line_segment([a, b], egui::Stroke::new(0.5, egui::Color32::from_rgba_unmultiplied(60, 125, 85, al / 2)));
+                painter.line_segment(
+                    [a, b],
+                    egui::Stroke::new(
+                        0.5,
+                        egui::Color32::from_rgba_unmultiplied(60, 125, 85, al / 2),
+                    ),
+                );
             }
         }
 
@@ -2424,7 +3342,10 @@ impl QuantumEngineApp {
                 let (b, _) = project(torus_pt(r_maj, r_min, u1, fixed_v), rot, rect);
                 let pulse = 0.5 + 0.5 * (time * 1.5 + u0).sin();
                 let al = (depth_alpha(za) as f32 * pulse) as u8;
-                painter.line_segment([a, b], egui::Stroke::new(1.5, egui::Color32::from_rgba_unmultiplied(212, 175, 55, al)));
+                painter.line_segment(
+                    [a, b],
+                    egui::Stroke::new(1.5, egui::Color32::from_rgba_unmultiplied(212, 175, 55, al)),
+                );
             }
         }
         for &fixed_u in &[0.0f32, PI] {
@@ -2435,7 +3356,10 @@ impl QuantumEngineApp {
                 let (b, _) = project(torus_pt(r_maj, r_min, fixed_u, v1), rot, rect);
                 let pulse = 0.5 + 0.5 * (time * 1.5 + v0).sin();
                 let al = (depth_alpha(za) as f32 * pulse) as u8;
-                painter.line_segment([a, b], egui::Stroke::new(1.5, egui::Color32::from_rgba_unmultiplied(212, 175, 55, al)));
+                painter.line_segment(
+                    [a, b],
+                    egui::Stroke::new(1.5, egui::Color32::from_rgba_unmultiplied(212, 175, 55, al)),
+                );
             }
         }
 
@@ -2445,33 +3369,64 @@ impl QuantumEngineApp {
         // Draw drift trajectories on the torus surface
         if let Some(dr) = drift_result {
             // Toroidal path — green
-            Self::draw_path_on_torus(painter, rect, rot, r_maj, r_min, &dr.toroidal_path,
-                egui::Color32::from_rgb(100, 230, 120), 2.0);
+            Self::draw_path_on_torus(
+                painter,
+                rect,
+                rot,
+                r_maj,
+                r_min,
+                &dr.toroidal_path,
+                egui::Color32::from_rgb(100, 230, 120),
+                2.0,
+            );
             // Baseline path — red
-            Self::draw_path_on_torus(painter, rect, rot, r_maj, r_min, &dr.baseline_path,
-                egui::Color32::from_rgb(230, 80, 80), 1.5);
+            Self::draw_path_on_torus(
+                painter,
+                rect,
+                rot,
+                r_maj,
+                r_min,
+                &dr.baseline_path,
+                egui::Color32::from_rgb(230, 80, 80),
+                1.5,
+            );
         }
 
         // Title
         let title_pos = egui::pos2(rect.center().x, rect.min.y + 14.0);
-        painter.text(title_pos, egui::Align2::CENTER_TOP,
+        painter.text(
+            title_pos,
+            egui::Align2::CENTER_TOP,
             "Semantic Drift on T\u{00b2}",
             egui::FontId::proportional(13.0),
-            HEADING_CLR);
+            HEADING_CLR,
+        );
 
         // Legend
         let legend_y = rect.min.y + 30.0;
-        painter.text(egui::pos2(rect.min.x + 10.0, legend_y), egui::Align2::LEFT_TOP,
+        painter.text(
+            egui::pos2(rect.min.x + 10.0, legend_y),
+            egui::Align2::LEFT_TOP,
             "\u{25cf} Toroidal  \u{25cf} Baseline  \u{25cf} Torus Knot",
             egui::FontId::proportional(11.0),
-            DIM);
+            DIM,
+        );
         // Color dots for legend
-        painter.circle_filled(egui::pos2(rect.min.x + 12.0, legend_y + 6.0), 3.0,
-            egui::Color32::from_rgb(100, 230, 120));
-        painter.circle_filled(egui::pos2(rect.min.x + 80.0, legend_y + 6.0), 3.0,
-            egui::Color32::from_rgb(230, 80, 80));
-        painter.circle_filled(egui::pos2(rect.min.x + 160.0, legend_y + 6.0), 3.0,
-            KNOT_CYAN);
+        painter.circle_filled(
+            egui::pos2(rect.min.x + 12.0, legend_y + 6.0),
+            3.0,
+            egui::Color32::from_rgb(100, 230, 120),
+        );
+        painter.circle_filled(
+            egui::pos2(rect.min.x + 80.0, legend_y + 6.0),
+            3.0,
+            egui::Color32::from_rgb(230, 80, 80),
+        );
+        painter.circle_filled(
+            egui::pos2(rect.min.x + 160.0, legend_y + 6.0),
+            3.0,
+            KNOT_CYAN,
+        );
     }
 
     fn draw_path_on_torus(
@@ -2484,7 +3439,9 @@ impl QuantumEngineApp {
         color: egui::Color32,
         width: f32,
     ) {
-        if path.len() < 2 { return; }
+        if path.len() < 2 {
+            return;
+        }
         for i in 0..(path.len() - 1) {
             let (u0, v0) = (path[i].0 * 2.0 * PI, path[i].1 * 2.0 * PI);
             let (u1, v1) = (path[i + 1].0 * 2.0 * PI, path[i + 1].1 * 2.0 * PI);
@@ -2508,10 +3465,13 @@ impl QuantumEngineApp {
     fn draw_mask_heatmap(&self, painter: &egui::Painter, rect: egui::Rect) {
         // Title
         let title_y = rect.min.y + 4.0;
-        painter.text(egui::pos2(rect.center().x, title_y), egui::Align2::CENTER_TOP,
+        painter.text(
+            egui::pos2(rect.center().x, title_y),
+            egui::Align2::CENTER_TOP,
             "Mask Heatmap (center ref)",
             egui::FontId::proportional(12.0),
-            HEADING_CLR);
+            HEADING_CLR,
+        );
 
         let margin = 24.0;
         let grid_rect = egui::Rect::from_min_size(
@@ -2529,7 +3489,8 @@ impl QuantumEngineApp {
                     let val = hm.values[row][col];
                     let x = grid_rect.min.x + col as f32 * cell_w;
                     let y = grid_rect.min.y + row as f32 * cell_h;
-                    let cell = egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(cell_w, cell_h));
+                    let cell =
+                        egui::Rect::from_min_size(egui::pos2(x, y), egui::vec2(cell_w, cell_h));
 
                     // Color: dark blue (0) → forest green (0.5) → gold (1)
                     let color = if val < 0.5 {
@@ -2551,23 +3512,39 @@ impl QuantumEngineApp {
 
                     // Highlight ref position
                     if row == hm.ref_pos.0 && col == hm.ref_pos.1 {
-                        painter.rect_stroke(cell, 0.0, egui::Stroke::new(2.0, egui::Color32::WHITE), egui::epaint::StrokeKind::Outside);
+                        painter.rect_stroke(
+                            cell,
+                            0.0,
+                            egui::Stroke::new(2.0, egui::Color32::WHITE),
+                            egui::epaint::StrokeKind::Outside,
+                        );
                     }
                 }
             }
         } else {
-            painter.text(grid_rect.center(), egui::Align2::CENTER_CENTER,
+            painter.text(
+                grid_rect.center(),
+                egui::Align2::CENTER_CENTER,
                 "Computing...",
                 egui::FontId::proportional(12.0),
-                DIM);
+                DIM,
+            );
         }
     }
 
     fn draw_spectral_decay_chart(&self, ui: &mut egui::Ui) {
-        ui.colored_label(HEADING_CLR, egui::RichText::new("Spectral Decay e^(-\u{03bb}\u{2081}t)").size(12.0));
+        ui.colored_label(
+            HEADING_CLR,
+            egui::RichText::new("Spectral Decay e^(-\u{03bb}\u{2081}t)").size(12.0),
+        );
 
         let curves = logit_drift::spectral_decay_curves(&[8, 12, 16, 24], 5.0, 100);
-        let colors = [FOREST_GREEN, GOLD_EG, egui::Color32::from_rgb(200, 200, 190), COMPRESS_BLUE];
+        let colors = [
+            FOREST_GREEN,
+            GOLD_EG,
+            egui::Color32::from_rgb(200, 200, 190),
+            COMPRESS_BLUE,
+        ];
 
         let plot = Plot::new("spectral_decay")
             .height(ui.available_height() - 20.0)
@@ -2594,7 +3571,10 @@ impl QuantumEngineApp {
     }
 
     fn draw_benchmark_chart(&self, ui: &mut egui::Ui) {
-        ui.colored_label(HEADING_CLR, egui::RichText::new("TruthfulQA T&I (pp improvement)").size(12.0));
+        ui.colored_label(
+            HEADING_CLR,
+            egui::RichText::new("TruthfulQA T&I (pp improvement)").size(12.0),
+        );
 
         let entries = logit_drift::benchmark_data();
 
@@ -2606,13 +3586,21 @@ impl QuantumEngineApp {
             .legend(Legend::default().position(Corner::RightTop));
 
         plot.show(ui, |plot_ui| {
-            let bars: Vec<Bar> = entries.iter().enumerate().map(|(i, e)| {
-                let color = if e.delta_pp >= 2.0 { FOREST_GREEN } else { GOLD_EG };
-                Bar::new(i as f64, e.delta_pp as f64)
-                    .width(0.6)
-                    .fill(color)
-                    .name(e.model)
-            }).collect();
+            let bars: Vec<Bar> = entries
+                .iter()
+                .enumerate()
+                .map(|(i, e)| {
+                    let color = if e.delta_pp >= 2.0 {
+                        FOREST_GREEN
+                    } else {
+                        GOLD_EG
+                    };
+                    Bar::new(i as f64, e.delta_pp as f64)
+                        .width(0.6)
+                        .fill(color)
+                        .name(e.model)
+                })
+                .collect();
             plot_ui.bar_chart(BarChart::new(bars).name("Improvement (pp)"));
         });
     }
@@ -2620,7 +3608,10 @@ impl QuantumEngineApp {
     // ─── 5 new advanced simulation charts ──────────────────────────────────
 
     fn draw_multi_scale_chart(&self, ui: &mut egui::Ui) {
-        ui.colored_label(HEADING_CLR, egui::RichText::new("Multi-Scale Drift Comparison").size(12.0));
+        ui.colored_label(
+            HEADING_CLR,
+            egui::RichText::new("Multi-Scale Drift Comparison").size(12.0),
+        );
 
         if let Some(ref da) = self.drift_analysis {
             let plot = Plot::new("multi_scale_drift")
@@ -2652,7 +3643,8 @@ impl QuantumEngineApp {
                     let text = PlotText::new(
                         PlotPoint::new(i as f64, entry.baseline_rate as f64 + 0.02),
                         format!("\u{03bb}\u{2081}={:.3}", entry.spectral_gap),
-                    ).color(GOLD_EG);
+                    )
+                    .color(GOLD_EG);
                     plot_ui.text(text);
                 }
             });
@@ -2662,7 +3654,10 @@ impl QuantumEngineApp {
     }
 
     fn draw_phase_transition_chart(&self, ui: &mut egui::Ui) {
-        ui.colored_label(HEADING_CLR, egui::RichText::new("Phase Transition (Drift vs Radius)").size(12.0));
+        ui.colored_label(
+            HEADING_CLR,
+            egui::RichText::new("Phase Transition (Drift vs Radius)").size(12.0),
+        );
 
         if let Some(ref da) = self.drift_analysis {
             let plot = Plot::new("phase_transition")
@@ -2672,7 +3667,9 @@ impl QuantumEngineApp {
                 .y_axis_label("drift rate")
                 .include_y(0.0);
 
-            let pts: Vec<[f64; 2]> = da.phase_transition.iter()
+            let pts: Vec<[f64; 2]> = da
+                .phase_transition
+                .iter()
                 .map(|e| [e.radius as f64, e.drift_rate as f64])
                 .collect();
 
@@ -2707,7 +3704,10 @@ impl QuantumEngineApp {
     }
 
     fn draw_adjacency_chart(&self, ui: &mut egui::Ui) {
-        ui.colored_label(HEADING_CLR, egui::RichText::new("Adjacency Loss (Local vs Global)").size(12.0));
+        ui.colored_label(
+            HEADING_CLR,
+            egui::RichText::new("Adjacency Loss (Local vs Global)").size(12.0),
+        );
 
         if let Some(ref da) = self.drift_analysis {
             let plot = Plot::new("adjacency_loss")
@@ -2717,13 +3717,19 @@ impl QuantumEngineApp {
                 .x_axis_label("radius")
                 .include_y(0.0);
 
-            let pos_pts: Vec<[f64; 2]> = da.adjacency.iter()
+            let pos_pts: Vec<[f64; 2]> = da
+                .adjacency
+                .iter()
                 .map(|e| [e.radius as f64, e.pos_mean_dist as f64])
                 .collect();
-            let neg_pts: Vec<[f64; 2]> = da.adjacency.iter()
+            let neg_pts: Vec<[f64; 2]> = da
+                .adjacency
+                .iter()
                 .map(|e| [e.radius as f64, e.neg_mean_dist as f64])
                 .collect();
-            let loss_pts: Vec<[f64; 2]> = da.adjacency.iter()
+            let loss_pts: Vec<[f64; 2]> = da
+                .adjacency
+                .iter()
                 .map(|e| [e.radius as f64, e.loss as f64])
                 .collect();
 
@@ -2754,7 +3760,10 @@ impl QuantumEngineApp {
     }
 
     fn draw_sinkhorn_chart(&self, ui: &mut egui::Ui) {
-        ui.colored_label(HEADING_CLR, egui::RichText::new("Sinkhorn-Knopp Convergence").size(12.0));
+        ui.colored_label(
+            HEADING_CLR,
+            egui::RichText::new("Sinkhorn-Knopp Convergence").size(12.0),
+        );
 
         if let Some(ref ma) = self.mask_analysis {
             let plot = Plot::new("sinkhorn_convergence")
@@ -2767,9 +3776,7 @@ impl QuantumEngineApp {
                 .include_y(0.0);
 
             // Use log scale by transforming y values for display
-            let pts: Vec<[f64; 2]> = ma.sinkhorn.points.iter()
-                .map(|p| [p[0], p[1]])
-                .collect();
+            let pts: Vec<[f64; 2]> = ma.sinkhorn.points.iter().map(|p| [p[0], p[1]]).collect();
 
             plot.show(ui, |plot_ui| {
                 plot_ui.line(
@@ -2787,7 +3794,10 @@ impl QuantumEngineApp {
                 );
                 // Mark convergence point
                 if ma.sinkhorn.converged_at < 50 {
-                    let conv_y = ma.sinkhorn.points.get(ma.sinkhorn.converged_at.saturating_sub(1))
+                    let conv_y = ma
+                        .sinkhorn
+                        .points
+                        .get(ma.sinkhorn.converged_at.saturating_sub(1))
                         .map_or(0.01, |p| p[1]);
                     plot_ui.points(
                         Points::new(vec![[ma.sinkhorn.converged_at as f64, conv_y]])
@@ -2804,7 +3814,10 @@ impl QuantumEngineApp {
     }
 
     fn draw_sparsity_chart(&self, ui: &mut egui::Ui) {
-        ui.colored_label(HEADING_CLR, egui::RichText::new("Sparsity vs Threshold").size(12.0));
+        ui.colored_label(
+            HEADING_CLR,
+            egui::RichText::new("Sparsity vs Threshold").size(12.0),
+        );
 
         if let Some(ref ma) = self.mask_analysis {
             let plot = Plot::new("sparsity_sweep")
@@ -2816,19 +3829,27 @@ impl QuantumEngineApp {
 
             plot.show(ui, |plot_ui| {
                 // Sparsity bars
-                let bars: Vec<Bar> = ma.sparsity.iter().enumerate().map(|(i, e)| {
-                    Bar::new(i as f64, e.sparsity as f64)
-                        .width(0.6)
-                        .fill(FOREST_GREEN)
-                        .name(format!("t={:.3}", e.threshold))
-                }).collect();
+                let bars: Vec<Bar> = ma
+                    .sparsity
+                    .iter()
+                    .enumerate()
+                    .map(|(i, e)| {
+                        Bar::new(i as f64, e.sparsity as f64)
+                            .width(0.6)
+                            .fill(FOREST_GREEN)
+                            .name(format!("t={:.3}", e.threshold))
+                    })
+                    .collect();
                 plot_ui.bar_chart(BarChart::new(bars).name("Sparsity"));
 
                 // Memory savings line (normalized to [0,1])
                 let max_dense = ma.sparsity.first().map_or(1, |e| e.dense_memory).max(1);
-                let mem_pts: Vec<[f64; 2]> = ma.sparsity.iter().enumerate().map(|(i, e)| {
-                    [i as f64, e.memory_bytes as f64 / max_dense as f64]
-                }).collect();
+                let mem_pts: Vec<[f64; 2]> = ma
+                    .sparsity
+                    .iter()
+                    .enumerate()
+                    .map(|(i, e)| [i as f64, e.memory_bytes as f64 / max_dense as f64])
+                    .collect();
                 plot_ui.line(
                     Line::new(PlotPoints::from(mem_pts))
                         .color(GOLD_EG)
@@ -2843,7 +3864,11 @@ impl QuantumEngineApp {
 
     fn draw_drift_status(&self, ctx: &egui::Context) {
         if let Some(ref dr) = self.drift_result {
-            let (st, sc) = if dr.reduction_factor > 1.5 { ("EFFECTIVE", FOREST_GREEN) } else { ("MARGINAL", GOLD_EG) };
+            let (st, sc) = if dr.reduction_factor > 1.5 {
+                ("EFFECTIVE", FOREST_GREEN)
+            } else {
+                ("MARGINAL", GOLD_EG)
+            };
             let frame = egui::Frame {
                 fill: egui::Color32::from_rgba_unmultiplied(22, 28, 22, 230),
                 corner_radius: egui::CornerRadius::from(6),
@@ -2851,15 +3876,32 @@ impl QuantumEngineApp {
                 stroke: egui::Stroke::new(2.0, sc),
                 ..Default::default()
             };
-            egui::Window::new("drift_status").title_bar(false).resizable(false).movable(false).frame(frame).anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0]).show(ctx, |ui| {
-                ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
-                ui.label(format!("{:.1}\u{00d7} reduction  \u{03bb}\u{2081}={:.4}  drift={:.3}",
-                    dr.reduction_factor, dr.spectral_gap, dr.toroidal_drift_rate));
-                if let Some(ref cov) = self.drift_descent_cov {
-                    dim_label(ui, &format!("Descent: {} steps, loss={:.4}", cov.steps.len(), cov.final_loss));
-                }
-                if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
-            });
+            egui::Window::new("drift_status")
+                .title_bar(false)
+                .resizable(false)
+                .movable(false)
+                .frame(frame)
+                .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
+                .show(ctx, |ui| {
+                    ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
+                    ui.label(format!(
+                        "{:.1}\u{00d7} reduction  \u{03bb}\u{2081}={:.4}  drift={:.3}",
+                        dr.reduction_factor, dr.spectral_gap, dr.toroidal_drift_rate
+                    ));
+                    if let Some(ref cov) = self.drift_descent_cov {
+                        dim_label(
+                            ui,
+                            &format!(
+                                "Descent: {} steps, loss={:.4}",
+                                cov.steps.len(),
+                                cov.final_loss
+                            ),
+                        );
+                    }
+                    if self.paused {
+                        ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0));
+                    }
+                });
         }
     }
 }
@@ -2870,26 +3912,50 @@ impl QuantumEngineApp {
 
 impl QuantumEngineApp {
     fn draw_nano_controls(&mut self, ui: &mut egui::Ui) {
-        ui.colored_label(TORUS_BLUE, egui::RichText::new("NANOTORUS SIMULATOR").strong().size(13.0));
+        ui.colored_label(
+            TORUS_BLUE,
+            egui::RichText::new("NANOTORUS SIMULATOR")
+                .strong()
+                .size(13.0),
+        );
         dim_label(ui, "Nanotorus (T\u{00b2}) resonator physics");
         ui.add_space(4.0);
 
         section_heading(ui, "PRESETS");
         let mut preset_changed = false;
         ui.horizontal(|ui| {
-            if ui.add(egui::Button::new(egui::RichText::new("Optimal").color(FOREST_GREEN).size(12.0))).clicked() {
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("Optimal")
+                        .color(FOREST_GREEN)
+                        .size(12.0),
+                ))
+                .clicked()
+            {
                 self.nano_params = PhysicsParams::nanotorus_default();
                 self.nano_lattice_n = 6;
                 self.nano_mc_trials = 500;
                 self.nano_gate_time_ns = 50.0;
                 preset_changed = true;
             }
-            if ui.add(egui::Button::new(egui::RichText::new("Large Ring").color(TORUS_BLUE).size(12.0))).clicked() {
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("Large Ring")
+                        .color(TORUS_BLUE)
+                        .size(12.0),
+                ))
+                .clicked()
+            {
                 self.nano_params = PhysicsParams::nanotorus_default();
                 self.nano_params.ring_diameter_nm = 500.0;
                 preset_changed = true;
             }
-            if ui.add(egui::Button::new(egui::RichText::new("Room Temp").color(WARN_RED).size(12.0))).clicked() {
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("Room Temp").color(WARN_RED).size(12.0),
+                ))
+                .clicked()
+            {
                 self.nano_params = PhysicsParams::nanotorus_default();
                 self.nano_params.temperature = 300.0;
                 self.nano_params.laser_power = 5.0;
@@ -2897,7 +3963,14 @@ impl QuantumEngineApp {
             }
         });
         ui.horizontal(|ui| {
-            if ui.add(egui::Button::new(egui::RichText::new("Bundle Chain").color(GOLD_EG).size(12.0))).clicked() {
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("Bundle Chain")
+                        .color(GOLD_EG)
+                        .size(12.0),
+                ))
+                .clicked()
+            {
                 self.nano_params = PhysicsParams::nanotorus_default();
                 self.nano_params.bundle_geometry = BundleGeometry::Chain { count: 4 };
                 self.nano_lattice_n = 6;
@@ -2905,7 +3978,12 @@ impl QuantumEngineApp {
                 self.nano_gate_time_ns = 50.0;
                 preset_changed = true;
             }
-            if ui.add(egui::Button::new(egui::RichText::new("BN Torus").color(TORUS_BLUE).size(12.0))).clicked() {
+            if ui
+                .add(egui::Button::new(
+                    egui::RichText::new("BN Torus").color(TORUS_BLUE).size(12.0),
+                ))
+                .clicked()
+            {
                 self.nano_params = PhysicsParams::nanotorus_default();
                 self.nano_params.material = Material::BoronNitride;
                 preset_changed = true;
@@ -2920,11 +3998,25 @@ impl QuantumEngineApp {
                 .selected_text(self.nano_params.material.label())
                 .show_ui(ui, |ui| {
                     ui.selectable_value(&mut self.nano_params.material, Material::Carbon, "Carbon");
-                    ui.selectable_value(&mut self.nano_params.material, Material::BoronNitride, "Boron Nitride");
-                    ui.selectable_value(&mut self.nano_params.material, Material::MoS2, "MoS\u{2082}");
-                    ui.selectable_value(&mut self.nano_params.material, Material::SiliconCarbide, "Silicon Carbide");
+                    ui.selectable_value(
+                        &mut self.nano_params.material,
+                        Material::BoronNitride,
+                        "Boron Nitride",
+                    );
+                    ui.selectable_value(
+                        &mut self.nano_params.material,
+                        Material::MoS2,
+                        "MoS\u{2082}",
+                    );
+                    ui.selectable_value(
+                        &mut self.nano_params.material,
+                        Material::SiliconCarbide,
+                        "Silicon Carbide",
+                    );
                 });
-            if self.nano_params.material != prev { changed = true; }
+            if self.nano_params.material != prev {
+                changed = true;
+            }
             let desc = match self.nano_params.material {
                 Material::Carbon => "E=1.0 TPa, \u{03c1}=2200 kg/m\u{00b3}",
                 Material::BoronNitride => "E=0.8 TPa, \u{03c1}=2100, low charge noise",
@@ -2958,22 +4050,33 @@ impl QuantumEngineApp {
             let new_bundle = match sel {
                 0 => BundleGeometry::Single,
                 1 => {
-                    let c = match prev_bundle { BundleGeometry::Chain { count } => count, _ => 4 };
+                    let c = match prev_bundle {
+                        BundleGeometry::Chain { count } => count,
+                        _ => 4,
+                    };
                     BundleGeometry::Chain { count: c }
                 }
                 2 => {
-                    let c = match prev_bundle { BundleGeometry::RingOfRings { count } => count, _ => 4 };
+                    let c = match prev_bundle {
+                        BundleGeometry::RingOfRings { count } => count,
+                        _ => 4,
+                    };
                     BundleGeometry::RingOfRings { count: c }
                 }
                 3 => {
-                    let c = match prev_bundle { BundleGeometry::Concentric { layers } => layers, _ => 3 };
+                    let c = match prev_bundle {
+                        BundleGeometry::Concentric { layers } => layers,
+                        _ => 3,
+                    };
                     BundleGeometry::Concentric { layers: c }
                 }
                 4 => BundleGeometry::HopfLink,
                 _ => BundleGeometry::Single,
             };
             self.nano_params.bundle_geometry = new_bundle;
-            if self.nano_params.bundle_geometry != prev_bundle { changed = true; }
+            if self.nano_params.bundle_geometry != prev_bundle {
+                changed = true;
+            }
 
             // Count slider for variants that need it
             match &mut self.nano_params.bundle_geometry {
@@ -2981,7 +4084,10 @@ impl QuantumEngineApp {
                     ui.add_space(2.0);
                     ui.label("Bundle Count");
                     let mut c = *count as f64;
-                    if ui.add(egui::Slider::new(&mut c, 2.0..=8.0).step_by(1.0)).changed() {
+                    if ui
+                        .add(egui::Slider::new(&mut c, 2.0..=8.0).step_by(1.0))
+                        .changed()
+                    {
                         *count = c as usize;
                         changed = true;
                     }
@@ -2990,7 +4096,10 @@ impl QuantumEngineApp {
                     ui.add_space(2.0);
                     ui.label("Layers");
                     let mut c = *layers as f64;
-                    if ui.add(egui::Slider::new(&mut c, 2.0..=8.0).step_by(1.0)).changed() {
+                    if ui
+                        .add(egui::Slider::new(&mut c, 2.0..=8.0).step_by(1.0))
+                        .changed()
+                    {
                         *layers = c as usize;
                         changed = true;
                     }
@@ -3007,9 +4116,14 @@ impl QuantumEngineApp {
             };
             dim_label(ui, bundle_desc);
             if self.nano_params.bundle_geometry.n_resonators() > 1 {
-                dim_label(ui, &format!("  {} resonators, Q\u{00d7}{:.1}",
-                    self.nano_params.bundle_geometry.n_resonators(),
-                    self.nano_params.bundle_geometry.cooperative_q_factor()));
+                dim_label(
+                    ui,
+                    &format!(
+                        "  {} resonators, Q\u{00d7}{:.1}",
+                        self.nano_params.bundle_geometry.n_resonators(),
+                        self.nano_params.bundle_geometry.cooperative_q_factor()
+                    ),
+                );
             }
         }
 
@@ -3020,19 +4134,35 @@ impl QuantumEngineApp {
 
         ui.add_space(4.0);
         ui.label("Ring Diameter (nm)");
-        dim_label(ui, "Major ring diameter. \u{03c9}\u{2082} \u{221d} 1/R\u{00b2}.");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_params.ring_diameter_nm, 50.0..=1000.0).logarithmic(true)).changed();
+        dim_label(
+            ui,
+            "Major ring diameter. \u{03c9}\u{2082} \u{221d} 1/R\u{00b2}.",
+        );
+        changed |= ui
+            .add(
+                egui::Slider::new(&mut self.nano_params.ring_diameter_nm, 50.0..=1000.0)
+                    .logarithmic(true),
+            )
+            .changed();
 
         ui.add_space(2.0);
         ui.label("Tube Diameter (nm)");
         dim_label(ui, "SWCNT ~1\u{2013}2nm, MWCNT ~5\u{2013}50nm.");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_params.cnt_diameter_nm, 0.5..=50.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(
+                egui::Slider::new(&mut self.nano_params.cnt_diameter_nm, 0.5..=50.0)
+                    .logarithmic(true),
+            )
+            .changed();
 
         ui.add_space(2.0);
         ui.label("Walls");
         dim_label(ui, "1=SWCNT, 2+=MWCNT. More walls \u{2192} lower Q.");
         let mut walls_f = self.nano_params.num_walls as f64;
-        if ui.add(egui::Slider::new(&mut walls_f, 1.0..=10.0).step_by(1.0)).changed() {
+        if ui
+            .add(egui::Slider::new(&mut walls_f, 1.0..=10.0).step_by(1.0))
+            .changed()
+        {
             self.nano_params.num_walls = walls_f as usize;
             changed = true;
         }
@@ -3040,12 +4170,22 @@ impl QuantumEngineApp {
         ui.add_space(2.0);
         ui.label("Cavity Finesse");
         dim_label(ui, "Higher \u{2192} narrower linewidth.");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_params.cavity_finesse, 100.0..=100000.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(
+                egui::Slider::new(&mut self.nano_params.cavity_finesse, 100.0..=100000.0)
+                    .logarithmic(true),
+            )
+            .changed();
 
         if let Some(ref phys) = self.nano_physics_result {
             ui.add_space(2.0);
-            dim_label(ui, &format!("  f_m = {:.2} GHz  g\u{2080} = {:.0} kHz  Q = {:.0}",
-                phys.freq_ghz, phys.g0_khz, phys.q_mech));
+            dim_label(
+                ui,
+                &format!(
+                    "  f_m = {:.2} GHz  g\u{2080} = {:.0} kHz  Q = {:.0}",
+                    phys.freq_ghz, phys.g0_khz, phys.q_mech
+                ),
+            );
         }
 
         section_heading(ui, "DOPPLER COOLING");
@@ -3054,42 +4194,74 @@ impl QuantumEngineApp {
         ui.add_space(4.0);
         ui.label("Temperature (K)");
         dim_label(ui, "Bath temperature.");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_params.temperature, 0.01..=300.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(
+                egui::Slider::new(&mut self.nano_params.temperature, 0.01..=300.0)
+                    .logarithmic(true),
+            )
+            .changed();
 
         ui.add_space(2.0);
         ui.label("Laser Power (mW)");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_params.laser_power, 0.1..=50.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.nano_params.laser_power, 0.1..=50.0).logarithmic(true))
+            .changed();
 
         ui.add_space(2.0);
         ui.label("Detuning (\u{00d7}\u{03c9}_m)");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_params.detuning, -3.0..=0.0)).changed();
+        changed |= ui
+            .add(egui::Slider::new(
+                &mut self.nano_params.detuning,
+                -3.0..=0.0,
+            ))
+            .changed();
 
         ui.add_space(2.0);
         ui.label("\u{03ba}/2 (\u{00d7}\u{03c9}_m)");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_params.kappa, 0.01..=2.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.nano_params.kappa, 0.01..=2.0).logarithmic(true))
+            .changed();
 
         ui.add_space(2.0);
         ui.label("Piezo Voltage (V)");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_params.piezo_voltage, 0.0..=10.0)).changed();
+        changed |= ui
+            .add(egui::Slider::new(
+                &mut self.nano_params.piezo_voltage,
+                0.0..=10.0,
+            ))
+            .changed();
 
         section_heading(ui, "TONNETZ COHERENCE FILTER");
         ui.add_space(4.0);
         ui.label("Grid Size (N)");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_params.tonnetz_grid_size, 3..=16)).changed();
+        changed |= ui
+            .add(egui::Slider::new(
+                &mut self.nano_params.tonnetz_grid_size,
+                3..=16,
+            ))
+            .changed();
         ui.add_space(2.0);
         ui.label("Q Factor");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_params.tonnetz_q, 1.0..=200.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.nano_params.tonnetz_q, 1.0..=200.0).logarithmic(true))
+            .changed();
 
         section_heading(ui, "TORIC CODE");
         ui.add_space(4.0);
         ui.label("Lattice N");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_lattice_n, 3..=12)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.nano_lattice_n, 3..=12))
+            .changed();
         ui.add_space(2.0);
         ui.label("MC Trials");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_mc_trials, 50..=5000).logarithmic(true)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.nano_mc_trials, 50..=5000).logarithmic(true))
+            .changed();
         ui.add_space(2.0);
         ui.label("Gate Time (ns)");
-        changed |= ui.add(egui::Slider::new(&mut self.nano_gate_time_ns, 10.0..=1000.0).logarithmic(true)).changed();
+        changed |= ui
+            .add(egui::Slider::new(&mut self.nano_gate_time_ns, 10.0..=1000.0).logarithmic(true))
+            .changed();
 
         section_heading(ui, "COVARIANT DESCENT");
         dim_label(ui, "Optimize physics parameters on T\u{00b2}.");
@@ -3105,21 +4277,41 @@ impl QuantumEngineApp {
                 NanoDescentTarget::Cooling => "Cooling",
             })
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut self.nano_descent_target, NanoDescentTarget::RingGeometry, "Ring Geometry");
-                ui.selectable_value(&mut self.nano_descent_target, NanoDescentTarget::TonnetzFilter, "Tonnetz Filter");
-                ui.selectable_value(&mut self.nano_descent_target, NanoDescentTarget::Cooling, "Cooling");
+                ui.selectable_value(
+                    &mut self.nano_descent_target,
+                    NanoDescentTarget::RingGeometry,
+                    "Ring Geometry",
+                );
+                ui.selectable_value(
+                    &mut self.nano_descent_target,
+                    NanoDescentTarget::TonnetzFilter,
+                    "Tonnetz Filter",
+                );
+                ui.selectable_value(
+                    &mut self.nano_descent_target,
+                    NanoDescentTarget::Cooling,
+                    "Cooling",
+                );
             });
-        if self.nano_descent_target != prev_target { descent_changed = true; }
+        if self.nano_descent_target != prev_target {
+            descent_changed = true;
+        }
 
         ui.add_space(2.0);
         ui.label("Learning rate \u{03b7}");
-        descent_changed |= ui.add(egui::Slider::new(&mut self.nano_descent_eta, 0.0001..=0.05).logarithmic(true)).changed();
+        descent_changed |= ui
+            .add(egui::Slider::new(&mut self.nano_descent_eta, 0.0001..=0.05).logarithmic(true))
+            .changed();
         ui.add_space(2.0);
         ui.label("Start x");
-        descent_changed |= ui.add(egui::Slider::new(&mut self.nano_descent_start.0, 0.0..=1.0)).changed();
+        descent_changed |= ui
+            .add(egui::Slider::new(&mut self.nano_descent_start.0, 0.0..=1.0))
+            .changed();
         ui.add_space(2.0);
         ui.label("Start y");
-        descent_changed |= ui.add(egui::Slider::new(&mut self.nano_descent_start.1, 0.0..=1.0)).changed();
+        descent_changed |= ui
+            .add(egui::Slider::new(&mut self.nano_descent_start.1, 0.0..=1.0))
+            .changed();
         ui.add_space(2.0);
         ui.checkbox(&mut self.nano_show_euclidean, "Show Euclidean path");
 
@@ -3127,10 +4319,18 @@ impl QuantumEngineApp {
             self.needs_nano_eval = true;
             self.needs_nano_sweep = true;
         }
-        if descent_changed { self.needs_nano_descent = true; }
-        if self.needs_nano_eval { self.send_nano_eval(); }
-        if self.needs_nano_sweep && !self.nano_sweep_pending { self.send_nano_sweep(); }
-        if self.needs_nano_descent { self.send_nano_descent(); }
+        if descent_changed {
+            self.needs_nano_descent = true;
+        }
+        if self.needs_nano_eval {
+            self.send_nano_eval();
+        }
+        if self.needs_nano_sweep && !self.nano_sweep_pending {
+            self.send_nano_sweep();
+        }
+        if self.needs_nano_descent {
+            self.send_nano_descent();
+        }
     }
 
     fn draw_nano_results(&self, ui: &mut egui::Ui) {
@@ -3148,17 +4348,29 @@ impl QuantumEngineApp {
             dim_label(ui, "  Mechanical frequency");
             ui.label(format!("g\u{2080}: {:.0} kHz", phys.g0_khz));
             dim_label(ui, "  Optomechanical coupling (WGM)");
-            let qc = if phys.q_mech > 1e6 { FOREST_GREEN } else { GOLD_EG };
+            let qc = if phys.q_mech > 1e6 {
+                FOREST_GREEN
+            } else {
+                GOLD_EG
+            };
             ui.colored_label(qc, format!("Q: {:.0}", phys.q_mech));
             dim_label(ui, "  No clamping losses");
             if self.nano_params.bundle_geometry.n_resonators() > 1 {
-                dim_label(ui, &format!("  Bundle: {} tori, mass {:.1}\u{00d7}, Q\u{00d7}{:.1}",
-                    self.nano_params.bundle_geometry.n_resonators(),
-                    self.nano_params.bundle_geometry.mass_factor(),
-                    self.nano_params.bundle_geometry.cooperative_q_factor()));
+                dim_label(
+                    ui,
+                    &format!(
+                        "  Bundle: {} tori, mass {:.1}\u{00d7}, Q\u{00d7}{:.1}",
+                        self.nano_params.bundle_geometry.n_resonators(),
+                        self.nano_params.bundle_geometry.mass_factor(),
+                        self.nano_params.bundle_geometry.cooperative_q_factor()
+                    ),
+                );
             }
             ui.label(format!("\u{0394}\u{03c9}: {:.2}", phys.mech_spectral_gap));
-            dim_label(ui, "  Mechanical spectral gap (\u{03c9}\u{2083}/\u{03c9}\u{2082})");
+            dim_label(
+                ui,
+                "  Mechanical spectral gap (\u{03c9}\u{2083}/\u{03c9}\u{2082})",
+            );
             dim_label(ui, "  T\u{00b2} modes: winding numbers (m,n)");
 
             ui.add_space(6.0);
@@ -3176,14 +4388,28 @@ impl QuantumEngineApp {
             dim_label(ui, "  Spectral gap");
             ui.label(format!("\u{03a3}w: {:.1}", phys.coupling_weight));
             dim_label(ui, "  Total coupling weight");
-            let enh_c = if phys.tonnetz_enhancement > 5.0 { FOREST_GREEN } else { GOLD_EG };
-            ui.colored_label(enh_c, format!("Enhancement: {:.1}\u{00d7}", phys.tonnetz_enhancement));
+            let enh_c = if phys.tonnetz_enhancement > 5.0 {
+                FOREST_GREEN
+            } else {
+                GOLD_EG
+            };
+            ui.colored_label(
+                enh_c,
+                format!("Enhancement: {:.1}\u{00d7}", phys.tonnetz_enhancement),
+            );
 
             ui.add_space(6.0);
             section_heading(ui, "COHERENCE TIMES");
             ui.label(format!("T\u{2081}: {:.0} ns", phys.t1_ns));
-            let t2c = if phys.t2_ns > self.nano_gate_time_ns * 10.0 { FOREST_GREEN } else { WARN_RED };
-            ui.colored_label(t2c, format!("T\u{2082}: {:.0} ns  (with Tonnetz)", phys.t2_ns));
+            let t2c = if phys.t2_ns > self.nano_gate_time_ns * 10.0 {
+                FOREST_GREEN
+            } else {
+                WARN_RED
+            };
+            ui.colored_label(
+                t2c,
+                format!("T\u{2082}: {:.0} ns  (with Tonnetz)", phys.t2_ns),
+            );
             ui.label(format!("T\u{2082} bare: {:.0} ns", phys.t2_bare_ns));
             let imp = phys.t2_ns - phys.t2_bare_ns;
             let imp_c = if imp > 100.0 { FOREST_GREEN } else { GOLD_EG };
@@ -3193,13 +4419,25 @@ impl QuantumEngineApp {
             ui.add_space(6.0);
             section_heading(ui, "QUANTUM ADVANTAGE");
 
-            let n_qubits = (self.nano_params.tonnetz_grid_size * self.nano_params.tonnetz_grid_size) as usize;
-            let gap_torus = crate::coherence::spectral_gap(crate::coherence::Topology::Toroidal, n_qubits);
-            let gap_linear = crate::coherence::spectral_gap(crate::coherence::Topology::Linear, n_qubits);
+            let n_qubits =
+                (self.nano_params.tonnetz_grid_size * self.nano_params.tonnetz_grid_size) as usize;
+            let gap_torus =
+                crate::coherence::spectral_gap(crate::coherence::Topology::Toroidal, n_qubits);
+            let gap_linear =
+                crate::coherence::spectral_gap(crate::coherence::Topology::Linear, n_qubits);
             let topo_advantage = gap_torus / gap_linear;
 
-            ui.colored_label(FOREST_GREEN, format!("T\u{00b2} advantage: {:.1}\u{00d7}", topo_advantage));
-            dim_label(ui, &format!("  \u{03bb}\u{2081}(T\u{00b2})={:.4} vs \u{03bb}\u{2081}(chain)={:.4}", gap_torus, gap_linear));
+            ui.colored_label(
+                FOREST_GREEN,
+                format!("T\u{00b2} advantage: {:.1}\u{00d7}", topo_advantage),
+            );
+            dim_label(
+                ui,
+                &format!(
+                    "  \u{03bb}\u{2081}(T\u{00b2})={:.4} vs \u{03bb}\u{2081}(chain)={:.4}",
+                    gap_torus, gap_linear
+                ),
+            );
 
             // Gate error threshold
             let p_gate = self.nano_gate_time_ns / phys.t2_ns;
@@ -3215,8 +4453,12 @@ impl QuantumEngineApp {
             // Physical coherence in human-readable units
             let t2_us = phys.t2_ns / 1e3;
             if t2_us > 1.0 {
-                ui.colored_label(FOREST_GREEN,
-                    egui::RichText::new(format!("T\u{2082} = {:.1} \u{00b5}s", t2_us)).strong().size(14.0));
+                ui.colored_label(
+                    FOREST_GREEN,
+                    egui::RichText::new(format!("T\u{2082} = {:.1} \u{00b5}s", t2_us))
+                        .strong()
+                        .size(14.0),
+                );
             }
             dim_label(ui, "  Superconducting qubits: ~10\u{2013}100 \u{00b5}s");
         }
@@ -3227,14 +4469,24 @@ impl QuantumEngineApp {
         let margin = 0.09 - self.nano_p_error;
         let mc = if margin > 0.0 { FOREST_GREEN } else { WARN_RED };
         ui.colored_label(mc, format!("Margin: {:.1}%", margin * 100.0));
-        if margin > 0.0 { dim_label(ui, "  BELOW threshold \u{2713}"); } else { ui.colored_label(WARN_RED, "  ABOVE threshold!"); }
-        ui.label(format!("P_L = {:.3}  ({}/{})", self.nano_logical_error_rate, self.nano_logical_failures, self.nano_mc_trials_done));
+        if margin > 0.0 {
+            dim_label(ui, "  BELOW threshold \u{2713}");
+        } else {
+            ui.colored_label(WARN_RED, "  ABOVE threshold!");
+        }
+        ui.label(format!(
+            "P_L = {:.3}  ({}/{})",
+            self.nano_logical_error_rate, self.nano_logical_failures, self.nano_mc_trials_done
+        ));
 
         // Descent results
         ui.add_space(6.0);
         section_heading(ui, "DESCENT");
         if let Some(ref cov) = self.nano_descent_cov {
-            let conv_str = match cov.convergence_step { Some(s) => format!("step {}", s), None => "not converged".to_string() };
+            let conv_str = match cov.convergence_step {
+                Some(s) => format!("step {}", s),
+                None => "not converged".to_string(),
+            };
             ui.colored_label(FOREST_GREEN, "Covariant (T\u{00b2}):");
             ui.label(format!("  Loss: {:.6}", cov.final_loss));
             ui.label(format!("  Conv: {}", conv_str));
@@ -3242,7 +4494,10 @@ impl QuantumEngineApp {
             dim_label(ui, &format!("  Theoretical: {:.6}", cov.theoretical_rate));
         }
         if let Some(ref euc) = self.nano_descent_euc {
-            let conv_str = match euc.convergence_step { Some(s) => format!("step {}", s), None => "not converged".to_string() };
+            let conv_str = match euc.convergence_step {
+                Some(s) => format!("step {}", s),
+                None => "not converged".to_string(),
+            };
             ui.colored_label(WARN_RED, "Euclidean (flat):");
             ui.label(format!("  Loss: {:.6}", euc.final_loss));
             ui.label(format!("  Conv: {}", conv_str));
@@ -3252,11 +4507,19 @@ impl QuantumEngineApp {
     fn draw_nano_central(&mut self, ui: &mut egui::Ui) {
         let full = ui.available_rect_before_wrap();
         let torus_h = (full.height() * 0.55).max(200.0);
-        let torus_rect = egui::Rect::from_min_max(full.min, egui::pos2(full.max.x, full.min.y + torus_h));
-        let chart_area = egui::Rect::from_min_max(egui::pos2(full.min.x, full.min.y + torus_h), full.max);
+        let torus_rect =
+            egui::Rect::from_min_max(full.min, egui::pos2(full.max.x, full.min.y + torus_h));
+        let chart_area =
+            egui::Rect::from_min_max(egui::pos2(full.min.x, full.min.y + torus_h), full.max);
         let col_w = chart_area.width() / 2.0;
-        let chart1 = egui::Rect::from_min_max(chart_area.min, egui::pos2(chart_area.min.x + col_w, chart_area.max.y));
-        let chart2 = egui::Rect::from_min_max(egui::pos2(chart_area.min.x + col_w, chart_area.min.y), chart_area.max);
+        let chart1 = egui::Rect::from_min_max(
+            chart_area.min,
+            egui::pos2(chart_area.min.x + col_w, chart_area.max.y),
+        );
+        let chart2 = egui::Rect::from_min_max(
+            egui::pos2(chart_area.min.x + col_w, chart_area.min.y),
+            chart_area.max,
+        );
 
         // Torus interaction
         let torus_response = ui.allocate_rect(torus_rect, egui::Sense::click_and_drag());
@@ -3266,102 +4529,230 @@ impl QuantumEngineApp {
             self.rotation[1] += delta.x * 0.008;
             self.auto_rotate = false;
         }
-        if torus_response.double_clicked() { self.auto_rotate = true; }
+        if torus_response.double_clicked() {
+            self.auto_rotate = true;
+        }
 
         // Draw torus with descent paths
         {
             let painter = ui.painter();
             let bundle_tag = if self.nano_params.bundle_geometry.n_resonators() > 1 {
-                format!("  [{} \u{00d7}{}]", self.nano_params.bundle_geometry.label(),
-                    self.nano_params.bundle_geometry.n_resonators())
+                format!(
+                    "  [{} \u{00d7}{}]",
+                    self.nano_params.bundle_geometry.label(),
+                    self.nano_params.bundle_geometry.n_resonators()
+                )
             } else {
                 String::new()
             };
             let grid_n = self.nano_params.tonnetz_grid_size;
-            painter.text(torus_rect.center_top() + egui::vec2(0.0, 12.0), egui::Align2::CENTER_TOP,
-                format!("{} NANOTORUS (T\u{00b2})  \u{2014}  Tonnetz {}\u{00d7}{}{}",
-                    self.nano_params.material.label(), grid_n, grid_n, bundle_tag),
-                egui::FontId::proportional(13.0), TORUS_BLUE);
+            painter.text(
+                torus_rect.center_top() + egui::vec2(0.0, 12.0),
+                egui::Align2::CENTER_TOP,
+                format!(
+                    "{} NANOTORUS (T\u{00b2})  \u{2014}  Tonnetz {}\u{00d7}{}{}",
+                    self.nano_params.material.label(),
+                    grid_n,
+                    grid_n,
+                    bundle_tag
+                ),
+                egui::FontId::proportional(13.0),
+                TORUS_BLUE,
+            );
 
             let cov_steps = self.nano_descent_cov.as_ref().map(|d| d.steps.as_slice());
             let euc_steps = self.nano_descent_euc.as_ref().map(|d| d.steps.as_slice());
-            draw_cnt_torus(painter, torus_rect, self.rotation, self.nano_params.tonnetz_grid_size, self.nano_snapshot.as_ref(), self.time);
+            draw_cnt_torus(
+                painter,
+                torus_rect,
+                self.rotation,
+                self.nano_params.tonnetz_grid_size,
+                self.nano_snapshot.as_ref(),
+                self.time,
+            );
 
             // Overlay descent paths
             let rm = 1.2_f32;
             let rn = 0.45_f32;
             if let Some(steps) = cov_steps {
-                draw_descent_path(painter, torus_rect, self.rotation, rm, rn, steps, true, self.time);
+                draw_descent_path(
+                    painter,
+                    torus_rect,
+                    self.rotation,
+                    rm,
+                    rn,
+                    steps,
+                    true,
+                    self.time,
+                );
             }
             if self.nano_show_euclidean {
                 if let Some(steps) = euc_steps {
-                    draw_descent_path(painter, torus_rect, self.rotation, rm, rn, steps, false, self.time);
+                    draw_descent_path(
+                        painter,
+                        torus_rect,
+                        self.rotation,
+                        rm,
+                        rn,
+                        steps,
+                        false,
+                        self.time,
+                    );
                 }
             }
 
             // Chart titles
-            painter.text(chart1.center_top() + egui::vec2(0.0, 4.0), egui::Align2::CENTER_TOP, "THRESHOLD CURVE", egui::FontId::proportional(11.0), HEADING_CLR);
-            painter.text(chart2.center_top() + egui::vec2(0.0, 4.0), egui::Align2::CENTER_TOP, "DESCENT CONVERGENCE", egui::FontId::proportional(11.0), HEADING_CLR);
+            painter.text(
+                chart1.center_top() + egui::vec2(0.0, 4.0),
+                egui::Align2::CENTER_TOP,
+                "THRESHOLD CURVE",
+                egui::FontId::proportional(11.0),
+                HEADING_CLR,
+            );
+            painter.text(
+                chart2.center_top() + egui::vec2(0.0, 4.0),
+                egui::Align2::CENTER_TOP,
+                "DESCENT CONVERGENCE",
+                egui::FontId::proportional(11.0),
+                HEADING_CLR,
+            );
         }
 
         // Chart 1: Threshold sweep
-        let chart1_inner = egui::Rect::from_min_max(chart1.min + egui::vec2(10.0, 22.0), chart1.max - egui::vec2(10.0, 5.0));
+        let chart1_inner = egui::Rect::from_min_max(
+            chart1.min + egui::vec2(10.0, 22.0),
+            chart1.max - egui::vec2(10.0, 5.0),
+        );
         let p_error = self.nano_p_error;
         let logical_error_rate = self.nano_logical_error_rate;
 
         ui.allocate_new_ui(egui::UiBuilder::new().max_rect(chart1_inner), |ui| {
             let plot = Plot::new("nano_threshold_chart")
-                .width(chart1_inner.width()).height(chart1_inner.height())
-                .x_axis_label("p").y_axis_label("P_L")
-                .include_x(0.0).include_x(0.2).include_y(0.0).include_y(1.0)
-                .show_axes(true).allow_zoom(true).allow_drag(true)
+                .width(chart1_inner.width())
+                .height(chart1_inner.height())
+                .x_axis_label("p")
+                .y_axis_label("P_L")
+                .include_x(0.0)
+                .include_x(0.2)
+                .include_y(0.0)
+                .include_y(1.0)
+                .show_axes(true)
+                .allow_zoom(true)
+                .allow_drag(true)
                 .legend(Legend::default().position(Corner::LeftTop));
 
             plot.show(ui, |plot_ui| {
-                let zone_pts: PlotPoints = vec![[0.0, 0.0], [0.09, 0.0], [0.09, 1.0], [0.0, 1.0]].into_iter().collect();
-                plot_ui.polygon(Polygon::new(zone_pts).fill_color(egui::Color32::from_rgba_unmultiplied(86, 166, 96, 20)).stroke(egui::Stroke::NONE).name("Correctable zone"));
+                let zone_pts: PlotPoints = vec![[0.0, 0.0], [0.09, 0.0], [0.09, 1.0], [0.0, 1.0]]
+                    .into_iter()
+                    .collect();
+                plot_ui.polygon(
+                    Polygon::new(zone_pts)
+                        .fill_color(egui::Color32::from_rgba_unmultiplied(86, 166, 96, 20))
+                        .stroke(egui::Stroke::NONE)
+                        .name("Correctable zone"),
+                );
 
-                let colors = [FOREST_GREEN, GOLD_EG, egui::Color32::from_rgb(200, 200, 190), X_ERROR_RED];
-                let markers = [MarkerShape::Circle, MarkerShape::Diamond, MarkerShape::Square, MarkerShape::Up];
+                let colors = [
+                    FOREST_GREEN,
+                    GOLD_EG,
+                    egui::Color32::from_rgb(200, 200, 190),
+                    X_ERROR_RED,
+                ];
+                let markers = [
+                    MarkerShape::Circle,
+                    MarkerShape::Diamond,
+                    MarkerShape::Square,
+                    MarkerShape::Up,
+                ];
 
                 if let Some(ref cd) = self.nano_chart_data {
                     for (i, curve) in cd.curves.iter().enumerate() {
                         let pts: PlotPoints = curve.points.iter().map(|&(p, pl)| [p, pl]).collect();
-                        let scatter_pts: PlotPoints = curve.points.iter().map(|&(p, pl)| [p, pl]).collect();
+                        let scatter_pts: PlotPoints =
+                            curve.points.iter().map(|&(p, pl)| [p, pl]).collect();
                         let color = colors[i % colors.len()];
                         let marker = markers[i % markers.len()];
                         let name = format!("N={}", curve.n);
                         plot_ui.line(Line::new(pts).color(color).width(2.0).name(&name));
-                        plot_ui.points(Points::new(scatter_pts).color(color).shape(marker).radius(3.5).name(&name));
+                        plot_ui.points(
+                            Points::new(scatter_pts)
+                                .color(color)
+                                .shape(marker)
+                                .radius(3.5)
+                                .name(&name),
+                        );
                     }
                 }
 
                 if p_error > 0.0 {
-                    plot_ui.vline(VLine::new(p_error).color(egui::Color32::WHITE).width(1.5).name("Operating point"));
-                    plot_ui.text(PlotText::new(PlotPoint::new(p_error, logical_error_rate.max(0.05)), egui::RichText::new(format!("p={:.4}", p_error)).size(10.0).color(egui::Color32::WHITE)).anchor(egui::Align2::LEFT_BOTTOM));
+                    plot_ui.vline(
+                        VLine::new(p_error)
+                            .color(egui::Color32::WHITE)
+                            .width(1.5)
+                            .name("Operating point"),
+                    );
+                    plot_ui.text(
+                        PlotText::new(
+                            PlotPoint::new(p_error, logical_error_rate.max(0.05)),
+                            egui::RichText::new(format!("p={:.4}", p_error))
+                                .size(10.0)
+                                .color(egui::Color32::WHITE),
+                        )
+                        .anchor(egui::Align2::LEFT_BOTTOM),
+                    );
                 }
-                plot_ui.vline(VLine::new(0.09).color(egui::Color32::from_rgba_unmultiplied(230, 70, 70, 120)).width(1.0).name("Threshold ~9%"));
+                plot_ui.vline(
+                    VLine::new(0.09)
+                        .color(egui::Color32::from_rgba_unmultiplied(230, 70, 70, 120))
+                        .width(1.0)
+                        .name("Threshold ~9%"),
+                );
             });
         });
 
         // Chart 2: Descent convergence (loss vs iteration)
-        let chart2_inner = egui::Rect::from_min_max(chart2.min + egui::vec2(10.0, 22.0), chart2.max - egui::vec2(10.0, 5.0));
+        let chart2_inner = egui::Rect::from_min_max(
+            chart2.min + egui::vec2(10.0, 22.0),
+            chart2.max - egui::vec2(10.0, 5.0),
+        );
         ui.allocate_new_ui(egui::UiBuilder::new().max_rect(chart2_inner), |ui| {
             let plot = Plot::new("nano_descent_chart")
-                .width(chart2_inner.width()).height(chart2_inner.height())
-                .x_axis_label("iteration").y_axis_label("loss")
-                .show_axes(true).allow_zoom(true).allow_drag(true)
+                .width(chart2_inner.width())
+                .height(chart2_inner.height())
+                .x_axis_label("iteration")
+                .y_axis_label("loss")
+                .show_axes(true)
+                .allow_zoom(true)
+                .allow_drag(true)
                 .legend(Legend::default().position(Corner::RightTop));
 
             plot.show(ui, |plot_ui| {
                 if let Some(ref cov) = self.nano_descent_cov {
-                    let pts: PlotPoints = cov.steps.iter().map(|s| [s.iteration as f64, s.loss]).collect();
-                    plot_ui.line(Line::new(pts).color(FOREST_GREEN).width(2.0).name("Covariant (T\u{00b2})"));
+                    let pts: PlotPoints = cov
+                        .steps
+                        .iter()
+                        .map(|s| [s.iteration as f64, s.loss])
+                        .collect();
+                    plot_ui.line(
+                        Line::new(pts)
+                            .color(FOREST_GREEN)
+                            .width(2.0)
+                            .name("Covariant (T\u{00b2})"),
+                    );
                 }
                 if self.nano_show_euclidean {
                     if let Some(ref euc) = self.nano_descent_euc {
-                        let pts: PlotPoints = euc.steps.iter().map(|s| [s.iteration as f64, s.loss]).collect();
-                        plot_ui.line(Line::new(pts).color(WARN_RED).width(1.5).name("Euclidean (flat)"));
+                        let pts: PlotPoints = euc
+                            .steps
+                            .iter()
+                            .map(|s| [s.iteration as f64, s.loss])
+                            .collect();
+                        plot_ui.line(
+                            Line::new(pts)
+                                .color(WARN_RED)
+                                .width(1.5)
+                                .name("Euclidean (flat)"),
+                        );
                     }
                 }
             });
@@ -3370,7 +4761,11 @@ impl QuantumEngineApp {
 
     fn draw_nano_status(&self, ctx: &egui::Context) {
         if let Some(ref phys) = self.nano_physics_result {
-            let (st, sc) = if self.nano_p_error < 0.09 { ("CORRECTABLE", FOREST_GREEN) } else { ("TOO NOISY", WARN_RED) };
+            let (st, sc) = if self.nano_p_error < 0.09 {
+                ("CORRECTABLE", FOREST_GREEN)
+            } else {
+                ("TOO NOISY", WARN_RED)
+            };
             let (coh_st, coh_sc) = if phys.t2_ns < 1.0 {
                 ("NEGLIGIBLE", WARN_RED)
             } else if phys.tonnetz_enhancement > 5.0 && phys.t2_ns > self.nano_gate_time_ns {
@@ -3387,29 +4782,73 @@ impl QuantumEngineApp {
                 stroke: egui::Stroke::new(2.0, sc),
                 ..Default::default()
             };
-            egui::Window::new("nano_status").title_bar(false).resizable(false).movable(false).frame(frame).anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0]).show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
-                    ui.separator();
-                    ui.colored_label(coh_sc, egui::RichText::new(format!("Coherence {}", coh_st)).strong().size(13.0));
+            egui::Window::new("nano_status")
+                .title_bar(false)
+                .resizable(false)
+                .movable(false)
+                .frame(frame)
+                .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
+                .show(ctx, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.colored_label(sc, egui::RichText::new(st).strong().size(15.0));
+                        ui.separator();
+                        ui.colored_label(
+                            coh_sc,
+                            egui::RichText::new(format!("Coherence {}", coh_st))
+                                .strong()
+                                .size(13.0),
+                        );
+                    });
+                    ui.label(format!(
+                        "T\u{2082}={:.0}ns  p={:.4}  P_L={:.3}",
+                        phys.t2_ns, self.nano_p_error, self.nano_logical_error_rate
+                    ));
+                    dim_label(
+                        ui,
+                        &format!(
+                            "NANOTORUS: Q={:.0} +{:.0}ns ({:.0}\u{00d7})",
+                            phys.q_mech,
+                            phys.t2_ns - phys.t2_bare_ns,
+                            phys.tonnetz_enhancement
+                        ),
+                    );
+                    let n_q = (self.nano_params.tonnetz_grid_size
+                        * self.nano_params.tonnetz_grid_size)
+                        as usize;
+                    let gap_t =
+                        crate::coherence::spectral_gap(crate::coherence::Topology::Toroidal, n_q);
+                    let gap_l =
+                        crate::coherence::spectral_gap(crate::coherence::Topology::Linear, n_q);
+                    dim_label(
+                        ui,
+                        &format!(
+                            "T\u{00b2} vs chain: {:.1}\u{00d7} spectral advantage",
+                            gap_t / gap_l
+                        ),
+                    );
+                    if let Some(ref cov) = self.nano_descent_cov {
+                        let target_name = match self.nano_descent_target {
+                            NanoDescentTarget::RingGeometry => "Ring",
+                            NanoDescentTarget::TonnetzFilter => "Tonnetz",
+                            NanoDescentTarget::Cooling => "Cooling",
+                        };
+                        let conv = if cov.converged {
+                            "converged"
+                        } else {
+                            "running"
+                        };
+                        dim_label(
+                            ui,
+                            &format!(
+                                "Descent ({}): {} rate={:.4}",
+                                target_name, conv, cov.measured_rate
+                            ),
+                        );
+                    }
+                    if self.paused {
+                        ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0));
+                    }
                 });
-                ui.label(format!("T\u{2082}={:.0}ns  p={:.4}  P_L={:.3}", phys.t2_ns, self.nano_p_error, self.nano_logical_error_rate));
-                dim_label(ui, &format!("NANOTORUS: Q={:.0} +{:.0}ns ({:.0}\u{00d7})", phys.q_mech, phys.t2_ns - phys.t2_bare_ns, phys.tonnetz_enhancement));
-                let n_q = (self.nano_params.tonnetz_grid_size * self.nano_params.tonnetz_grid_size) as usize;
-                let gap_t = crate::coherence::spectral_gap(crate::coherence::Topology::Toroidal, n_q);
-                let gap_l = crate::coherence::spectral_gap(crate::coherence::Topology::Linear, n_q);
-                dim_label(ui, &format!("T\u{00b2} vs chain: {:.1}\u{00d7} spectral advantage", gap_t / gap_l));
-                if let Some(ref cov) = self.nano_descent_cov {
-                    let target_name = match self.nano_descent_target {
-                        NanoDescentTarget::RingGeometry => "Ring",
-                        NanoDescentTarget::TonnetzFilter => "Tonnetz",
-                        NanoDescentTarget::Cooling => "Cooling",
-                    };
-                    let conv = if cov.converged { "converged" } else { "running" };
-                    dim_label(ui, &format!("Descent ({}): {} rate={:.4}", target_name, conv, cov.measured_rate));
-                }
-                if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
-            });
         }
     }
 }
@@ -3427,7 +4866,10 @@ impl QuantumEngineApp {
     // ─── Controls (left sidebar) ────────────────────────────────────────────
 
     fn draw_logo_controls(&mut self, ui: &mut egui::Ui) {
-        ui.colored_label(LOGO_PURPLE, egui::RichText::new("THE LOGO DECODED").strong().size(13.0));
+        ui.colored_label(
+            LOGO_PURPLE,
+            egui::RichText::new("THE LOGO DECODED").strong().size(13.0),
+        );
         dim_label(ui, "Prior art \u{2014} November 2023");
         ui.add_space(4.0);
 
@@ -3446,7 +4888,11 @@ impl QuantumEngineApp {
 
         section_heading(ui, "TONNETZ LATTICE");
         let mut n_f = self.logo_lattice_n as f64;
-        ui.add(egui::Slider::new(&mut n_f, 4.0..=24.0).integer().text("N\u{00d7}N"));
+        ui.add(
+            egui::Slider::new(&mut n_f, 4.0..=24.0)
+                .integer()
+                .text("N\u{00d7}N"),
+        );
         self.logo_lattice_n = n_f as usize;
         ui.add_space(4.0);
 
@@ -3460,9 +4906,21 @@ impl QuantumEngineApp {
         section_heading(ui, "LOGO ELEMENTS");
         ui.add_space(2.0);
         let items = [
-            ("\u{25cb} Large circle", "Torus T\u{00b2} \u{2014} constraint manifold", LOGO_PURPLE),
-            ("\u{25cf} Filled node", "Karmonic functional H eval point", FOREST_GREEN),
-            ("\u{25cb}\u{25cb}\u{25cb} Open nodes", "Triadic coherence cell", LOGO_CYAN),
+            (
+                "\u{25cb} Large circle",
+                "Torus T\u{00b2} \u{2014} constraint manifold",
+                LOGO_PURPLE,
+            ),
+            (
+                "\u{25cf} Filled node",
+                "Karmonic functional H eval point",
+                FOREST_GREEN,
+            ),
+            (
+                "\u{25cb}\u{25cb}\u{25cb} Open nodes",
+                "Triadic coherence cell",
+                LOGO_CYAN,
+            ),
             ("\u{2500} Edges", "Graph Laplacian structure E", LOGO_AMBER),
         ];
         for (elem, desc, color) in items {
@@ -3477,7 +4935,10 @@ impl QuantumEngineApp {
         section_heading(ui, "THE INSIGHT");
         dim_label(ui, "A spinning sphere inside a toroid");
         dim_label(ui, "generates orthogonal force from");
-        dim_label(ui, "\u{03c0}\u{2081}(T\u{00b2}) = \u{2124}\u{00d7}\u{2124} topology.");
+        dim_label(
+            ui,
+            "\u{03c0}\u{2081}(T\u{00b2}) = \u{2124}\u{00d7}\u{2124} topology.",
+        );
         ui.add_space(4.0);
         dim_label(ui, "Same geometry controls:");
         let domains = [
@@ -3498,18 +4959,30 @@ impl QuantumEngineApp {
         let gap = torus.spectral_gap();
         let n_q = n * n;
         let gap_linear = crate::coherence::spectral_gap(crate::coherence::Topology::Linear, n_q);
-        let gap_complete = crate::coherence::spectral_gap(crate::coherence::Topology::Complete, n_q);
+        let gap_complete =
+            crate::coherence::spectral_gap(crate::coherence::Topology::Complete, n_q);
         let mixing = torus.mixing_time_lattice();
         let poincare = 1.0 / gap;
-        let coherence_norm = crate::coherence::coherence_time_normalized(gap, 1.0_f64 / std::f64::consts::E);
+        let coherence_norm =
+            crate::coherence::coherence_time_normalized(gap, 1.0_f64 / std::f64::consts::E);
 
         section_heading(ui, "SPECTRAL GAP");
-        ui.colored_label(LOGO_PURPLE, egui::RichText::new(format!("\u{03bb}\u{2081} = {:.6}", gap)).strong().size(16.0));
+        ui.colored_label(
+            LOGO_PURPLE,
+            egui::RichText::new(format!("\u{03bb}\u{2081} = {:.6}", gap))
+                .strong()
+                .size(16.0),
+        );
         dim_label(ui, &format!("N={} \u{2192} {}x{} torus", n, n, n));
         dim_label(ui, &format!("{} qubits on T\u{00b2}", n_q));
         ui.add_space(4.0);
 
-        ui.colored_label(LABEL_CLR, egui::RichText::new("Topology comparison").strong().size(12.0));
+        ui.colored_label(
+            LABEL_CLR,
+            egui::RichText::new("Topology comparison")
+                .strong()
+                .size(12.0),
+        );
         ui.horizontal(|ui| {
             ui.colored_label(LOGO_PURPLE, "T\u{00b2}:");
             ui.label(format!("{:.4}", gap));
@@ -3522,7 +4995,13 @@ impl QuantumEngineApp {
             ui.colored_label(FOREST_GREEN, "Complete:");
             ui.label(format!("{:.1}", gap_complete));
         });
-        dim_label(ui, &format!("T\u{00b2}/Linear advantage: {:.1}\u{00d7}", gap / gap_linear));
+        dim_label(
+            ui,
+            &format!(
+                "T\u{00b2}/Linear advantage: {:.1}\u{00d7}",
+                gap / gap_linear
+            ),
+        );
         ui.add_space(8.0);
 
         section_heading(ui, "DERIVED QUANTITIES");
@@ -3544,8 +5023,19 @@ impl QuantumEngineApp {
         let omega = self.logo_sphere_speed;
         let thrust_metric = gap * omega * omega;
         section_heading(ui, "ORTHOGONAL FORCE");
-        ui.colored_label(LOGO_RED, egui::RichText::new(format!("F\u{22a5} \u{221d} {:.4}", thrust_metric)).strong().size(16.0));
-        dim_label(ui, &format!("\u{03bb}\u{2081}\u{00d7}\u{03c9}\u{00b2} = {:.6}\u{00d7}{:.2}\u{00b2}", gap, omega));
+        ui.colored_label(
+            LOGO_RED,
+            egui::RichText::new(format!("F\u{22a5} \u{221d} {:.4}", thrust_metric))
+                .strong()
+                .size(16.0),
+        );
+        dim_label(
+            ui,
+            &format!(
+                "\u{03bb}\u{2081}\u{00d7}\u{03c9}\u{00b2} = {:.6}\u{00d7}{:.2}\u{00b2}",
+                gap, omega
+            ),
+        );
         ui.add_space(4.0);
         dim_label(ui, "Force emerges from topology:");
         dim_label(ui, "\u{03c0}\u{2081}(T\u{00b2}) = \u{2124}\u{00d7}\u{2124}");
@@ -3557,23 +5047,35 @@ impl QuantumEngineApp {
         section_heading(ui, "STRUCTURAL PARALLEL");
         let rows = [
             ("Topology", "S\u{00b2} compact", "T\u{00b2} compact"),
-            ("Coords", "(\u{03b8},\u{03c6})", "(\u{03b8}\u{2081},\u{03b8}\u{2082})"),
+            (
+                "Coords",
+                "(\u{03b8},\u{03c6})",
+                "(\u{03b8}\u{2081},\u{03b8}\u{2082})",
+            ),
             ("Spectrum", "Hamiltonian", "Laplacian \u{03bb}\u{2081}"),
             ("Coherence", "Unitarity", "Spectral gap"),
             ("Protect", "Toric code", "Logit bias +2.8pp"),
         ];
-        egui::Grid::new("structural_parallel").striped(true).show(ui, |ui| {
-            ui.colored_label(LOGO_AMBER, egui::RichText::new("").strong().size(11.0));
-            ui.colored_label(LOGO_CYAN, egui::RichText::new("Bloch S\u{00b2}").strong().size(11.0));
-            ui.colored_label(LOGO_PURPLE, egui::RichText::new("Tonnetz T\u{00b2}").strong().size(11.0));
-            ui.end_row();
-            for (prop, bloch, tonnetz) in rows {
-                ui.colored_label(LOGO_AMBER, egui::RichText::new(prop).size(11.0));
-                ui.label(egui::RichText::new(bloch).size(11.0));
-                ui.label(egui::RichText::new(tonnetz).size(11.0));
+        egui::Grid::new("structural_parallel")
+            .striped(true)
+            .show(ui, |ui| {
+                ui.colored_label(LOGO_AMBER, egui::RichText::new("").strong().size(11.0));
+                ui.colored_label(
+                    LOGO_CYAN,
+                    egui::RichText::new("Bloch S\u{00b2}").strong().size(11.0),
+                );
+                ui.colored_label(
+                    LOGO_PURPLE,
+                    egui::RichText::new("Tonnetz T\u{00b2}").strong().size(11.0),
+                );
                 ui.end_row();
-            }
-        });
+                for (prop, bloch, tonnetz) in rows {
+                    ui.colored_label(LOGO_AMBER, egui::RichText::new(prop).size(11.0));
+                    ui.label(egui::RichText::new(bloch).size(11.0));
+                    ui.label(egui::RichText::new(tonnetz).size(11.0));
+                    ui.end_row();
+                }
+            });
         ui.add_space(8.0);
 
         section_heading(ui, "PRIOR ART TIMELINE");
@@ -3632,7 +5134,9 @@ impl QuantumEngineApp {
                 let e1y = p10.y - p00.y;
                 let e2x = p01.x - p00.x;
                 let e2y = p01.y - p00.y;
-                if e1x * e2y - e1y * e2x > 0.0 { continue; }
+                if e1x * e2y - e1y * e2x > 0.0 {
+                    continue;
+                }
 
                 let depth_t = ((avg_z + 2.0) / 4.0).clamp(0.0, 1.0);
                 let alpha = (14.0 + 18.0 * depth_t) as u8;
@@ -3643,10 +5147,26 @@ impl QuantumEngineApp {
                 let mesh = egui::Mesh {
                     indices: vec![0, 1, 2, 0, 2, 3],
                     vertices: vec![
-                        egui::epaint::Vertex { pos: p00, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                        egui::epaint::Vertex { pos: p10, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                        egui::epaint::Vertex { pos: p11, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                        egui::epaint::Vertex { pos: p01, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                        egui::epaint::Vertex {
+                            pos: p00,
+                            uv: egui::epaint::WHITE_UV,
+                            color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                        },
+                        egui::epaint::Vertex {
+                            pos: p10,
+                            uv: egui::epaint::WHITE_UV,
+                            color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                        },
+                        egui::epaint::Vertex {
+                            pos: p11,
+                            uv: egui::epaint::WHITE_UV,
+                            color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                        },
+                        egui::epaint::Vertex {
+                            pos: p01,
+                            uv: egui::epaint::WHITE_UV,
+                            color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                        },
                     ],
                     texture_id: egui::TextureId::default(),
                 };
@@ -3664,12 +5184,18 @@ impl QuantumEngineApp {
                 let (s1, z1) = project(torus_pt(rm, rn, fixed, a), rot, rect);
                 let (s2, _z2) = project(torus_pt(rm, rn, fixed, b), rot, rect);
                 let al = depth_alpha(z1);
-                painter.line_segment([s1, s2], egui::Stroke::new(0.5, egui::Color32::from_rgba_unmultiplied(80, 60, 140, al)));
+                painter.line_segment(
+                    [s1, s2],
+                    egui::Stroke::new(0.5, egui::Color32::from_rgba_unmultiplied(80, 60, 140, al)),
+                );
                 // v-rings
                 let (s1, z1) = project(torus_pt(rm, rn, a, fixed), rot, rect);
                 let (s2, _z2) = project(torus_pt(rm, rn, b, fixed), rot, rect);
                 let al = depth_alpha(z1);
-                painter.line_segment([s1, s2], egui::Stroke::new(0.5, egui::Color32::from_rgba_unmultiplied(80, 60, 140, al)));
+                painter.line_segment(
+                    [s1, s2],
+                    egui::Stroke::new(0.5, egui::Color32::from_rgba_unmultiplied(80, 60, 140, al)),
+                );
             }
         }
 
@@ -3679,9 +5205,15 @@ impl QuantumEngineApp {
                 let a = 2.0 * PI * s as f32 / segs as f32;
                 let b = 2.0 * PI * ((s + 1) % segs) as f32 / segs as f32;
                 let (p1, p2) = if cycle_u {
-                    (torus_pt(rm, rn, fixed_other, a), torus_pt(rm, rn, fixed_other, b))
+                    (
+                        torus_pt(rm, rn, fixed_other, a),
+                        torus_pt(rm, rn, fixed_other, b),
+                    )
                 } else {
-                    (torus_pt(rm, rn, a, fixed_other), torus_pt(rm, rn, b, fixed_other))
+                    (
+                        torus_pt(rm, rn, a, fixed_other),
+                        torus_pt(rm, rn, b, fixed_other),
+                    )
                 };
                 let (sc1, _) = project(p1, rot, rect);
                 let (sc2, _) = project(p2, rot, rect);
@@ -3689,7 +5221,10 @@ impl QuantumEngineApp {
                 let r = (212.0 * pulse + 80.0 * (1.0 - pulse)) as u8;
                 let g = (175.0 * pulse + 100.0 * (1.0 - pulse)) as u8;
                 let bl = (55.0 * pulse + 30.0 * (1.0 - pulse)) as u8;
-                painter.line_segment([sc1, sc2], egui::Stroke::new(2.0, egui::Color32::from_rgb(r, g, bl)));
+                painter.line_segment(
+                    [sc1, sc2],
+                    egui::Stroke::new(2.0, egui::Color32::from_rgb(r, g, bl)),
+                );
             }
         }
 
@@ -3704,7 +5239,11 @@ impl QuantumEngineApp {
                     let al = depth_alpha(z);
                     let phase_v = 0.6 + 0.4 * (time * 2.0 + u + v).sin();
                     let br = (180.0 * phase_v) as u8;
-                    painter.circle_filled(sp, 2.0, egui::Color32::from_rgba_unmultiplied(br, br, (br as f32 * 0.8) as u8, al));
+                    painter.circle_filled(
+                        sp,
+                        2.0,
+                        egui::Color32::from_rgba_unmultiplied(br, br, (br as f32 * 0.8) as u8, al),
+                    );
                 }
             }
         }
@@ -3737,7 +5276,13 @@ impl QuantumEngineApp {
                     let (a, za) = project(eq0, rot, rect);
                     let (b, _) = project(eq1, rot, rect);
                     let al = depth_alpha(za);
-                    painter.line_segment([a, b], egui::Stroke::new(1.5, egui::Color32::from_rgba_unmultiplied(34, 211, 238, al)));
+                    painter.line_segment(
+                        [a, b],
+                        egui::Stroke::new(
+                            1.5,
+                            egui::Color32::from_rgba_unmultiplied(34, 211, 238, al),
+                        ),
+                    );
                 }
 
                 // Meridians
@@ -3754,7 +5299,18 @@ impl QuantumEngineApp {
                 let (a, za) = project(mer0, rot, rect);
                 let (b, _) = project(mer1, rot, rect);
                 let al = depth_alpha(za);
-                painter.line_segment([a, b], egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(34, 211, 238, (al as f32 * 0.7) as u8)));
+                painter.line_segment(
+                    [a, b],
+                    egui::Stroke::new(
+                        1.0,
+                        egui::Color32::from_rgba_unmultiplied(
+                            34,
+                            211,
+                            238,
+                            (al as f32 * 0.7) as u8,
+                        ),
+                    ),
+                );
             }
         }
 
@@ -3805,7 +5361,10 @@ impl QuantumEngineApp {
             for node in &node_positions {
                 let (np, _) = project(*node, rot, rect);
                 let (cp, _) = project(center_pos, rot, rect);
-                painter.line_segment([np, cp], egui::Stroke::new(2.0, egui::Color32::from_rgb(100, 100, 90)));
+                painter.line_segment(
+                    [np, cp],
+                    egui::Stroke::new(2.0, egui::Color32::from_rgb(100, 100, 90)),
+                );
             }
 
             let (cp, _) = project(center_pos, rot, rect);
@@ -3851,9 +5410,19 @@ impl QuantumEngineApp {
             let ux = dx / len;
             let uy = dy / len;
             let head_size = 10.0;
-            let h1 = egui::pos2(tip_up.x - ux * head_size + uy * head_size * 0.5, tip_up.y - uy * head_size - ux * head_size * 0.5);
-            let h2 = egui::pos2(tip_up.x - ux * head_size - uy * head_size * 0.5, tip_up.y - uy * head_size + ux * head_size * 0.5);
-            painter.add(egui::Shape::convex_polygon(vec![tip_up, h1, h2], force_color, egui::Stroke::NONE));
+            let h1 = egui::pos2(
+                tip_up.x - ux * head_size + uy * head_size * 0.5,
+                tip_up.y - uy * head_size - ux * head_size * 0.5,
+            );
+            let h2 = egui::pos2(
+                tip_up.x - ux * head_size - uy * head_size * 0.5,
+                tip_up.y - uy * head_size + ux * head_size * 0.5,
+            );
+            painter.add(egui::Shape::convex_polygon(
+                vec![tip_up, h1, h2],
+                force_color,
+                egui::Stroke::NONE,
+            ));
 
             // Down arrow
             let (base_dn, _) = project([0.0, 0.0, -arrow_base], rot, rect);
@@ -3864,9 +5433,19 @@ impl QuantumEngineApp {
             let len = (dx * dx + dy * dy).sqrt().max(1.0);
             let ux = dx / len;
             let uy = dy / len;
-            let h1 = egui::pos2(tip_dn.x - ux * head_size + uy * head_size * 0.5, tip_dn.y - uy * head_size - ux * head_size * 0.5);
-            let h2 = egui::pos2(tip_dn.x - ux * head_size - uy * head_size * 0.5, tip_dn.y - uy * head_size + ux * head_size * 0.5);
-            painter.add(egui::Shape::convex_polygon(vec![tip_dn, h1, h2], force_color, egui::Stroke::NONE));
+            let h1 = egui::pos2(
+                tip_dn.x - ux * head_size + uy * head_size * 0.5,
+                tip_dn.y - uy * head_size - ux * head_size * 0.5,
+            );
+            let h2 = egui::pos2(
+                tip_dn.x - ux * head_size - uy * head_size * 0.5,
+                tip_dn.y - uy * head_size + ux * head_size * 0.5,
+            );
+            painter.add(egui::Shape::convex_polygon(
+                vec![tip_dn, h1, h2],
+                force_color,
+                egui::Stroke::NONE,
+            ));
 
             // Labels
             painter.text(
@@ -3899,7 +5478,13 @@ impl QuantumEngineApp {
                 let lp = (LOGO_PURPLE.r() as f32 * dash_pulse) as u8;
                 let gp = (LOGO_PURPLE.g() as f32 * dash_pulse) as u8;
                 let bp = (LOGO_PURPLE.b() as f32 * dash_pulse) as u8;
-                painter.line_segment([a, b], egui::Stroke::new(1.5, egui::Color32::from_rgba_unmultiplied(lp, gp, bp, (al as f32 * 0.6) as u8)));
+                painter.line_segment(
+                    [a, b],
+                    egui::Stroke::new(
+                        1.5,
+                        egui::Color32::from_rgba_unmultiplied(lp, gp, bp, (al as f32 * 0.6) as u8),
+                    ),
+                );
             }
         }
 
@@ -3921,8 +5506,24 @@ impl QuantumEngineApp {
 
         // Physics pipeline at bottom
         let pipeline_y = rect.bottom() - 35.0;
-        let labels = ["CNT Resonator", "\u{2192}", "Doppler Cooling", "\u{2192}", "Tonnetz Filter", "\u{2192}", "Toric Code"];
-        let colors = [LOGO_CYAN, DIM, TORUS_BLUE, DIM, LOGO_PURPLE, DIM, FOREST_GREEN];
+        let labels = [
+            "CNT Resonator",
+            "\u{2192}",
+            "Doppler Cooling",
+            "\u{2192}",
+            "Tonnetz Filter",
+            "\u{2192}",
+            "Toric Code",
+        ];
+        let colors = [
+            LOGO_CYAN,
+            DIM,
+            TORUS_BLUE,
+            DIM,
+            LOGO_PURPLE,
+            DIM,
+            FOREST_GREEN,
+        ];
         let mut px = rect.left() + 20.0;
         for (label, color) in labels.iter().zip(colors.iter()) {
             painter.text(
@@ -3941,8 +5542,17 @@ impl QuantumEngineApp {
             egui::vec2(260.0, 160.0),
         );
         if rect.width() > 600.0 && rect.height() > 400.0 {
-            painter.rect_filled(chart_rect, 6.0, egui::Color32::from_rgba_unmultiplied(15, 20, 15, 200));
-            painter.rect_stroke(chart_rect, 6.0, egui::Stroke::new(1.0, egui::Color32::from_rgb(40, 50, 40)), egui::epaint::StrokeKind::Outside);
+            painter.rect_filled(
+                chart_rect,
+                6.0,
+                egui::Color32::from_rgba_unmultiplied(15, 20, 15, 200),
+            );
+            painter.rect_stroke(
+                chart_rect,
+                6.0,
+                egui::Stroke::new(1.0, egui::Color32::from_rgb(40, 50, 40)),
+                egui::epaint::StrokeKind::Outside,
+            );
             painter.text(
                 egui::pos2(chart_rect.left() + 8.0, chart_rect.top() + 6.0),
                 egui::Align2::LEFT_TOP,
@@ -3960,7 +5570,8 @@ impl QuantumEngineApp {
 
             for (i, &n) in sizes.iter().enumerate() {
                 let gap = 2.0 - 2.0 * (2.0 * std::f64::consts::PI / n as f64).cos();
-                let x = chart_inner.left() + (i as f32 / (sizes.len() - 1) as f32) * chart_inner.width();
+                let x = chart_inner.left()
+                    + (i as f32 / (sizes.len() - 1) as f32) * chart_inner.width();
                 let y = chart_inner.bottom() - (gap as f32 / max_gap) * chart_inner.height();
 
                 let is_current = n == self.logo_lattice_n;
@@ -3969,10 +5580,16 @@ impl QuantumEngineApp {
                 painter.circle_filled(egui::pos2(x, y), dot_r, c);
 
                 if i > 0 {
-                    let prev_gap = 2.0 - 2.0 * (2.0 * std::f64::consts::PI / sizes[i - 1] as f64).cos();
-                    let ppx = chart_inner.left() + ((i - 1) as f32 / (sizes.len() - 1) as f32) * chart_inner.width();
-                    let py = chart_inner.bottom() - (prev_gap as f32 / max_gap) * chart_inner.height();
-                    painter.line_segment([egui::pos2(ppx, py), egui::pos2(x, y)], egui::Stroke::new(1.5, LOGO_CYAN));
+                    let prev_gap =
+                        2.0 - 2.0 * (2.0 * std::f64::consts::PI / sizes[i - 1] as f64).cos();
+                    let ppx = chart_inner.left()
+                        + ((i - 1) as f32 / (sizes.len() - 1) as f32) * chart_inner.width();
+                    let py =
+                        chart_inner.bottom() - (prev_gap as f32 / max_gap) * chart_inner.height();
+                    painter.line_segment(
+                        [egui::pos2(ppx, py), egui::pos2(x, y)],
+                        egui::Stroke::new(1.5, LOGO_CYAN),
+                    );
                 }
 
                 painter.text(
@@ -4003,8 +5620,20 @@ impl QuantumEngineApp {
         let omega = self.logo_sphere_speed;
         let thrust = gap * omega * omega;
 
-        let sc = if thrust > 0.5 { FOREST_GREEN } else if thrust > 0.1 { GOLD_EG } else { WARN_RED };
-        let st = if thrust > 0.5 { "STRONG" } else if thrust > 0.1 { "MODERATE" } else { "WEAK" };
+        let sc = if thrust > 0.5 {
+            FOREST_GREEN
+        } else if thrust > 0.1 {
+            GOLD_EG
+        } else {
+            WARN_RED
+        };
+        let st = if thrust > 0.5 {
+            "STRONG"
+        } else if thrust > 0.1 {
+            "MODERATE"
+        } else {
+            "WEAK"
+        };
 
         let frame = egui::Frame {
             fill: egui::Color32::from_rgba_unmultiplied(22, 18, 32, 230),
@@ -4013,17 +5642,36 @@ impl QuantumEngineApp {
             stroke: egui::Stroke::new(2.0, LOGO_PURPLE),
             ..Default::default()
         };
-        egui::Window::new("logo_status").title_bar(false).resizable(false).movable(false).frame(frame).anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0]).show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.colored_label(LOGO_PURPLE, egui::RichText::new("LOGO DECODED").strong().size(15.0));
-                ui.separator();
-                ui.colored_label(sc, egui::RichText::new(format!("F\u{22a5} {}", st)).strong().size(13.0));
+        egui::Window::new("logo_status")
+            .title_bar(false)
+            .resizable(false)
+            .movable(false)
+            .frame(frame)
+            .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.colored_label(
+                        LOGO_PURPLE,
+                        egui::RichText::new("LOGO DECODED").strong().size(15.0),
+                    );
+                    ui.separator();
+                    ui.colored_label(
+                        sc,
+                        egui::RichText::new(format!("F\u{22a5} {}", st))
+                            .strong()
+                            .size(13.0),
+                    );
+                });
+                ui.label(format!(
+                    "\u{03bb}\u{2081}={:.4}  \u{03c9}={:.1}  F\u{22a5}\u{221d}{:.4}",
+                    gap, omega, thrust
+                ));
+                dim_label(ui, &format!("{}x{} torus, {} qubits", n, n, n * n));
+                dim_label(ui, "Prior art: November 2023");
+                if self.paused {
+                    ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0));
+                }
             });
-            ui.label(format!("\u{03bb}\u{2081}={:.4}  \u{03c9}={:.1}  F\u{22a5}\u{221d}{:.4}", gap, omega, thrust));
-            dim_label(ui, &format!("{}x{} torus, {} qubits", n, n, n * n));
-            dim_label(ui, "Prior art: November 2023");
-            if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
-        });
     }
 }
 
@@ -4051,7 +5699,7 @@ fn tube_frame(u: f32) -> ([f32; 3], [f32; 3], [f32; 3]) {
 }
 
 /// Point inside the tube at toroidal angle u, poloidal angle v, at radius r from tube center.
-fn tube_interior_pt(r_maj: f32, r_offset: f32, u: f32, v: f32) -> [f32; 3] {
+pub fn tube_interior_pt(r_maj: f32, r_offset: f32, u: f32, v: f32) -> [f32; 3] {
     let (_t, n, b) = tube_frame(u);
     let center = tube_center(r_maj, u);
     [
@@ -4065,7 +5713,10 @@ impl QuantumEngineApp {
     // ─── Controls ───────────────────────────────────────────────────────
 
     fn draw_te_controls(&mut self, ui: &mut egui::Ui) {
-        ui.colored_label(LOGO_RED, egui::RichText::new("TOROIDAL ENGINE").strong().size(13.0));
+        ui.colored_label(
+            LOGO_RED,
+            egui::RichText::new("TOROIDAL ENGINE").strong().size(13.0),
+        );
         dim_label(ui, "Sphere confined inside torus tube");
         ui.add_space(4.0);
 
@@ -4076,7 +5727,10 @@ impl QuantumEngineApp {
         ui.add(egui::Slider::new(&mut self.te_torus_minor, 0.15..=0.8).text("r"));
         ui.add_space(2.0);
         let sphere_d = self.te_torus_minor * 2.0;
-        dim_label(ui, &format!("Sphere diameter = tube diameter = {:.2}", sphere_d));
+        dim_label(
+            ui,
+            &format!("Sphere diameter = tube diameter = {:.2}", sphere_d),
+        );
         dim_label(ui, &format!("Sphere radius = {:.3}", self.te_torus_minor));
         ui.add_space(4.0);
 
@@ -4089,7 +5743,11 @@ impl QuantumEngineApp {
 
         section_heading(ui, "TONNETZ LATTICE");
         let mut n_f = self.te_lattice_n as f64;
-        ui.add(egui::Slider::new(&mut n_f, 4.0..=24.0).integer().text("N\u{00d7}N"));
+        ui.add(
+            egui::Slider::new(&mut n_f, 4.0..=24.0)
+                .integer()
+                .text("N\u{00d7}N"),
+        );
         self.te_lattice_n = n_f as usize;
         ui.add_space(4.0);
 
@@ -4127,13 +5785,18 @@ impl QuantumEngineApp {
         let n_q = n * n;
 
         section_heading(ui, "SPECTRAL GAP");
-        ui.colored_label(LOGO_PURPLE, egui::RichText::new(format!("\u{03bb}\u{2081} = {:.6}", gap)).strong().size(16.0));
+        ui.colored_label(
+            LOGO_PURPLE,
+            egui::RichText::new(format!("\u{03bb}\u{2081} = {:.6}", gap))
+                .strong()
+                .size(16.0),
+        );
         dim_label(ui, &format!("{}x{} torus, {} sites", n, n, n_q));
         ui.add_space(4.0);
 
         // Kinetic energy of sphere (dimensionless)
         let omega_t = self.te_sphere_speed; // toroidal
-        let omega_s = self.te_spin_speed;   // self-spin
+        let omega_s = self.te_spin_speed; // self-spin
         let r_maj = self.te_torus_major as f64;
         let r_min = self.te_torus_minor as f64;
 
@@ -4182,15 +5845,32 @@ impl QuantumEngineApp {
         ui.add_space(4.0);
 
         section_heading(ui, "ORTHOGONAL FORCE");
-        ui.colored_label(LOGO_RED, egui::RichText::new(format!("F\u{22a5} = {:.4}", f_ortho)).strong().size(16.0));
-        dim_label(ui, &format!("\u{03bb}\u{2081} \u{00d7} L_toroidal = {:.4} \u{00d7} {:.4}", gap, l_toroidal));
+        ui.colored_label(
+            LOGO_RED,
+            egui::RichText::new(format!("F\u{22a5} = {:.4}", f_ortho))
+                .strong()
+                .size(16.0),
+        );
+        dim_label(
+            ui,
+            &format!(
+                "\u{03bb}\u{2081} \u{00d7} L_toroidal = {:.4} \u{00d7} {:.4}",
+                gap, l_toroidal
+            ),
+        );
         ui.add_space(4.0);
-        ui.colored_label(TE_ORANGE, egui::RichText::new(format!("F\u{22a5}(enhanced) = {:.4}", f_enhanced)).strong().size(14.0));
+        ui.colored_label(
+            TE_ORANGE,
+            egui::RichText::new(format!("F\u{22a5}(enhanced) = {:.4}", f_enhanced))
+                .strong()
+                .size(14.0),
+        );
         dim_label(ui, "Includes spin angular momentum");
         ui.add_space(8.0);
 
         // Coherence time
-        let coherence = crate::coherence::coherence_time_normalized(gap, 1.0_f64 / std::f64::consts::E);
+        let coherence =
+            crate::coherence::coherence_time_normalized(gap, 1.0_f64 / std::f64::consts::E);
         let mixing = torus.mixing_time_lattice();
 
         section_heading(ui, "COHERENCE");
@@ -4264,7 +5944,9 @@ impl QuantumEngineApp {
                 let e1y = p10.y - p00.y;
                 let e2x = p01.x - p00.x;
                 let e2y = p01.y - p00.y;
-                if e1x * e2y - e1y * e2x > 0.0 { continue; }
+                if e1x * e2y - e1y * e2x > 0.0 {
+                    continue;
+                }
 
                 let depth_t = ((avg_z + 2.0) / 4.0).clamp(0.0, 1.0);
                 let alpha = (10.0 + 14.0 * depth_t) as u8; // more transparent to see sphere
@@ -4275,10 +5957,26 @@ impl QuantumEngineApp {
                 let mesh = egui::Mesh {
                     indices: vec![0, 1, 2, 0, 2, 3],
                     vertices: vec![
-                        egui::epaint::Vertex { pos: p00, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                        egui::epaint::Vertex { pos: p10, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                        egui::epaint::Vertex { pos: p11, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
-                        egui::epaint::Vertex { pos: p01, uv: egui::epaint::WHITE_UV, color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha) },
+                        egui::epaint::Vertex {
+                            pos: p00,
+                            uv: egui::epaint::WHITE_UV,
+                            color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                        },
+                        egui::epaint::Vertex {
+                            pos: p10,
+                            uv: egui::epaint::WHITE_UV,
+                            color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                        },
+                        egui::epaint::Vertex {
+                            pos: p11,
+                            uv: egui::epaint::WHITE_UV,
+                            color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                        },
+                        egui::epaint::Vertex {
+                            pos: p01,
+                            uv: egui::epaint::WHITE_UV,
+                            color: egui::Color32::from_rgba_unmultiplied(r, g, b, alpha),
+                        },
                     ],
                     texture_id: egui::TextureId::default(),
                 };
@@ -4295,11 +5993,23 @@ impl QuantumEngineApp {
                 let (s1, z1) = project(torus_pt(rm, rn, fixed, a), rot, rect);
                 let (s2, _) = project(torus_pt(rm, rn, fixed, b), rot, rect);
                 let al = depth_alpha(z1);
-                painter.line_segment([s1, s2], egui::Stroke::new(0.4, egui::Color32::from_rgba_unmultiplied(60, 80, 140, (al as f32 * 0.5) as u8)));
+                painter.line_segment(
+                    [s1, s2],
+                    egui::Stroke::new(
+                        0.4,
+                        egui::Color32::from_rgba_unmultiplied(60, 80, 140, (al as f32 * 0.5) as u8),
+                    ),
+                );
                 let (s1, z1) = project(torus_pt(rm, rn, a, fixed), rot, rect);
                 let (s2, _) = project(torus_pt(rm, rn, b, fixed), rot, rect);
                 let al = depth_alpha(z1);
-                painter.line_segment([s1, s2], egui::Stroke::new(0.4, egui::Color32::from_rgba_unmultiplied(60, 80, 140, (al as f32 * 0.5) as u8)));
+                painter.line_segment(
+                    [s1, s2],
+                    egui::Stroke::new(
+                        0.4,
+                        egui::Color32::from_rgba_unmultiplied(60, 80, 140, (al as f32 * 0.5) as u8),
+                    ),
+                );
             }
         }
 
@@ -4314,7 +6024,11 @@ impl QuantumEngineApp {
                     let al = depth_alpha(z);
                     let phase_v = 0.5 + 0.5 * (time * 1.5 + u + v).sin();
                     let br = (150.0 * phase_v) as u8;
-                    painter.circle_filled(sp, 1.8, egui::Color32::from_rgba_unmultiplied(br, br, (br as f32 * 0.7) as u8, al));
+                    painter.circle_filled(
+                        sp,
+                        1.8,
+                        egui::Color32::from_rgba_unmultiplied(br, br, (br as f32 * 0.7) as u8, al),
+                    );
                 }
             }
         }
@@ -4331,7 +6045,13 @@ impl QuantumEngineApp {
                 let r = (255.0 * frac) as u8;
                 let g = (140.0 * frac) as u8;
                 let b = (60.0 * frac) as u8;
-                painter.line_segment([p1, p2], egui::Stroke::new(2.0, egui::Color32::from_rgba_unmultiplied(r, g, b, (al as f32 * frac) as u8)));
+                painter.line_segment(
+                    [p1, p2],
+                    egui::Stroke::new(
+                        2.0,
+                        egui::Color32::from_rgba_unmultiplied(r, g, b, (al as f32 * frac) as u8),
+                    ),
+                );
             }
         }
 
@@ -4367,7 +6087,10 @@ impl QuantumEngineApp {
             let (pa, za) = project(eq0, rot, rect);
             let (pb, _) = project(eq1, rot, rect);
             let al = depth_alpha(za);
-            painter.line_segment([pa, pb], egui::Stroke::new(2.0, egui::Color32::from_rgba_unmultiplied(255, 160, 60, al)));
+            painter.line_segment(
+                [pa, pb],
+                egui::Stroke::new(2.0, egui::Color32::from_rgba_unmultiplied(255, 160, 60, al)),
+            );
         }
 
         // Additional meridian circles on the sphere (along the tube direction)
@@ -4379,30 +6102,42 @@ impl QuantumEngineApp {
 
                 // Meridian: rotate around the normal axis
                 let tangent = [-sphere_u.sin(), sphere_u.cos(), 0.0_f32];
-                let axis_n = [
-                    offset.cos() * normal[0] + offset.sin() * binormal[0],
-                    offset.cos() * normal[1] + offset.sin() * binormal[1],
-                    offset.cos() * normal[2] + offset.sin() * binormal[2],
-                ];
                 let axis_cross = [
                     -offset.sin() * normal[0] + offset.cos() * binormal[0],
                     -offset.sin() * normal[1] + offset.cos() * binormal[1],
                     -offset.sin() * normal[2] + offset.cos() * binormal[2],
                 ];
                 let m0 = [
-                    sphere_center[0] + sphere_r * (t0.cos() * tangent[0] + t0.sin() * axis_cross[0]),
-                    sphere_center[1] + sphere_r * (t0.cos() * tangent[1] + t0.sin() * axis_cross[1]),
-                    sphere_center[2] + sphere_r * (t0.cos() * tangent[2] + t0.sin() * axis_cross[2]),
+                    sphere_center[0]
+                        + sphere_r * (t0.cos() * tangent[0] + t0.sin() * axis_cross[0]),
+                    sphere_center[1]
+                        + sphere_r * (t0.cos() * tangent[1] + t0.sin() * axis_cross[1]),
+                    sphere_center[2]
+                        + sphere_r * (t0.cos() * tangent[2] + t0.sin() * axis_cross[2]),
                 ];
                 let m1 = [
-                    sphere_center[0] + sphere_r * (t1.cos() * tangent[0] + t1.sin() * axis_cross[0]),
-                    sphere_center[1] + sphere_r * (t1.cos() * tangent[1] + t1.sin() * axis_cross[1]),
-                    sphere_center[2] + sphere_r * (t1.cos() * tangent[2] + t1.sin() * axis_cross[2]),
+                    sphere_center[0]
+                        + sphere_r * (t1.cos() * tangent[0] + t1.sin() * axis_cross[0]),
+                    sphere_center[1]
+                        + sphere_r * (t1.cos() * tangent[1] + t1.sin() * axis_cross[1]),
+                    sphere_center[2]
+                        + sphere_r * (t1.cos() * tangent[2] + t1.sin() * axis_cross[2]),
                 ];
                 let (pa, za) = project(m0, rot, rect);
                 let (pb, _) = project(m1, rot, rect);
                 let al = depth_alpha(za);
-                painter.line_segment([pa, pb], egui::Stroke::new(1.0, egui::Color32::from_rgba_unmultiplied(255, 160, 60, (al as f32 * 0.6) as u8)));
+                painter.line_segment(
+                    [pa, pb],
+                    egui::Stroke::new(
+                        1.0,
+                        egui::Color32::from_rgba_unmultiplied(
+                            255,
+                            160,
+                            60,
+                            (al as f32 * 0.6) as u8,
+                        ),
+                    ),
+                );
             }
         }
 
@@ -4430,9 +6165,19 @@ impl QuantumEngineApp {
             let ux = dx / len;
             let uy = dy / len;
             let hs = 12.0;
-            let h1 = egui::pos2(tip_up.x - ux * hs + uy * hs * 0.5, tip_up.y - uy * hs - ux * hs * 0.5);
-            let h2 = egui::pos2(tip_up.x - ux * hs - uy * hs * 0.5, tip_up.y - uy * hs + ux * hs * 0.5);
-            painter.add(egui::Shape::convex_polygon(vec![tip_up, h1, h2], force_color, egui::Stroke::NONE));
+            let h1 = egui::pos2(
+                tip_up.x - ux * hs + uy * hs * 0.5,
+                tip_up.y - uy * hs - ux * hs * 0.5,
+            );
+            let h2 = egui::pos2(
+                tip_up.x - ux * hs - uy * hs * 0.5,
+                tip_up.y - uy * hs + ux * hs * 0.5,
+            );
+            painter.add(egui::Shape::convex_polygon(
+                vec![tip_up, h1, h2],
+                force_color,
+                egui::Stroke::NONE,
+            ));
 
             let (base_dn, _) = project([0.0, 0.0, -base_height], rot, rect);
             let (tip_dn, _) = project([0.0, 0.0, -tip_height], rot, rect);
@@ -4442,12 +6187,34 @@ impl QuantumEngineApp {
             let len = (dx * dx + dy * dy).sqrt().max(1.0);
             let ux = dx / len;
             let uy = dy / len;
-            let h1 = egui::pos2(tip_dn.x - ux * hs + uy * hs * 0.5, tip_dn.y - uy * hs - ux * hs * 0.5);
-            let h2 = egui::pos2(tip_dn.x - ux * hs - uy * hs * 0.5, tip_dn.y - uy * hs + ux * hs * 0.5);
-            painter.add(egui::Shape::convex_polygon(vec![tip_dn, h1, h2], force_color, egui::Stroke::NONE));
+            let h1 = egui::pos2(
+                tip_dn.x - ux * hs + uy * hs * 0.5,
+                tip_dn.y - uy * hs - ux * hs * 0.5,
+            );
+            let h2 = egui::pos2(
+                tip_dn.x - ux * hs - uy * hs * 0.5,
+                tip_dn.y - uy * hs + ux * hs * 0.5,
+            );
+            painter.add(egui::Shape::convex_polygon(
+                vec![tip_dn, h1, h2],
+                force_color,
+                egui::Stroke::NONE,
+            ));
 
-            painter.text(egui::pos2(tip_up.x + 14.0, tip_up.y), egui::Align2::LEFT_CENTER, "F\u{22a5}", egui::FontId::monospace(14.0), LOGO_RED);
-            painter.text(egui::pos2(tip_dn.x + 14.0, tip_dn.y), egui::Align2::LEFT_CENTER, "F\u{22a5}", egui::FontId::monospace(14.0), LOGO_RED);
+            painter.text(
+                egui::pos2(tip_up.x + 14.0, tip_up.y),
+                egui::Align2::LEFT_CENTER,
+                "F\u{22a5}",
+                egui::FontId::monospace(14.0),
+                LOGO_RED,
+            );
+            painter.text(
+                egui::pos2(tip_dn.x + 14.0, tip_dn.y),
+                egui::Align2::LEFT_CENTER,
+                "F\u{22a5}",
+                egui::FontId::monospace(14.0),
+                LOGO_RED,
+            );
         }
 
         // ── Labels ──────────────────────────────────────────────────────
@@ -4470,7 +6237,12 @@ impl QuantumEngineApp {
         painter.text(
             egui::pos2(rect.left() + 20.0, rect.top() + 56.0),
             egui::Align2::LEFT_TOP,
-            &format!("u = {:.0}\u{00b0}  \u{03c9}_t = {:.2}  \u{03c9}_s = {:.2}", (self.te_sphere_u * 180.0 / PI).rem_euclid(360.0), self.te_sphere_speed, self.te_spin_speed),
+            &format!(
+                "u = {:.0}\u{00b0}  \u{03c9}_t = {:.2}  \u{03c9}_s = {:.2}",
+                (self.te_sphere_u * 180.0 / PI).rem_euclid(360.0),
+                self.te_sphere_speed,
+                self.te_spin_speed
+            ),
             egui::FontId::monospace(11.0),
             TE_ORANGE,
         );
@@ -4495,8 +6267,20 @@ impl QuantumEngineApp {
         let l_toroidal = r_maj * r_maj * omega_t;
         let f_ortho = gap * l_toroidal;
 
-        let sc = if f_ortho > 0.3 { FOREST_GREEN } else if f_ortho > 0.05 { GOLD_EG } else { WARN_RED };
-        let st = if f_ortho > 0.3 { "STRONG" } else if f_ortho > 0.05 { "MODERATE" } else { "WEAK" };
+        let sc = if f_ortho > 0.3 {
+            FOREST_GREEN
+        } else if f_ortho > 0.05 {
+            GOLD_EG
+        } else {
+            WARN_RED
+        };
+        let st = if f_ortho > 0.3 {
+            "STRONG"
+        } else if f_ortho > 0.05 {
+            "MODERATE"
+        } else {
+            "WEAK"
+        };
 
         let frame = egui::Frame {
             fill: egui::Color32::from_rgba_unmultiplied(18, 12, 12, 230),
@@ -4505,15 +6289,42 @@ impl QuantumEngineApp {
             stroke: egui::Stroke::new(2.0, LOGO_RED),
             ..Default::default()
         };
-        egui::Window::new("te_status").title_bar(false).resizable(false).movable(false).frame(frame).anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0]).show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.colored_label(LOGO_RED, egui::RichText::new("TOROIDAL ENGINE").strong().size(15.0));
-                ui.separator();
-                ui.colored_label(sc, egui::RichText::new(format!("F\u{22a5} {}", st)).strong().size(13.0));
+        egui::Window::new("te_status")
+            .title_bar(false)
+            .resizable(false)
+            .movable(false)
+            .frame(frame)
+            .anchor(egui::Align2::RIGHT_BOTTOM, [-10.0, -10.0])
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.colored_label(
+                        LOGO_RED,
+                        egui::RichText::new("TOROIDAL ENGINE").strong().size(15.0),
+                    );
+                    ui.separator();
+                    ui.colored_label(
+                        sc,
+                        egui::RichText::new(format!("F\u{22a5} {}", st))
+                            .strong()
+                            .size(13.0),
+                    );
+                });
+                ui.label(format!(
+                    "\u{03bb}\u{2081}={:.4}  L={:.4}  F\u{22a5}={:.4}",
+                    gap, l_toroidal, f_ortho
+                ));
+                dim_label(
+                    ui,
+                    &format!(
+                        "{}x{} torus \u{2014} sphere \u{2300}={:.2}",
+                        n,
+                        n,
+                        self.te_torus_minor * 2.0
+                    ),
+                );
+                if self.paused {
+                    ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0));
+                }
             });
-            ui.label(format!("\u{03bb}\u{2081}={:.4}  L={:.4}  F\u{22a5}={:.4}", gap, l_toroidal, f_ortho));
-            dim_label(ui, &format!("{}x{} torus \u{2014} sphere \u{2300}={:.2}", n, n, self.te_torus_minor * 2.0));
-            if self.paused { ui.colored_label(GOLD_EG, egui::RichText::new("PAUSED").size(11.0)); }
-        });
     }
 }

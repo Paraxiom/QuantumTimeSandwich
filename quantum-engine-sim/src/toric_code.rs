@@ -57,7 +57,7 @@ impl ToricCode {
 
     /// Measure vertex syndromes (X-type stabilizers).
     /// Syndrome at vertex (r,c) = parity of adjacent Z-errors.
-    fn vertex_syndrome(&self, r: usize, c: usize) -> bool {
+    pub fn vertex_syndrome(&self, r: usize, c: usize) -> bool {
         let n = self.n;
         let top = self.vz_errors[r][c];
         let bottom = self.vz_errors[(r + 1) % n][c];
