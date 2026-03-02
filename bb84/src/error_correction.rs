@@ -108,15 +108,4 @@ mod tests {
             vec![false, true, true, false, true, false, true, false]
         );
     }
-    fn test_complex_error_scenario() {
-        let alice_bits = vec![true, false, true, false, false, true, true, false];
-        let mut bob_bits = alice_bits.clone();
-        bob_bits[1] = !bob_bits[1]; // Introduce first error
-        bob_bits[4] = !bob_bits[4]; // Introduce second error
-        let corrected_bits = cascade_correction(alice_bits, bob_bits);
-        assert_eq!(
-            corrected_bits,
-            vec![true, false, true, false, false, true, true, false]
-        );
-    }
 }

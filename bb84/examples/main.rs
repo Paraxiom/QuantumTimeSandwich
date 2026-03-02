@@ -1,5 +1,5 @@
 use bb84::bb84::{generate_bb84_state, measure_bb84_state};
-use bb84::bb84_states::{random_bit, BB84State, MeasurementBasis};
+use bb84::bb84_states::{random_bit, MeasurementBasis};
 
 fn main() {
     println!("--- BB84 Protocol Full Demonstration ---");

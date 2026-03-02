@@ -1,6 +1,8 @@
 use rand::Rng;
+#[cfg(test)]
 use sha2::{Digest, Sha256};
 
+#[cfg(test)]
 fn hash_chunk(input_chunk: &[u8]) -> Vec<u8> {
     let mut hasher = Sha256::new();
     hasher.update(input_chunk);

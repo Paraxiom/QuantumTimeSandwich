@@ -1,7 +1,5 @@
-use bb84::error_correction;
-use bb84::privacy_amplification;
-use QuantumTimeSandwich::prelude::*;
 use rand::{thread_rng, Rng};
+use QuantumTimeSandwich::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut rng = thread_rng();

@@ -1,4 +1,4 @@
-use bb84::bb84::{alice_step, bob_step, generate_bb84_state, measure_bb84_state};
+use bb84::bb84::{generate_bb84_state, measure_bb84_state};
 use bb84::bb84_states::{random_bit, BB84State, MeasurementBasis};
 
 fn simulate_eavesdropping() {
