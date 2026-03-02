@@ -354,7 +354,10 @@ mod tests {
 
     #[test]
     fn test_protocol_robustness_against_eavesdropping() {
-        let number_of_qubits = 10;
+        // Increasing the qubit count to 100 to ensure the eavesdropper is statistically
+        // detected every time. This eliminates the chance of a 'false pass' and
+        // stabilizes the test for review.
+        let number_of_qubits = 100;
         let mut alice_bits = Vec::new();
         let mut alice_bases = Vec::new();
         let mut bob_bases = Vec::new();
