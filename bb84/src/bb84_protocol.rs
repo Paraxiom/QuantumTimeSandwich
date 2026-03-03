@@ -101,5 +101,6 @@ pub fn finalize_key(raw_key: Vec<bool>) -> Vec<bool> {
     // or
     // let corrected_key = ldpc_correction(raw_key);
 
-    apply_privacy_amplification(corrected_key)
+    let seed = rand::random::<u64>();
+    apply_privacy_amplification(corrected_key, seed)
 }

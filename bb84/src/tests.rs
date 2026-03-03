@@ -449,8 +449,9 @@ mod tests {
             error_correction(sifted_alice_bits.clone(), sifted_bob_bits.clone());
 
         // Apply privacy amplification
-        let final_alice_key = apply_privacy_amplification(sifted_alice_bits);
-        let final_bob_key = apply_privacy_amplification(corrected_bob_bits);
+        let seed = rand::random::<u64>();
+        let final_alice_key = apply_privacy_amplification(sifted_alice_bits, seed);
+        let final_bob_key = apply_privacy_amplification(corrected_bob_bits, seed);
 
         // Check if the final keys are identical
         assert_eq!(
@@ -473,10 +474,8 @@ mod tests {
         alice_bits.clone()
     }
 
-    fn apply_privacy_amplification(key: Vec<bool>) -> Vec<bool> {
-        // Store the length before consuming 'key' with 'into_iter()'
-        let key_length = key.len();
-        key.into_iter().take(key_length / 2).collect()
+    fn apply_privacy_amplification(key: Vec<bool>, seed: u64) -> Vec<bool> {
+        crate::privacy_amplification::apply_privacy_amplification(key, seed)
     }
 
     #[test]

@@ -10,13 +10,26 @@ fn hash_chunk(input_chunk: &[u8]) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
-fn toeplitz_hash(shared_key: &[bool], output_len: usize) -> Vec<bool> {
+pub fn apply_privacy_amplification(shared_key: Vec<bool>, seed: u64) -> Vec<bool> {
+    // Moving beyond the simple 'take half' logic to implement formal privacy amplification.
+    // This process reduces Eve's potential knowledge of the key to negligible levels,
+    // completing our QKD pipeline for the upcoming contract proofs.
+    if shared_key.is_empty() {
+        return Vec::new();
+    }
+
+    let security_reduction_ratio = 2;
+    let output_len = std::cmp::max(1, shared_key.len() / security_reduction_ratio);
+    toeplitz_hash_with_seed(&shared_key, output_len, seed)
+}
+
+fn toeplitz_hash_with_seed(shared_key: &[bool], output_len: usize, seed: u64) -> Vec<bool> {
     let input_len = shared_key.len();
     if input_len == 0 || output_len == 0 {
         return Vec::new();
     }
 
-    let (first_row, first_col) = generate_toeplitz_components(input_len, output_len, shared_key);
+    let (first_row, first_col) = generate_toeplitz_components(input_len, output_len, seed);
     let mut hashed_key = Vec::with_capacity(output_len);
 
     for row in 0..output_len {
@@ -35,30 +48,15 @@ fn toeplitz_hash(shared_key: &[bool], output_len: usize) -> Vec<bool> {
     hashed_key
 }
 
-pub fn apply_privacy_amplification(shared_key: Vec<bool>) -> Vec<bool> {
-    // Moving beyond the simple 'take half' logic to implement formal privacy amplification.
-    // This process reduces Eve's potential knowledge of the key to negligible levels,
-    // completing our QKD pipeline for the upcoming contract proofs.
-    if shared_key.is_empty() {
-        return Vec::new();
-    }
-
-    let security_reduction_ratio = 2;
-    let output_len = std::cmp::max(1, shared_key.len() / security_reduction_ratio);
-    toeplitz_hash(&shared_key, output_len)
-}
-
 fn generate_toeplitz_components(
     input_len: usize,
     output_len: usize,
-    shared_key: &[bool],
+    seed: u64,
 ) -> (Vec<bool>, Vec<bool>) {
-    let mut state = shared_key
-        .iter()
-        .fold(0x9E37_79B9_7F4A_7C15_u64, |acc, &bit| {
-            let mixed = acc.rotate_left(7) ^ (bit as u64);
-            mixed.wrapping_mul(0xBF58_476D_1CE4_E5B9)
-        });
+    // Reverting the key-derived seed to a public independent seed model.
+    // This satisfies the leftover hash lemma requirements for our security proofs,
+    // ensuring the seed remains independent of the raw key as Sylvain requested.
+    let mut state = seed;
 
     let mut next_bit = || {
         state = state
@@ -92,14 +90,14 @@ mod tests {
     #[test]
     fn test_apply_privacy_amplification() {
         let shared_key = vec![true, false, true, false, true, false, true, false];
-        let amplified_key = apply_privacy_amplification(shared_key);
+        let amplified_key = apply_privacy_amplification(shared_key, 42u64);
         assert!(!amplified_key.is_empty());
     }
     #[test]
     fn test_random_key_input() {
         let mut rng = rand::thread_rng();
         let shared_key: Vec<bool> = (0..100).map(|_| rng.gen()).collect();
-        let amplified_key = apply_privacy_amplification(shared_key.clone());
+        let amplified_key = apply_privacy_amplification(shared_key.clone(), 42u64);
 
         assert_ne!(amplified_key, shared_key);
     }
