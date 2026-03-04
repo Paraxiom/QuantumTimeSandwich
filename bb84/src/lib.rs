@@ -1,3 +1,4 @@
+pub mod attacks;
 pub mod bb84;
 pub mod bb84_protocol;
 pub mod bb84_states;
