@@ -11,6 +11,9 @@ use crate::bb84_states::MeasurementBasis;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::attacks::PNSAttack;
+    use crate::bb84::{WeakCoherentSource, WeakPulse};
+    use rand::{rngs::StdRng, Rng, SeedableRng};
     use QuantumTimeSandwich::prelude::*;
     #[test]
     fn test_generate_bb84_state() {
@@ -83,25 +86,6 @@ mod tests {
 
         // Add more test cases here as needed, ensuring they align with the expected behavior of measure_bb84_state function
     }
-
-    // TODO: Implement handling of invalid states or bases in the BB84 protocol.
-    // Currently, the protocol assumes that all states and bases are valid.
-    // Future enhancements could include adding checks and handling for invalid or unexpected inputs.
-
-    // #[test]
-    // fn test_invalid_state_or_basis() {
-
-    //     let invalid_state = BB84State::InvalidState;
-    //     let invalid_basis = MeasurementBasis::InvalidBasis;
-
-    //     // Check if the measurement function correctly handles invalid inputs
-
-    //     let result = measure_bb84_state(invalid_state, invalid_basis);
-
-    //     // Assert the expected behavior - this is just an example
-    //     // Replace with the actual expected behavior of  function when faced with invalid inputs
-    //     assert!(result.is_err() || result == false); // Example: expecting an error or a default false outcome
-    // }
 
     #[test]
     fn test_random_basis_consistency() {
@@ -374,12 +358,12 @@ mod tests {
         for i in 0..number_of_qubits {
             let state = generate_bb84_state(alice_bits[i], alice_bases[i]);
             let eavesdropper_basis = MeasurementBasis::random();
-            let _ = measure_bb84_state(state, eavesdropper_basis); // Eavesdropper's measurement (not used directly)
+            measure_bb84_state(state, eavesdropper_basis);
             eavesdropper_bases.push(eavesdropper_basis);
         }
 
         // Bob randomly chooses bases and measures the states
-        for _i in 0..number_of_qubits {
+        for _ in 0..number_of_qubits {
             let bob_basis = MeasurementBasis::random();
             bob_bases.push(bob_basis);
             let state = generate_bb84_state(random_bit(), bob_basis); // Bob measures a new random state
@@ -464,14 +448,93 @@ mod tests {
         rand::random::<f64>() < probability
     }
 
+    #[test]
+    fn test_pns_attack_undetectability() {
+        let source = WeakCoherentSource::new(0.1);
+        let mut eve = PNSAttack::new();
+        let mut rng = StdRng::seed_from_u64(0xBBA4_2026);
+
+        let rounds = 20_000;
+        let channel_noise = 0.10;
+
+        let mut sifted_bits = 0usize;
+        let mut bob_errors = 0usize;
+        let mut eve_info_bits = 0usize;
+
+        for _ in 0..rounds {
+            let alice_bit: bool = rng.gen();
+            let alice_basis = if rng.gen() {
+                MeasurementBasis::Basis1
+            } else {
+                MeasurementBasis::Basis2
+            };
+
+            let pulse = source.emit_pulse(alice_bit, alice_basis, &mut rng);
+            let eve_stored_this_round = matches!(pulse, WeakPulse::Multi { .. });
+            let forwarded = eve.intercept_and_split(pulse);
+
+            let bob_basis = if rng.gen() {
+                MeasurementBasis::Basis1
+            } else {
+                MeasurementBasis::Basis2
+            };
+
+            if eve_stored_this_round {
+                if let Some(eve_bit) = eve.measure_after_sifting(alice_basis) {
+                    if bob_basis == alice_basis && eve_bit == alice_bit {
+                        eve_info_bits += 1;
+                    }
+                }
+            }
+
+            if bob_basis != alice_basis {
+                continue;
+            }
+
+            let mut bob_state = match forwarded {
+                WeakPulse::Vacuum => continue,
+                WeakPulse::Single(state) => state,
+                WeakPulse::Multi { state, .. } => state,
+            };
+
+            sifted_bits += 1;
+
+            if rng.gen::<f64>() < channel_noise {
+                bob_state = flip_state(bob_state);
+            }
+
+            let bob_bit = measure_bb84_state(bob_state, bob_basis);
+            if bob_bit != alice_bit {
+                bob_errors += 1;
+            }
+        }
+
+        let qber = if sifted_bits == 0 {
+            0.0
+        } else {
+            bob_errors as f64 / sifted_bits as f64
+        };
+
+        assert!(sifted_bits > 0, "No sifted bits were produced");
+        assert!(
+            qber >= 0.07 && qber <= 0.13,
+            "QBER {:.4} outside expected natural-noise window",
+            qber
+        );
+        assert!(
+            eve_info_bits > 0,
+            "Eve should gain non-zero information from multi-photon pulses"
+        );
+    }
+
     fn error_correction(alice_bits: Vec<bool>, bob_bits: Vec<bool>) -> Vec<bool> {
         // I'm using this as a placeholder to get my tests to pass while I focus on
         // the BB84 attack simulations and formal proofs Sylvain mentioned.
         // Since our simulation has ~10% noise, I'm just returning Alice's bits
         // for now to simulate perfect reconciliation so the final keys match.
         // I'll implement the actual Cascade protocol next.
-        let _ = bob_bits;
-        alice_bits.clone()
+        drop(bob_bits);
+        alice_bits
     }
 
     fn apply_privacy_amplification(key: Vec<bool>, seed: u64) -> Vec<bool> {
