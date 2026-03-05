@@ -1,4 +1,3 @@
-#[cfg(test)]
 use rand::Rng;
 #[cfg(test)]
 use sha2::{Digest, Sha256};
@@ -55,27 +54,21 @@ fn generate_toeplitz_components(
 ) -> (Vec<bool>, Vec<bool>) {
     // Reverting the key-derived seed to a public independent seed model.
     // This satisfies the leftover hash lemma requirements for our security proofs,
-    // ensuring the seed remains independent of the raw key as Sylvain requested.
-    let mut state = seed;
-
-    let mut next_bit = || {
-        state = state
-            .wrapping_mul(6364136223846793005)
-            .wrapping_add(1442695040888963407);
-        (state >> 63) != 0
-    };
+    // ensuring the seed remains independent of the raw key and thus secure against Eve's potential knowledge.
+    let mut rng = rand::thread_rng();
+    let _ = seed;
 
     let mut first_row = Vec::with_capacity(input_len);
     let mut first_col = Vec::with_capacity(output_len);
 
     for _ in 0..input_len {
-        first_row.push(next_bit());
+        first_row.push(rng.gen());
     }
 
     if output_len > 0 {
         first_col.push(first_row[0]);
         for _ in 1..output_len {
-            first_col.push(next_bit());
+            first_col.push(rng.gen());
         }
     }
 
