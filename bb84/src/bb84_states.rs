@@ -41,14 +41,3 @@ pub fn random_bit() -> bool {
     let mut rng = rand::thread_rng();
     rng.gen()
 }
-
-// fn alice_step(state: BB84State) -> bool {
-//     // Alice randomly chooses a basis.
-//     let basis = MeasurementBasis::random();
-
-//     // Alice measures her state in the chosen basis.
-//     let bit = measure_bb84_state(state, basis);
-
-//     // Alice returns the bit that she measured.
-//     return bit;
-// }

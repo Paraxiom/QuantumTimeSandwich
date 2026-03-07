@@ -1,7 +1,5 @@
-use bb84::error_correction;
-use bb84::privacy_amplification;
-use QuantumTimeSandwich::prelude::*;
 use rand::{thread_rng, Rng};
+use QuantumTimeSandwich::prelude::*;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut rng = thread_rng();
@@ -70,8 +68,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let corrected_bob_bits = error_correction(sifted_alice_bits.clone(), sifted_bob_bits.clone());
 
     // Privacy Amplification (Pseudo-code)
-    let final_alice_key = apply_privacy_amplification(sifted_alice_bits.clone());
-    let final_bob_key = apply_privacy_amplification(corrected_bob_bits);
+    let seed = rand::random::<u64>();
+    let final_alice_key = apply_privacy_amplification(sifted_alice_bits.clone(), seed);
+    let final_bob_key = apply_privacy_amplification(corrected_bob_bits, seed);
 
     // Print final results
     println!("Final Alice's Key: {:?}", final_alice_key);
@@ -107,12 +106,13 @@ fn sift_keys(
 }
 
 fn error_correction(alice_bits: Vec<bool>, bob_bits: Vec<bool>) -> Vec<bool> {
-    bb84::error_correction::cascade_correction(alice_bits, bob_bits)
+    bb84::error_correction::custom_multi_pass_reconciliation(alice_bits, bob_bits)
+        .expect("Reconciliation failed in example simulation")
 }
 
 // Implement the apply_privacy_amplification function
-fn apply_privacy_amplification(key: Vec<bool>) -> Vec<bool> {
-    bb84::privacy_amplification::apply_privacy_amplification(key)
+fn apply_privacy_amplification(key: Vec<bool>, seed: u64) -> Vec<bool> {
+    bb84::privacy_amplification::apply_privacy_amplification(key, seed)
 }
 
 fn test_sifting_key(
@@ -151,8 +151,9 @@ fn test_error_correction(sifted_alice_bits: &[bool], sifted_bob_bits: &[bool]) {
 }
 
 fn test_privacy_amplification(alice_key: &[bool], bob_key: &[bool]) {
-    let amplified_alice_key = apply_privacy_amplification(alice_key.to_vec());
-    let amplified_bob_key = apply_privacy_amplification(bob_key.to_vec());
+    let seed = rand::random::<u64>();
+    let amplified_alice_key = apply_privacy_amplification(alice_key.to_vec(), seed);
+    let amplified_bob_key = apply_privacy_amplification(bob_key.to_vec(), seed);
     assert_eq!(
         amplified_alice_key, amplified_bob_key,
         "Keys do not match after privacy amplification"

@@ -1,4 +1,5 @@
-use crate::error_correction::cascade_correction;
+use crate::error_correction::custom_multi_pass_reconciliation;
+use crate::error_correction::ReconciliationError;
 use crate::privacy_amplification::apply_privacy_amplification;
 use rand::Rng;
 
@@ -96,10 +97,11 @@ impl Bob {
 // Existing BB84 protocol logic...
 
 // After key exchange process
-pub fn finalize_key(raw_key: Vec<bool>) -> Vec<bool> {
-    let corrected_key = cascade_correction(raw_key.clone(), raw_key);
+pub fn finalize_key(raw_key: Vec<bool>) -> Result<Vec<bool>, ReconciliationError> {
+    let corrected_key = custom_multi_pass_reconciliation(raw_key.clone(), raw_key)?;
     // or
     // let corrected_key = ldpc_correction(raw_key);
 
-    apply_privacy_amplification(corrected_key)
+    let seed = rand::random::<u64>();
+    Ok(apply_privacy_amplification(corrected_key, seed))
 }

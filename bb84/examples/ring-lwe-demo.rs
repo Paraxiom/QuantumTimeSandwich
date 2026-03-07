@@ -1,5 +1,3 @@
-use num_bigint::BigInt;
-use num_traits::{One, Zero};
 use rand::{thread_rng, Rng};
 
 const POLYNOMIAL_DEGREE: usize = 64;

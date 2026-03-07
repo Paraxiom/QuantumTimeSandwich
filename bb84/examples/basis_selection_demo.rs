@@ -1,5 +1,4 @@
-use bb84::bb84::{alice_step, bob_step, generate_bb84_state, measure_bb84_state};
-use bb84::bb84_states::{random_bit, BB84State, MeasurementBasis};
+use bb84::bb84_states::{random_bit, MeasurementBasis};
 
 fn basis_selection_demo() {
     println!("BB84 Basis Selection Demonstration");
